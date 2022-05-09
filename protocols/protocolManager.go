@@ -1,13 +1,19 @@
 package protocols
 
-import "beelzebub/parser"
+import (
+	"beelzebub/parser"
+	"beelzebub/tracer"
+)
 
 type ProtocolManager struct {
 	strategy ServiceStrategy
+	tracer   *tracer.Tracer
 }
 
 func (pm *ProtocolManager) InitServiceManager() *ProtocolManager {
-	return &ProtocolManager{}
+	return &ProtocolManager{
+		tracer: tracer.Init(),
+	}
 }
 
 func (pm *ProtocolManager) SetProtocolStrategy(strategy ServiceStrategy) {
@@ -15,5 +21,5 @@ func (pm *ProtocolManager) SetProtocolStrategy(strategy ServiceStrategy) {
 }
 
 func (pm *ProtocolManager) InitService(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration) error {
-	return pm.strategy.Init(beelzebubServiceConfiguration)
+	return pm.strategy.Init(beelzebubServiceConfiguration, *pm.tracer)
 }

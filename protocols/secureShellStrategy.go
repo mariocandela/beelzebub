@@ -2,19 +2,21 @@ package protocols
 
 import (
 	"beelzebub/parser"
+	"beelzebub/tracer"
 	"fmt"
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 	"regexp"
+	"strings"
 	"time"
 )
 
 type SecureShellStrategy struct {
 }
 
-func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration) error {
+func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
 	go func() {
 		server := &ssh.Server{
 			Addr:        beelzebubServiceConfiguration.Address,
@@ -23,14 +25,30 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 			Version:     beelzebubServiceConfiguration.ServerVersion,
 			Handler: func(sess ssh.Session) {
 				uuidSession := uuid.New()
-				traceSessionStart(sess, uuidSession)
+
+				tr.TraceEvent(tracer.Event{
+					Msg:        "New SSH Session",
+					Protocol:   beelzebubServiceConfiguration.Protocol,
+					RemoteAddr: sess.RemoteAddr().String(),
+					Status:     tracer.Start,
+					ID:         uuidSession.String(),
+					Environ:    strings.Join(sess.Environ(), ","),
+					User:       sess.User(),
+				})
+
 				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
 				for {
 					commandInput, err := term.ReadLine()
 					if err != nil {
 						break
 					}
-					traceCommand(commandInput, uuidSession)
+					tr.TraceEvent(tracer.Event{
+						Msg:        "New SSH Command",
+						RemoteAddr: sess.RemoteAddr().String(),
+						Status:     tracer.Interaction,
+						Command:    commandInput,
+						ID:         uuidSession.String(),
+					})
 					if commandInput == "exit" {
 						break
 					}
@@ -47,10 +65,21 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 						}
 					}
 				}
-				traceSessionEnd(sess, uuidSession)
+				tr.TraceEvent(tracer.Event{
+					Msg:    "End SSH Session",
+					Status: tracer.End,
+					ID:     uuidSession.String(),
+				})
 			},
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
-				traceAttempt(ctx, password)
+				tr.TraceEvent(tracer.Event{
+					Msg:        "New SSH attempt",
+					Status:     tracer.Stateless,
+					User:       ctx.User(),
+					Password:   password,
+					Client:     ctx.ClientVersion(),
+					RemoteAddr: ctx.RemoteAddr().String(),
+				})
 				matched, err := regexp.MatchString(beelzebubServiceConfiguration.PasswordRegex, password)
 				if err != nil {
 					log.Errorf("Error regex: %s, %s", beelzebubServiceConfiguration.PasswordRegex, err.Error())
@@ -74,40 +103,4 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 
 func buildPrompt(user string, serverName string) string {
 	return fmt.Sprintf("%s@%s:~$ ", user, serverName)
-}
-
-func traceAttempt(ctx ssh.Context, password string) {
-	log.WithFields(log.Fields{
-		"remoteAddr": ctx.RemoteAddr(),
-		"user":       ctx.User(),
-		"password":   password,
-		"client":     ctx.ClientVersion(),
-	}).Info("New SSH attempt")
-}
-
-func traceSessionStart(sess ssh.Session, uuidSession uuid.UUID) {
-	log.WithFields(log.Fields{
-		"uuidSession": uuidSession,
-		"remoteAddr":  sess.RemoteAddr(),
-		"command":     sess.Command(),
-		"environ":     sess.Environ(),
-		"user":        sess.User(),
-	}).Info("New SSH Session")
-}
-
-func traceSessionEnd(sess ssh.Session, uuidSession uuid.UUID) {
-	log.WithFields(log.Fields{
-		"uuidSession": uuidSession,
-		"remoteAddr":  sess.RemoteAddr(),
-		"command":     sess.Command(),
-		"environ":     sess.Environ(),
-		"user":        sess.User(),
-	}).Info("End SSH Session")
-}
-
-func traceCommand(command string, uuidSession uuid.UUID) {
-	log.WithFields(log.Fields{
-		"uuidSession": uuidSession,
-		"command":     command,
-	}).Info("New SSH Command")
 }

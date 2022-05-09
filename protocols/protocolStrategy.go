@@ -1,7 +1,10 @@
 package protocols
 
-import "beelzebub/parser"
+import (
+	"beelzebub/parser"
+	"beelzebub/tracer"
+)
 
 type ServiceStrategy interface {
-	Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration) error
+	Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tracer tracer.Tracer) error
 }
