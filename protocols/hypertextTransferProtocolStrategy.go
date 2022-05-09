@@ -2,6 +2,7 @@ package protocols
 
 import (
 	"beelzebub/parser"
+	"beelzebub/tracer"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -15,7 +16,7 @@ type HypertextTransferProtocolStrategy struct {
 	beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration
 }
 
-func (httpStrategy HypertextTransferProtocolStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration) error {
+func (httpStrategy HypertextTransferProtocolStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
 	httpStrategy.beelzebubServiceConfiguration = beelzebubServiceConfiguration
 	httpStrategy.serverMux = http.NewServeMux()
 
