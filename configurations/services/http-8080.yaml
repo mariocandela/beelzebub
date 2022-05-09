@@ -8,3 +8,4 @@ commands:
       - "Content-Type: text/html"
       - "Expires: 0"
       - "Version: 6.42.12"
+    statusCode: 200
