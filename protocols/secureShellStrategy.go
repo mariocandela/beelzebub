@@ -28,7 +28,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 
 				tr.TraceEvent(tracer.Event{
 					Msg:        "New SSH Session",
-					Protocol:   beelzebubServiceConfiguration.Protocol,
+					Protocol:   tracer.SSH,
 					RemoteAddr: sess.RemoteAddr().String(),
 					Status:     tracer.Start,
 					ID:         uuidSession.String(),

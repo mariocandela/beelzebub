@@ -2,6 +2,7 @@ package tracer
 
 import (
 	log "github.com/sirupsen/logrus"
+	"net/http"
 )
 
 type Tracer struct {
@@ -19,17 +20,31 @@ func (tracer *Tracer) TraceEvent(event Event) {
 }
 
 type Event struct {
-	RemoteAddr string
-	Protocol   string
-	Command    string
-	Status     Status
-	Msg        string
-	ID         string
-	Environ    string
-	User       string
-	Password   string
-	Client     string
+	RemoteAddr      string
+	Protocol        Protocol
+	Command         string
+	Status          Status
+	Msg             string
+	ID              string
+	Environ         string
+	User            string
+	Password        string
+	Client          string
+	Headers         http.Header
+	Cookies         []*http.Cookie
+	UserAgent       string
+	HostHTTPRequest string
+	Body            string
+	HTTPMethod      string
+	RequestURI      string
 }
+
+type Protocol int
+
+const (
+	HTTP Protocol = iota
+	SSH
+)
 
 type Status int
 
