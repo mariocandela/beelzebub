@@ -3,6 +3,7 @@ package main
 import (
 	"beelzebub/parser"
 	"beelzebub/protocols"
+	"beelzebub/tracer"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
@@ -31,8 +32,7 @@ func main() {
 	hypertextTransferProtocolStrategy := &protocols.HypertextTransferProtocolStrategy{}
 
 	// Protocol manager
-	manager := protocols.ProtocolManager{}
-	serviceManager := manager.InitServiceManager()
+	serviceManager := protocols.InitProtocolManager(logStrategy, hypertextTransferProtocolStrategy)
 
 	for _, beelzebubServiceConfiguration := range beelzebubServicesConfiguration {
 		switch beelzebubServiceConfiguration.Protocol {
@@ -54,15 +54,20 @@ func main() {
 	}
 	<-quit
 }
+func logStrategy(event tracer.Event) {
+	log.WithFields(log.Fields{
+		"status": event.Status.String(),
+		"event":  event,
+	}).Info("New Event")
+}
 
 func configureLogging(configurations parser.Logging) *os.File {
 	file, err := os.OpenFile(configurations.LogsPath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
-	mw := io.MultiWriter(os.Stdout, file)
 
-	log.SetOutput(mw)
+	log.SetOutput(io.MultiWriter(os.Stdout, file))
 
 	log.SetFormatter(&log.JSONFormatter{
 		DisableTimestamp: configurations.LogDisableTimestamp,

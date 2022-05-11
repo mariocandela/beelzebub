@@ -1,22 +1,23 @@
 package tracer
 
 import (
-	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
+type Strategy func(event Event)
+
 type Tracer struct {
+	strategy Strategy
 }
 
-func Init() *Tracer {
-	return &Tracer{}
+func Init(strategy Strategy) *Tracer {
+	return &Tracer{
+		strategy: strategy,
+	}
 }
 
 func (tracer *Tracer) TraceEvent(event Event) {
-	log.WithFields(log.Fields{
-		"status": event.Status.String(),
-		"event":  event,
-	}).Info("New Event")
+	tracer.strategy(event)
 }
 
 type Event struct {

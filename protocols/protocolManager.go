@@ -5,14 +5,19 @@ import (
 	"beelzebub/tracer"
 )
 
+type ServiceStrategy interface {
+	Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tracer tracer.Tracer) error
+}
+
 type ProtocolManager struct {
 	strategy ServiceStrategy
 	tracer   *tracer.Tracer
 }
 
-func (pm *ProtocolManager) InitServiceManager() *ProtocolManager {
+func InitProtocolManager(tracerStrategy tracer.Strategy, strategy ServiceStrategy) *ProtocolManager {
 	return &ProtocolManager{
-		tracer: tracer.Init(),
+		tracer:   tracer.Init(tracerStrategy),
+		strategy: strategy,
 	}
 }
 
