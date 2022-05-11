@@ -1,0 +1,35 @@
+package tracer
+
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
+
+func TestInit(t *testing.T) {
+	mockStrategy := func(event Event) {}
+
+	tracer := Init(mockStrategy)
+
+	assert.NotNil(t, tracer.strategy)
+}
+
+func TestTraceEvent(t *testing.T) {
+	eventCalled := Event{}
+
+	mockStrategy := func(event Event) {
+		eventCalled = event
+	}
+
+	tracer := Init(mockStrategy)
+
+	tracer.TraceEvent(Event{
+		ID:       "mockID",
+		Protocol: HTTP,
+		Status:   Stateless,
+	})
+
+	assert.NotNil(t, eventCalled.ID)
+	assert.Equal(t, eventCalled.ID, "mockID")
+	assert.Equal(t, eventCalled.Protocol, HTTP)
+	assert.Equal(t, eventCalled.Status, Stateless)
+}
