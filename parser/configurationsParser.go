@@ -41,28 +41,28 @@ type Command struct {
 }
 
 type configurationsParser struct {
-	configurationsCorePath          string
-	configurationsServicesDirectory string
-	readFileBytes                   ReadFileBytes
-	readDir                         ReadDir
+	configurationsCorePath             string
+	configurationsServicesDirectory    string
+	readFileBytesByFilePathDependency  ReadFileBytesByFilePath
+	gelAllFinesNameByDirNameDependency GelAllFinesNameByDirName
 }
 
-type ReadFileBytes func(filePath string) ([]byte, error)
+type ReadFileBytesByFilePath func(filePath string) ([]byte, error)
 
-type ReadDir func(dirName string) ([]string, error)
+type GelAllFinesNameByDirName func(dirName string) ([]string, error)
 
 // Init Parser, return a configurationsParser and use the DI Pattern to inject the dependencies
 func Init(configurationsCorePath, configurationsServicesDirectory string) *configurationsParser {
 	return &configurationsParser{
-		configurationsCorePath:          configurationsCorePath,
-		configurationsServicesDirectory: configurationsServicesDirectory,
-		readFileBytes:                   readFileBytes,
-		readDir:                         readDir,
+		configurationsCorePath:             configurationsCorePath,
+		configurationsServicesDirectory:    configurationsServicesDirectory,
+		readFileBytesByFilePathDependency:  readFileBytesByFilePath,
+		gelAllFinesNameByDirNameDependency: gelAllFinesNameByDirName,
 	}
 }
 
 func (bp configurationsParser) ReadConfigurationsCore() (*BeelzebubCoreConfigurations, error) {
-	buf, err := bp.readFileBytes(bp.configurationsCorePath)
+	buf, err := bp.readFileBytesByFilePathDependency(bp.configurationsCorePath)
 	if err != nil {
 		return nil, fmt.Errorf("in file %s: %v", bp.configurationsCorePath, err)
 	}
@@ -77,7 +77,7 @@ func (bp configurationsParser) ReadConfigurationsCore() (*BeelzebubCoreConfigura
 }
 
 func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceConfiguration, error) {
-	services, err := bp.readDir(bp.configurationsServicesDirectory)
+	services, err := bp.gelAllFinesNameByDirNameDependency(bp.configurationsServicesDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("in directory %s: %v", bp.configurationsServicesDirectory, err)
 	}
@@ -85,7 +85,7 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 	var servicesConfiguration []BeelzebubServiceConfiguration
 	for _, servicesName := range services {
 		filePath := filepath.Join(bp.configurationsServicesDirectory, servicesName)
-		buf, err := bp.readFileBytes(filePath)
+		buf, err := bp.readFileBytesByFilePathDependency(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("in file %s: %v", filePath, err)
 		}
@@ -101,7 +101,7 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 	return servicesConfiguration, nil
 }
 
-func readDir(dirName string) ([]string, error) {
+func gelAllFinesNameByDirName(dirName string) ([]string, error) {
 	var filesName []string
 	files, err := ioutil.ReadDir(dirName)
 	if err != nil {
@@ -114,6 +114,6 @@ func readDir(dirName string) ([]string, error) {
 	return filesName, nil
 }
 
-func readFileBytes(filePath string) ([]byte, error) {
+func readFileBytesByFilePath(filePath string) ([]byte, error) {
 	return os.ReadFile(filePath)
 }

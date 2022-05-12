@@ -12,56 +12,56 @@ import (
 var quit = make(chan struct{})
 
 func main() {
-	configurationsParser := parser.Init("./configurations/beelzebub.yaml", "./configurations/services/")
+	parser := parser.Init("./configurations/beelzebub.yaml", "./configurations/services/")
 
-	coreConfigurations, err := configurationsParser.ReadConfigurationsCore()
+	coreConfigurations, err := parser.ReadConfigurationsCore()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fileLogs := configureLogging(coreConfigurations.Core.Logging)
+	fileLogs := configureLoggingByConfigurations(coreConfigurations.Core.Logging)
 	defer fileLogs.Close()
 
-	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	beelzebubServicesConfiguration, err := parser.ReadConfigurationsServices()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Protocol strategies
+	// Init Protocol strategies
 	secureShellStrategy := &protocols.SecureShellStrategy{}
 	hypertextTransferProtocolStrategy := &protocols.HypertextTransferProtocolStrategy{}
 
-	// Protocol manager
-	serviceManager := protocols.InitProtocolManager(logStrategy, hypertextTransferProtocolStrategy)
+	// Init protocol manager, with simple log on stout trace strategy and default protocol HTTP
+	protocolManager := protocols.InitProtocolManager(traceStrategyStdout, hypertextTransferProtocolStrategy)
 
 	for _, beelzebubServiceConfiguration := range beelzebubServicesConfiguration {
 		switch beelzebubServiceConfiguration.Protocol {
 		case "http":
-			serviceManager.SetProtocolStrategy(hypertextTransferProtocolStrategy)
+			protocolManager.SetProtocolStrategy(hypertextTransferProtocolStrategy)
 			break
 		case "ssh":
-			serviceManager.SetProtocolStrategy(secureShellStrategy)
+			protocolManager.SetProtocolStrategy(secureShellStrategy)
 			break
 		default:
 			log.Fatalf("Protocol %s not managed", beelzebubServiceConfiguration.Protocol)
 			continue
 		}
 
-		err := serviceManager.InitService(beelzebubServiceConfiguration)
+		err := protocolManager.InitService(beelzebubServiceConfiguration)
 		if err != nil {
 			log.Errorf("Error during init protocol: %s, %s", beelzebubServiceConfiguration.Protocol, err.Error())
 		}
 	}
 	<-quit
 }
-func logStrategy(event tracer.Event) {
+func traceStrategyStdout(event tracer.Event) {
 	log.WithFields(log.Fields{
 		"status": event.Status.String(),
 		"event":  event,
 	}).Info("New Event")
 }
 
-func configureLogging(configurations parser.Logging) *os.File {
+func configureLoggingByConfigurations(configurations parser.Logging) *os.File {
 	file, err := os.OpenFile(configurations.LogsPath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)

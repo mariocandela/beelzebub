@@ -50,14 +50,14 @@ commands:
 func TestReadConfigurationsCoreError(t *testing.T) {
 	configurationsParser := Init("mockConfigurationsCorePath", "mockConfigurationsServicesDirectory")
 
-	configurationsParser.readFileBytes = mockReadfilebytesError
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesError
 	beelzebubCoreConfigurations, err := configurationsParser.ReadConfigurationsCore()
 
 	assert.Nil(t, beelzebubCoreConfigurations)
 	assert.Error(t, err)
 	assert.Equal(t, "in file mockConfigurationsCorePath: mockErrorReadFileBytes", err.Error())
 
-	configurationsParser.readFileBytes = mockReadfilebytesFormatError
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesFormatError
 
 	beelzebubCoreConfigurations, err = configurationsParser.ReadConfigurationsCore()
 	assert.Nil(t, beelzebubCoreConfigurations)
@@ -67,7 +67,7 @@ func TestReadConfigurationsCoreError(t *testing.T) {
 
 func TestReadConfigurationsCoreValid(t *testing.T) {
 	configurationsParser := Init("", "")
-	configurationsParser.readFileBytes = mockReadfilebytesConfigurationsCore
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesConfigurationsCore
 
 	coreConfigurations, err := configurationsParser.ReadConfigurationsCore()
 	assert.Nil(t, err)
@@ -82,8 +82,8 @@ func TestReadConfigurationsCoreValid(t *testing.T) {
 func TestReadConfigurationsServicesFail(t *testing.T) {
 	configurationsParser := Init("", "")
 
-	configurationsParser.readFileBytes = mockReadfilebytesError
-	configurationsParser.readDir = mockReadDirError
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesError
+	configurationsParser.gelAllFinesNameByDirNameDependency = mockReadDirError
 
 	beelzebubServiceConfiguration, err := configurationsParser.ReadConfigurationsServices()
 	assert.Nil(t, beelzebubServiceConfiguration)
@@ -93,8 +93,8 @@ func TestReadConfigurationsServicesFail(t *testing.T) {
 func TestReadConfigurationsServicesValid(t *testing.T) {
 	configurationsParser := Init("", "")
 
-	configurationsParser.readFileBytes = mockReadfilebytesBeelzebubServiceConfiguration
-	configurationsParser.readDir = mockReadDirValid
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFinesNameByDirNameDependency = mockReadDirValid
 
 	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
 
