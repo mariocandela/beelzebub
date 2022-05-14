@@ -21,11 +21,32 @@ jobs:
     - name: Dependences
       run: go mod download
 
+    - name: Vet
+      run: |
+        go vet ./...
+
     - name: Build
       run: go build -v ./...
 
-    - name: Run coverage
-      run: go test -race -coverprofile=coverage.out -covermode=atomic
+    - name: Unit tests
+      run: |
+        go test ./... -coverprofile coverage.tmp.out -covermode count
+        go tool cover -func coverage.tmp.out
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
+    - name: Quality Gate - Test coverage shall be above threshold
+      env:
+        TESTCOVERAGE_THRESHOLD: 70
+      run: |
+        echo "Quality Gate: checking test coverage is above threshold ..."
+        echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"
+        # Excluded the concrete strategy 
+        cat coverage.tmp.out | grep -v "secureShellStrategy.go" | grep -v "hypertextTransferProtocolStrategy.go" > coverage.out
+        totalCoverage=`go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
+        echo "Current test coverage : $totalCoverage %"
+        if (( $(echo "$totalCoverage $TESTCOVERAGE_THRESHOLD" | awk '{print ($1 > $2)}') )); then
+            echo "OK"
+        else
+            echo "Current test coverage is below threshold. Please add more unit tests or adjust threshold to a lower value."
+            echo "Failed"
+            exit 1
+        fi
