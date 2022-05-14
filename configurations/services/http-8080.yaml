@@ -3,9 +3,7 @@ protocol: "http"
 address: ":8080"
 commands:
   - regex: "wp-admin"
-    handler: "login"
+    handler: "Unauthorized"
     headers:
       - "Content-Type: text/html"
-      - "Expires: 0"
-      - "Version: 6.42.12"
-    statusCode: 200
+    statusCode: 401
