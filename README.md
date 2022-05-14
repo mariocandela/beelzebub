@@ -25,7 +25,7 @@ The configurations are inside the /configurations/services directory, just add a
 
 ### Example HTTP Honeypot on 80 port
 
-######http-80.yaml
+###### http-80.yaml
 
 ```yaml
 apiVersion: "v1"
@@ -48,7 +48,7 @@ commands:
 
 ### Example HTTP Honeypot on 8080 port
 
-######http-8080.yaml
+###### http-8080.yaml
 
 ```yaml
 apiVersion: "v1"
@@ -64,7 +64,7 @@ commands:
 
 ### Example SSH Honeypot
 
-######ssh-22.yaml
+###### ssh-22.yaml
 
 ```yaml
 apiVersion: "v1"
