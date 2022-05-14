@@ -44,12 +44,12 @@ type configurationsParser struct {
 	configurationsCorePath             string
 	configurationsServicesDirectory    string
 	readFileBytesByFilePathDependency  ReadFileBytesByFilePath
-	gelAllFinesNameByDirNameDependency GelAllFinesNameByDirName
+	gelAllFilesNameByDirNameDependency GelAllFilesNameByDirName
 }
 
 type ReadFileBytesByFilePath func(filePath string) ([]byte, error)
 
-type GelAllFinesNameByDirName func(dirName string) ([]string, error)
+type GelAllFilesNameByDirName func(dirName string) ([]string, error)
 
 // Init Parser, return a configurationsParser and use the DI Pattern to inject the dependencies
 func Init(configurationsCorePath, configurationsServicesDirectory string) *configurationsParser {
@@ -57,7 +57,7 @@ func Init(configurationsCorePath, configurationsServicesDirectory string) *confi
 		configurationsCorePath:             configurationsCorePath,
 		configurationsServicesDirectory:    configurationsServicesDirectory,
 		readFileBytesByFilePathDependency:  readFileBytesByFilePath,
-		gelAllFinesNameByDirNameDependency: gelAllFinesNameByDirName,
+		gelAllFilesNameByDirNameDependency: gelAllFilesNameByDirName,
 	}
 }
 
@@ -77,7 +77,7 @@ func (bp configurationsParser) ReadConfigurationsCore() (*BeelzebubCoreConfigura
 }
 
 func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceConfiguration, error) {
-	services, err := bp.gelAllFinesNameByDirNameDependency(bp.configurationsServicesDirectory)
+	services, err := bp.gelAllFilesNameByDirNameDependency(bp.configurationsServicesDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("in directory %s: %v", bp.configurationsServicesDirectory, err)
 	}
@@ -101,7 +101,7 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 	return servicesConfiguration, nil
 }
 
-func gelAllFinesNameByDirName(dirName string) ([]string, error) {
+func gelAllFilesNameByDirName(dirName string) ([]string, error) {
 	var filesName []string
 	files, err := ioutil.ReadDir(dirName)
 	if err != nil {

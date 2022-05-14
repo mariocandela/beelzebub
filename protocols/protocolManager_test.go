@@ -36,6 +36,8 @@ func TestInitServiceSuccess(t *testing.T) {
 
 	protocolManager := InitProtocolManager(mockTraceStrategy, mockServiceStrategyValid{})
 
+	protocolManager.SetProtocolStrategy(mockServiceStrategyValid{})
+
 	assert.Nil(t, protocolManager.InitService(parser.BeelzebubServiceConfiguration{}))
 }
 

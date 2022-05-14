@@ -83,7 +83,7 @@ func TestReadConfigurationsServicesFail(t *testing.T) {
 	configurationsParser := Init("", "")
 
 	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesError
-	configurationsParser.gelAllFinesNameByDirNameDependency = mockReadDirError
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirError
 
 	beelzebubServiceConfiguration, err := configurationsParser.ReadConfigurationsServices()
 	assert.Nil(t, beelzebubServiceConfiguration)
@@ -94,7 +94,7 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	configurationsParser := Init("", "")
 
 	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
-	configurationsParser.gelAllFinesNameByDirNameDependency = mockReadDirValid
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
 
 	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
 
