@@ -4,12 +4,21 @@ import (
 	"beelzebub/parser"
 	"beelzebub/protocols"
 	"beelzebub/tracer"
+	"context"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"io"
 	"os"
 )
 
 var quit = make(chan struct{})
+
+const mongoURI = "mongodb://root:example@mongo:27017/?maxPoolSize=20&w=majority"
+
+var mongoClient *mongo.Client
 
 func main() {
 	parser := parser.Init("./configurations/beelzebub.yaml", "./configurations/services/")
@@ -33,6 +42,9 @@ func main() {
 
 	// Init protocol manager, with simple log on stout trace strategy and default protocol HTTP
 	protocolManager := protocols.InitProtocolManager(traceStrategyStdout, hypertextTransferProtocolStrategy)
+
+	mongoClient = buildMongoClient(mongoURI)
+	defer mongoClient.Disconnect(context.TODO())
 
 	for _, beelzebubServiceConfiguration := range beelzebubServicesConfiguration {
 		switch beelzebubServiceConfiguration.Protocol {
@@ -59,6 +71,17 @@ func traceStrategyStdout(event tracer.Event) {
 		"status": event.Status.String(),
 		"event":  event,
 	}).Info("New Event")
+
+	coll := mongoClient.Database("beelzebub").Collection("event")
+	data, err := bson.Marshal(event)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = coll.InsertOne(context.TODO(), data)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func configureLoggingByConfigurations(configurations parser.Logging) *os.File {
@@ -79,4 +102,18 @@ func configureLoggingByConfigurations(configurations parser.Logging) *os.File {
 		log.SetLevel(log.InfoLevel)
 	}
 	return file
+}
+
+func buildMongoClient(uri string) *mongo.Client {
+	// Create a new client and connect to the server
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Ping the primary
+	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
+		panic(err)
+	}
+	log.Println("Successfully connected and pinged.")
+	return client
 }

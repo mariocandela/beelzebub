@@ -74,6 +74,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
 				tr.TraceEvent(tracer.Event{
 					Msg:        "New SSH attempt",
+					Protocol:   tracer.SSH,
 					Status:     tracer.Stateless,
 					User:       ctx.User(),
 					Password:   password,
