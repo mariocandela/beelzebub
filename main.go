@@ -12,11 +12,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"io"
 	"os"
+	"time"
 )
 
 var quit = make(chan struct{})
-
-const mongoURI = "mongodb://root:example@mongo:27017/?maxPoolSize=20&w=majority"
 
 var mongoClient *mongo.Client
 
@@ -43,8 +42,15 @@ func main() {
 	// Init protocol manager, with simple log on stout trace strategy and default protocol HTTP
 	protocolManager := protocols.InitProtocolManager(traceStrategyStdout, hypertextTransferProtocolStrategy)
 
-	mongoClient = buildMongoClient(mongoURI)
-	defer mongoClient.Disconnect(context.TODO())
+	if coreConfigurations.Core.Tracing.MongoEnabled {
+		mongoClient = buildMongoClient(coreConfigurations.Core.Tracing.MongoURI)
+		defer func(mongoClient *mongo.Client, ctx context.Context) {
+			err := mongoClient.Disconnect(ctx)
+			if err != nil {
+				log.Error(err)
+			}
+		}(mongoClient, context.TODO())
+	}
 
 	for _, beelzebubServiceConfiguration := range beelzebubServicesConfiguration {
 		switch beelzebubServiceConfiguration.Protocol {
@@ -68,19 +74,21 @@ func main() {
 }
 func traceStrategyStdout(event tracer.Event) {
 	log.WithFields(log.Fields{
-		"status": event.Status.String(),
+		"status": event.Status,
 		"event":  event,
 	}).Info("New Event")
 
-	coll := mongoClient.Database("beelzebub").Collection("event")
-	data, err := bson.Marshal(event)
-	if err != nil {
-		log.Fatal(err)
-	}
+	if mongoClient != nil {
+		coll := mongoClient.Database("beelzebub").Collection("event")
+		data, err := bson.Marshal(event)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	_, err = coll.InsertOne(context.TODO(), data)
-	if err != nil {
-		log.Fatal(err)
+		_, err = coll.InsertOne(context.TODO(), data)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -106,13 +114,13 @@ func configureLoggingByConfigurations(configurations parser.Logging) *os.File {
 
 func buildMongoClient(uri string) *mongo.Client {
 	// Create a new client and connect to the server
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri).SetServerSelectionTimeout(time.Second*2))
 	if err != nil {
 		log.Fatal(err)
 	}
 	// Ping the primary
 	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	log.Println("Successfully connected and pinged.")
 	return client
