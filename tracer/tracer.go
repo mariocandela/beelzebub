@@ -22,9 +22,9 @@ func (tracer *Tracer) TraceEvent(event Event) {
 
 type Event struct {
 	RemoteAddr      string
-	Protocol        Protocol
+	Protocol        string
 	Command         string
-	Status          Status
+	Status          string
 	Msg             string
 	ID              string
 	Environ         string
@@ -46,6 +46,10 @@ const (
 	HTTP Protocol = iota
 	SSH
 )
+
+func (status Protocol) String() string {
+	return [...]string{"HTTP", "SSH"}[status]
+}
 
 type Status int
 
