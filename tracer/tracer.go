@@ -2,6 +2,7 @@ package tracer
 
 import (
 	"net/http"
+	"time"
 )
 
 type Strategy func(event Event)
@@ -17,10 +18,12 @@ func Init(strategy Strategy) *Tracer {
 }
 
 func (tracer *Tracer) TraceEvent(event Event) {
+	event.DateTime = time.Now().UTC().String()
 	tracer.strategy(event)
 }
 
 type Event struct {
+	DateTime        string
 	RemoteAddr      string
 	Protocol        string
 	Command         string
