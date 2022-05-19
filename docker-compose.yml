@@ -5,6 +5,9 @@ services:
     build: .
     #network_mode: host #Not work on Mac OS
     container_name: beelzebub
+    depends_on:
+      mongo:
+        condition: service_healthy
     ports: # Remove me, if use configuration network_mode: host
       - "22:22"
       - "8080:8080"
@@ -14,6 +17,11 @@ services:
     image: mongo
     container_name: mongo
     restart: always
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
