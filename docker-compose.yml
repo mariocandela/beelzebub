@@ -19,7 +19,7 @@ services:
     restart: always
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/test --quiet
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 5
     environment:
