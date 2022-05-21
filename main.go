@@ -4,6 +4,9 @@ import (
 	"beelzebub/parser"
 	"beelzebub/protocols"
 	"beelzebub/tracer"
+	"encoding/json"
+	"fmt"
+	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
@@ -11,20 +14,28 @@ import (
 
 var quit = make(chan struct{})
 
+var channel *amqp.Channel
+
 func main() {
 	parser := parser.Init("./configurations/beelzebub.yaml", "./configurations/services/")
 
 	coreConfigurations, err := parser.ReadConfigurationsCore()
-	if err != nil {
-		log.Fatal(err)
-	}
+	failOnError(err, fmt.Sprintf("Error during coreConfigurations: "))
 
 	fileLogs := configureLoggingByConfigurations(coreConfigurations.Core.Logging)
 	defer fileLogs.Close()
 
 	beelzebubServicesConfiguration, err := parser.ReadConfigurationsServices()
-	if err != nil {
-		log.Fatal(err)
+	failOnError(err, fmt.Sprintf("Error during ReadConfigurationsServices: "))
+
+	if coreConfigurations.Core.Tracing.RabbitMQEnabled {
+		conn, err := amqp.Dial(coreConfigurations.Core.Tracing.RabbitMQURI)
+		failOnError(err, "Failed to connect to RabbitMQ")
+		defer conn.Close()
+
+		channel, err = conn.Channel()
+		failOnError(err, "Failed to open a channel")
+		defer channel.Close()
 	}
 
 	// Init Protocol strategies
@@ -48,17 +59,48 @@ func main() {
 		}
 
 		err := protocolManager.InitService(beelzebubServiceConfiguration)
-		if err != nil {
-			log.Errorf("Error during init protocol: %s, %s", beelzebubServiceConfiguration.Protocol, err.Error())
-		}
+		failOnError(err, fmt.Sprintf("Error during init protocol: %s, ", beelzebubServiceConfiguration.Protocol))
 	}
 	<-quit
 }
+
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Fatalf("%s: %s", msg, err)
+	}
+}
+
 func traceStrategyStdout(event tracer.Event) {
 	log.WithFields(log.Fields{
-		"status": event.Status.String(),
+		"status": event.Status,
 		"event":  event,
 	}).Info("New Event")
+
+	if channel != nil {
+		eventJSON, err := json.Marshal(event)
+		failOnError(err, "Failed to Marshal Event")
+
+		queue, err := channel.QueueDeclare(
+			"event",
+			false,
+			false,
+			false,
+			false,
+			nil,
+		)
+		failOnError(err, "Failed to declare a queue")
+
+		err = channel.Publish(
+			"",
+			queue.Name,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        eventJSON,
+			})
+		failOnError(err, "Failed to publish a message")
+	}
 }
 
 func configureLoggingByConfigurations(configurations parser.Logging) *os.File {

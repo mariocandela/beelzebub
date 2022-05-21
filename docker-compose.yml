@@ -3,7 +3,7 @@ version: "3.9"
 services:
   beelzebub:
     build: .
-    #network_mode: host #Not work on Mac OS
+    #network_mode: host # Not work on Mac OS
     container_name: beelzebub
     ports: # Remove me, if use configuration network_mode: host
       - "22:22"

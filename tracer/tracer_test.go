@@ -24,14 +24,14 @@ func TestTraceEvent(t *testing.T) {
 
 	tracer.TraceEvent(Event{
 		ID:       "mockID",
-		Protocol: HTTP,
-		Status:   Stateless,
+		Protocol: HTTP.String(),
+		Status:   Stateless.String(),
 	})
 
 	assert.NotNil(t, eventCalled.ID)
 	assert.Equal(t, eventCalled.ID, "mockID")
-	assert.Equal(t, eventCalled.Protocol, HTTP)
-	assert.Equal(t, eventCalled.Status, Stateless)
+	assert.Equal(t, eventCalled.Protocol, HTTP.String())
+	assert.Equal(t, eventCalled.Status, Stateless.String())
 }
 
 func TestStringStatus(t *testing.T) {

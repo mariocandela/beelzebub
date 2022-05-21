@@ -4,3 +4,6 @@ core:
     debugReportCaller: false
     logDisableTimestamp: true
     logsPath: ./logs
+  tracing:
+    rabbitMQEnabled: true
+    rabbitMQURI: "amqp://guest:guest@localhost:5672/"

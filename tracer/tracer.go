@@ -2,6 +2,7 @@ package tracer
 
 import (
 	"net/http"
+	"time"
 )
 
 type Strategy func(event Event)
@@ -17,14 +18,16 @@ func Init(strategy Strategy) *Tracer {
 }
 
 func (tracer *Tracer) TraceEvent(event Event) {
+	event.DateTime = time.Now().UTC().String()
 	tracer.strategy(event)
 }
 
 type Event struct {
+	DateTime        string
 	RemoteAddr      string
-	Protocol        Protocol
+	Protocol        string
 	Command         string
-	Status          Status
+	Status          string
 	Msg             string
 	ID              string
 	Environ         string
@@ -46,6 +49,10 @@ const (
 	HTTP Protocol = iota
 	SSH
 )
+
+func (status Protocol) String() string {
+	return [...]string{"HTTP", "SSH"}[status]
+}
 
 type Status int
 

@@ -12,6 +12,7 @@ import (
 type BeelzebubCoreConfigurations struct {
 	Core struct {
 		Logging Logging `yaml:"logging"`
+		Tracing Tracing `yaml:"tracing"`
 	}
 }
 
@@ -20,6 +21,11 @@ type Logging struct {
 	DebugReportCaller   bool   `yaml:"debugReportCaller"`
 	LogDisableTimestamp bool   `yaml:"logDisableTimestamp"`
 	LogsPath            string `yaml:"logsPath,omitempty"`
+}
+
+type Tracing struct {
+	RabbitMQEnabled bool   `yaml:"rabbitMQEnabled,omitempty"`
+	RabbitMQURI     string `yaml:"rabbitMQURI,omitempty"`
 }
 
 type BeelzebubServiceConfiguration struct {

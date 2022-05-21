@@ -28,9 +28,9 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 
 				tr.TraceEvent(tracer.Event{
 					Msg:        "New SSH Session",
-					Protocol:   tracer.SSH,
+					Protocol:   tracer.SSH.String(),
 					RemoteAddr: sess.RemoteAddr().String(),
-					Status:     tracer.Start,
+					Status:     tracer.Start.String(),
 					ID:         uuidSession.String(),
 					Environ:    strings.Join(sess.Environ(), ","),
 					User:       sess.User(),
@@ -45,9 +45,10 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 					tr.TraceEvent(tracer.Event{
 						Msg:        "New SSH Command",
 						RemoteAddr: sess.RemoteAddr().String(),
-						Status:     tracer.Interaction,
+						Status:     tracer.Interaction.String(),
 						Command:    commandInput,
 						ID:         uuidSession.String(),
+						Protocol:   tracer.SSH.String(),
 					})
 					if commandInput == "exit" {
 						break
@@ -67,14 +68,15 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 				}
 				tr.TraceEvent(tracer.Event{
 					Msg:    "End SSH Session",
-					Status: tracer.End,
+					Status: tracer.End.String(),
 					ID:     uuidSession.String(),
 				})
 			},
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
 				tr.TraceEvent(tracer.Event{
 					Msg:        "New SSH attempt",
-					Status:     tracer.Stateless,
+					Protocol:   tracer.SSH.String(),
+					Status:     tracer.Stateless.String(),
 					User:       ctx.User(),
 					Password:   password,
 					Client:     ctx.ClientVersion(),

@@ -60,14 +60,14 @@ func traceRequest(request *http.Request, tr tracer.Tracer) {
 	tr.TraceEvent(tracer.Event{
 		Msg:             "HTTP New request",
 		RequestURI:      request.RequestURI,
-		Protocol:        tracer.HTTP,
+		Protocol:        tracer.HTTP.String(),
 		HTTPMethod:      request.Method,
 		Body:            body,
 		HostHTTPRequest: request.Host,
 		UserAgent:       request.UserAgent(),
 		Cookies:         request.Cookies(),
 		Headers:         request.Header,
-		Status:          tracer.Stateless,
+		Status:          tracer.Stateless.String(),
 		RemoteAddr:      request.RemoteAddr,
 		ID:              uuid.New().String(),
 	})
