@@ -14,8 +14,7 @@ import (
 
 var quit = make(chan struct{})
 
-var queue amqp.Queue
-var channel amqp.Channel
+var channel *amqp.Channel
 
 func main() {
 	parser := parser.Init("./configurations/beelzebub.yaml", "./configurations/services/")
@@ -37,16 +36,6 @@ func main() {
 		channel, err := conn.Channel()
 		failOnError(err, "Failed to open a channel")
 		defer channel.Close()
-
-		queue, err = channel.QueueDeclare(
-			"event", // name
-			false,   // durable
-			false,   // delete when unused
-			false,   // exclusive
-			false,   // no-wait
-			nil,     // arguments
-		)
-		failOnError(err, "Failed to declare a queue")
 	}
 
 	// Init Protocol strategies
@@ -88,9 +77,19 @@ func traceStrategyStdout(event tracer.Event) {
 	}).Info("New Event")
 
 	//TODO check amqp.Channe
-	if queue != (amqp.Queue{}) {
+	if channel != nil {
 		eventJSON, err := json.Marshal(event)
-		failOnError(err, "Failed to publish a message")
+		failOnError(err, "Failed to Marshal Event")
+
+		queue, err := channel.QueueDeclare(
+			"event",
+			false,
+			false,
+			false,
+			false,
+			nil,
+		)
+		failOnError(err, "Failed to declare a queue")
 
 		err = channel.Publish(
 			"",
