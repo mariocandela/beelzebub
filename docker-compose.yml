@@ -3,36 +3,9 @@ version: "3.9"
 services:
   beelzebub:
     build: .
-    #network_mode: host #Not work on Mac OS
+    #network_mode: host # Not work on Mac OS
     container_name: beelzebub
-    depends_on:
-      mongo:
-        condition: service_healthy
     ports: # Remove me, if use configuration network_mode: host
       - "22:22"
       - "8080:8080"
       - "80:80"
-
-  mongo:
-    image: mongo
-    container_name: mongo
-    restart: always
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/test --quiet
-      interval: 10s
-      timeout: 10s
-      retries: 5
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
-
-  mongo-express:
-    image: mongo-express
-    restart: always
-    container_name: mongo-express
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: example
-      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
