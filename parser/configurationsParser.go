@@ -24,8 +24,8 @@ type Logging struct {
 }
 
 type Tracing struct {
-	MongoEnabled bool   `yaml:"mongoEnabled,omitempty"`
-	MongoURI     string `yaml:"mongoURI,omitempty"`
+	RabbitMQEnabled bool   `yaml:"rabbitMQEnabled,omitempty"`
+	RabbitMQURI     string `yaml:"rabbitMQURI,omitempty"`
 }
 
 type BeelzebubServiceConfiguration struct {
