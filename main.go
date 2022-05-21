@@ -76,7 +76,6 @@ func traceStrategyStdout(event tracer.Event) {
 		"event":  event,
 	}).Info("New Event")
 
-	//TODO check amqp.Channe
 	if channel != nil {
 		eventJSON, err := json.Marshal(event)
 		failOnError(err, "Failed to Marshal Event")

@@ -15,8 +15,8 @@ core:
     logDisableTimestamp: true
     logsPath: ./logs
   tracing:
-    mongoEnabled: true
-    mongoURI: provaMock`)
+    rabbitMQEnabled: true
+    rabbitMQURI: provaMock`)
 	return configurationsCoreBytes, nil
 }
 
@@ -80,8 +80,8 @@ func TestReadConfigurationsCoreValid(t *testing.T) {
 	assert.Equal(t, coreConfigurations.Core.Logging.LogDisableTimestamp, true)
 	assert.Equal(t, coreConfigurations.Core.Logging.DebugReportCaller, false)
 	assert.Equal(t, coreConfigurations.Core.Logging.LogsPath, "./logs")
-	assert.Equal(t, coreConfigurations.Core.Tracing.MongoEnabled, true)
-	assert.Equal(t, coreConfigurations.Core.Tracing.MongoURI, "provaMock")
+	assert.Equal(t, coreConfigurations.Core.Tracing.RabbitMQEnabled, true)
+	assert.Equal(t, coreConfigurations.Core.Tracing.RabbitMQURI, "provaMock")
 }
 
 func TestReadConfigurationsServicesFail(t *testing.T) {
