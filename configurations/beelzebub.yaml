@@ -5,5 +5,5 @@ core:
     logDisableTimestamp: true
     logsPath: ./logs
   tracing:
-    mongoEnabled: true
-    mongoURI: "mongodb://root:example@mongo:27017/?maxPoolSize=20&w=majority"
+    rabbitMQEnabled: false
+    rabbitMQURI: "amqp://guest:guest@localhost:5672/"
