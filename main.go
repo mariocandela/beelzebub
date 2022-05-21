@@ -33,7 +33,7 @@ func main() {
 		failOnError(err, "Failed to connect to RabbitMQ")
 		defer conn.Close()
 
-		channel, err := conn.Channel()
+		channel, err = conn.Channel()
 		failOnError(err, "Failed to open a channel")
 		defer channel.Close()
 	}
