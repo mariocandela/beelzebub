@@ -43,7 +43,7 @@ func main() {
 	hypertextTransferProtocolStrategy := &protocols.HypertextTransferProtocolStrategy{}
 
 	// Init protocol manager, with simple log on stout trace strategy and default protocol HTTP
-	protocolManager := protocols.InitProtocolManager(traceStrategyStdout, hypertextTransferProtocolStrategy)
+	protocolManager := protocols.InitProtocolManager(traceStrategyStdoutAndRabbitMQ, hypertextTransferProtocolStrategy)
 
 	for _, beelzebubServiceConfiguration := range beelzebubServicesConfiguration {
 		switch beelzebubServiceConfiguration.Protocol {
@@ -70,7 +70,7 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func traceStrategyStdout(event tracer.Event) {
+func traceStrategyStdoutAndRabbitMQ(event tracer.Event) {
 	log.WithFields(log.Fields{
 		"status": event.Status,
 		"event":  event,

@@ -81,6 +81,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 					Password:   password,
 					Client:     ctx.ClientVersion(),
 					RemoteAddr: ctx.RemoteAddr().String(),
+					ID:         uuid.New().String(),
 				})
 				matched, err := regexp.MatchString(beelzebubServiceConfiguration.PasswordRegex, password)
 				if err != nil {
