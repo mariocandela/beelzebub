@@ -96,14 +96,14 @@ func mapCookiesToString(cookies []*http.Cookie) string {
 }
 
 func setResponseHeaders(responseWriter http.ResponseWriter, headers []string, statusCode int) {
-	// http.StatusText(statusCode): empty string if the code is unknown.
-	if len(http.StatusText(statusCode)) > 0 {
-		responseWriter.WriteHeader(statusCode)
-	}
 	for _, headerStr := range headers {
 		keyValue := strings.Split(headerStr, ":")
 		if len(keyValue) > 1 {
 			responseWriter.Header().Add(keyValue[0], keyValue[1])
 		}
+	}
+	// http.StatusText(statusCode): empty string if the code is unknown.
+	if len(http.StatusText(statusCode)) > 0 {
+		responseWriter.WriteHeader(statusCode)
 	}
 }
