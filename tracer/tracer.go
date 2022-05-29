@@ -1,7 +1,6 @@
 package tracer
 
 import (
-	"net/http"
 	"time"
 )
 
@@ -18,7 +17,7 @@ func Init(strategy Strategy) *Tracer {
 }
 
 func (tracer *Tracer) TraceEvent(event Event) {
-	event.DateTime = time.Now().UTC().String()
+	event.DateTime = time.Now().UTC().Format(time.RFC3339)
 	tracer.strategy(event)
 }
 
@@ -34,8 +33,8 @@ type Event struct {
 	User            string
 	Password        string
 	Client          string
-	Headers         http.Header
-	Cookies         []*http.Cookie
+	Headers         string
+	Cookies         string
 	UserAgent       string
 	HostHTTPRequest string
 	Body            string

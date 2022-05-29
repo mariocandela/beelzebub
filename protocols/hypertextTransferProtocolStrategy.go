@@ -65,12 +65,34 @@ func traceRequest(request *http.Request, tr tracer.Tracer) {
 		Body:            body,
 		HostHTTPRequest: request.Host,
 		UserAgent:       request.UserAgent(),
-		Cookies:         request.Cookies(),
-		Headers:         request.Header,
+		Cookies:         mapCookiesToString(request.Cookies()),
+		Headers:         mapHeaderToString(request.Header),
 		Status:          tracer.Stateless.String(),
 		RemoteAddr:      request.RemoteAddr,
 		ID:              uuid.New().String(),
 	})
+}
+
+func mapHeaderToString(headers http.Header) string {
+	headersString := ""
+
+	for key := range headers {
+		for _, values := range headers[key] {
+			headersString += fmt.Sprintf("[Key: %s, values: %s],", key, values)
+		}
+	}
+
+	return headersString
+}
+
+func mapCookiesToString(cookies []*http.Cookie) string {
+	cookiesString := ""
+
+	for _, cookie := range cookies {
+		cookiesString += cookie.String()
+	}
+
+	return cookiesString
 }
 
 func setResponseHeaders(responseWriter http.ResponseWriter, headers []string, statusCode int) {
