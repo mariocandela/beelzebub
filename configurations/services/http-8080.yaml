@@ -1,6 +1,7 @@
 apiVersion: "v1"
 protocol: "http"
 address: ":8080"
+description: "Wordpress 4.0"
 commands:
   - regex: "wp-admin"
     handler: "Unauthorized"

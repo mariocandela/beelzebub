@@ -1,6 +1,7 @@
 apiVersion: "v1"
 protocol: "ssh"
 address: ":22"
+description: "SSH interactive"
 commands:
   - regex: "^ls$"
     handler: "Documents Images  Desktop Downloads .m2 .kube .ssh  .docker"
