@@ -21,7 +21,7 @@ func (httpStrategy HypertextTransferProtocolStrategy) Init(beelzebubServiceConfi
 	serverMux := http.NewServeMux()
 
 	serverMux.HandleFunc("/", func(responseWriter http.ResponseWriter, request *http.Request) {
-		traceRequest(request, tr)
+		traceRequest(request, tr, beelzebubServiceConfiguration.Description)
 		for _, command := range httpStrategy.beelzebubServiceConfiguration.Commands {
 			matched, err := regexp.MatchString(command.Regex, request.RequestURI)
 			if err != nil {
@@ -51,7 +51,7 @@ func (httpStrategy HypertextTransferProtocolStrategy) Init(beelzebubServiceConfi
 	return nil
 }
 
-func traceRequest(request *http.Request, tr tracer.Tracer) {
+func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription string) {
 	bodyBytes, err := io.ReadAll(request.Body)
 	body := ""
 	if err == nil {
@@ -70,6 +70,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer) {
 		Status:          tracer.Stateless.String(),
 		RemoteAddr:      request.RemoteAddr,
 		ID:              uuid.New().String(),
+		Description:     HoneypotDescription,
 	})
 }
 

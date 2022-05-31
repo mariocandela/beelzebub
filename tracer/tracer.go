@@ -40,6 +40,7 @@ type Event struct {
 	Body            string
 	HTTPMethod      string
 	RequestURI      string
+	Description     string
 }
 
 type Protocol int

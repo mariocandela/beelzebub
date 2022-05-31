@@ -27,13 +27,14 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 				uuidSession := uuid.New()
 
 				tr.TraceEvent(tracer.Event{
-					Msg:        "New SSH Session",
-					Protocol:   tracer.SSH.String(),
-					RemoteAddr: sess.RemoteAddr().String(),
-					Status:     tracer.Start.String(),
-					ID:         uuidSession.String(),
-					Environ:    strings.Join(sess.Environ(), ","),
-					User:       sess.User(),
+					Msg:         "New SSH Session",
+					Protocol:    tracer.SSH.String(),
+					RemoteAddr:  sess.RemoteAddr().String(),
+					Status:      tracer.Start.String(),
+					ID:          uuidSession.String(),
+					Environ:     strings.Join(sess.Environ(), ","),
+					User:        sess.User(),
+					Description: beelzebubServiceConfiguration.Description,
 				})
 
 				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
@@ -43,12 +44,13 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 						break
 					}
 					tr.TraceEvent(tracer.Event{
-						Msg:        "New SSH Command",
-						RemoteAddr: sess.RemoteAddr().String(),
-						Status:     tracer.Interaction.String(),
-						Command:    commandInput,
-						ID:         uuidSession.String(),
-						Protocol:   tracer.SSH.String(),
+						Msg:         "New SSH Command",
+						RemoteAddr:  sess.RemoteAddr().String(),
+						Status:      tracer.Interaction.String(),
+						Command:     commandInput,
+						ID:          uuidSession.String(),
+						Protocol:    tracer.SSH.String(),
+						Description: beelzebubServiceConfiguration.Description,
 					})
 					if commandInput == "exit" {
 						break
@@ -74,14 +76,15 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 			},
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
 				tr.TraceEvent(tracer.Event{
-					Msg:        "New SSH attempt",
-					Protocol:   tracer.SSH.String(),
-					Status:     tracer.Stateless.String(),
-					User:       ctx.User(),
-					Password:   password,
-					Client:     ctx.ClientVersion(),
-					RemoteAddr: ctx.RemoteAddr().String(),
-					ID:         uuid.New().String(),
+					Msg:         "New SSH attempt",
+					Protocol:    tracer.SSH.String(),
+					Status:      tracer.Stateless.String(),
+					User:        ctx.User(),
+					Password:    password,
+					Client:      ctx.ClientVersion(),
+					RemoteAddr:  ctx.RemoteAddr().String(),
+					ID:          uuid.New().String(),
+					Description: beelzebubServiceConfiguration.Description,
 				})
 				matched, err := regexp.MatchString(beelzebubServiceConfiguration.PasswordRegex, password)
 				if err != nil {

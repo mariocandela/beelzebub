@@ -24,8 +24,8 @@ type Logging struct {
 }
 
 type Tracing struct {
-	RabbitMQEnabled bool   `yaml:"rabbitMQEnabled,omitempty"`
-	RabbitMQURI     string `yaml:"rabbitMQURI,omitempty"`
+	RabbitMQEnabled bool   `yaml:"rabbitMQEnabled"`
+	RabbitMQURI     string `yaml:"rabbitMQURI"`
 }
 
 type BeelzebubServiceConfiguration struct {
@@ -37,6 +37,7 @@ type BeelzebubServiceConfiguration struct {
 	ServerName             string    `yaml:"serverName"`
 	DeadlineTimeoutSeconds int       `yaml:"deadlineTimeoutSeconds"`
 	PasswordRegex          string    `yaml:"passwordRegex"`
+	Description            string    `yaml:"description"`
 }
 
 type Command struct {
