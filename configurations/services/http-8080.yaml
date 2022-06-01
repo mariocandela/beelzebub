@@ -1,10 +1,11 @@
 apiVersion: "v1"
 protocol: "http"
 address: ":8080"
-description: "Wordpress 4.0"
+description: "Apache 401"
 commands:
-  - regex: "wp-admin"
+  - regex: ".*"
     handler: "Unauthorized"
     headers:
-      - "Content-Type: text/html"
+      - "www-Authenticate: Basic"
+      - "server: Apache"
     statusCode: 401
