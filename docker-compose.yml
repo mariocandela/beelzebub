@@ -11,7 +11,7 @@ services:
       - "8080:8080"
       - "80:80"
     environment:
-      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672/
+      RABBITMQ_URI: ${RABBITMQ_URI}
     depends_on:
       - rabbitmq
     volumes:
@@ -20,3 +20,6 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: 'rabbitmq'
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
