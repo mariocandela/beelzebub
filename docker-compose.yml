@@ -14,6 +14,8 @@ services:
       RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672/
     depends_on:
       - rabbitmq
+    volumes:
+      - "./configurations:/configurations"
 
   rabbitmq:
     image: rabbitmq:3-management-alpine

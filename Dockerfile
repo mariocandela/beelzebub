@@ -16,7 +16,6 @@ RUN go mod download
 
 # Copy the code into the container
 COPY . .
-COPY  ./configurations /dist/configurations
 
 # Build the application
 RUN go build -o main .
@@ -31,6 +30,5 @@ RUN cp /build/main .
 FROM scratch
 
 COPY --from=builder /dist/main /
-COPY --from=builder /dist/configurations /configurations
 
 ENTRYPOINT ["/main"]

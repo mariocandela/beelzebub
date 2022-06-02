@@ -30,11 +30,9 @@ func main() {
 
 	if coreConfigurations.Core.Tracing.RabbitMQEnabled {
 		rabbitMQURI, configured := os.LookupEnv("RABBITMQ_URI")
-		log.Info(rabbitMQURI)
 		if !configured {
 			rabbitMQURI = coreConfigurations.Core.Tracing.RabbitMQURI
 		}
-		log.Info(rabbitMQURI)
 		conn, err := amqp.Dial(rabbitMQURI)
 		failOnError(err, "Failed to connect to RabbitMQ")
 		defer conn.Close()
