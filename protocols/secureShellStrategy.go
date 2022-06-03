@@ -35,6 +35,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 					Environ:     strings.Join(sess.Environ(), ","),
 					User:        sess.User(),
 					Description: beelzebubServiceConfiguration.Description,
+					Command:     sess.RawCommand(),
 				})
 
 				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
@@ -44,7 +45,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 						break
 					}
 					tr.TraceEvent(tracer.Event{
-						Msg:         "New SSH Command",
+						Msg:         "New SSH Terminal Session",
 						RemoteAddr:  sess.RemoteAddr().String(),
 						Status:      tracer.Interaction.String(),
 						Command:     commandInput,

@@ -21,5 +21,5 @@ commands:
     handler: "command not found"
 serverVersion: "OpenSSH"
 serverName: "ubuntu"
-passwordRegex: "^(root|qwerty|Smoker666)$"
+passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
 deadlineTimeoutSeconds: 60
