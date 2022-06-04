@@ -6,17 +6,21 @@ import (
 
 type Strategy func(event Event)
 
-type Tracer struct {
+type Tracer interface {
+	TraceEvent(event Event)
+}
+
+type tracer struct {
 	strategy Strategy
 }
 
-func Init(strategy Strategy) *Tracer {
-	return &Tracer{
+func Init(strategy Strategy) *tracer {
+	return &tracer{
 		strategy: strategy,
 	}
 }
 
-func (tracer *Tracer) TraceEvent(event Event) {
+func (tracer *tracer) TraceEvent(event Event) {
 	event.DateTime = time.Now().UTC().Format(time.RFC3339)
 	tracer.strategy(event)
 }

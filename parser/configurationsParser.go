@@ -58,7 +58,7 @@ type ReadFileBytesByFilePath func(filePath string) ([]byte, error)
 
 type GelAllFilesNameByDirName func(dirName string) ([]string, error)
 
-// Init Parser, return a configurationsParser and use the DI Pattern to inject the dependencies
+// Init Parser, return a configurationsParser and use the D.I. Pattern to inject the dependencies
 func Init(configurationsCorePath, configurationsServicesDirectory string) *configurationsParser {
 	return &configurationsParser{
 		configurationsCorePath:             configurationsCorePath,
