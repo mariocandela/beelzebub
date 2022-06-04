@@ -20,7 +20,7 @@ func main() {
 	parser := parser.Init("./configurations/beelzebub.yaml", "./configurations/services/")
 
 	coreConfigurations, err := parser.ReadConfigurationsCore()
-	failOnError(err, fmt.Sprintf("Error during coreConfigurations: "))
+	failOnError(err, fmt.Sprintf("Error during ReadConfigurationsCore: "))
 
 	fileLogs := configureLoggingByConfigurations(coreConfigurations.Core.Logging)
 	defer fileLogs.Close()
@@ -33,13 +33,9 @@ func main() {
 		if !configured {
 			rabbitMQURI = coreConfigurations.Core.Tracing.RabbitMQURI
 		}
-		conn, err := amqp.Dial(rabbitMQURI)
-		failOnError(err, "Failed to connect to RabbitMQ")
-		defer conn.Close()
-
-		channel, err = conn.Channel()
-		failOnError(err, "Failed to open a channel")
+		conn, channel := buildRabbitMQ(rabbitMQURI)
 		defer channel.Close()
+		defer conn.Close()
 	}
 
 	// Init Protocol strategies
@@ -125,4 +121,14 @@ func configureLoggingByConfigurations(configurations parser.Logging) *os.File {
 		log.SetLevel(log.InfoLevel)
 	}
 	return file
+}
+
+func buildRabbitMQ(rabbitMQURI string) (*amqp.Connection, *amqp.Channel) {
+	conn, err := amqp.Dial(rabbitMQURI)
+	failOnError(err, "Failed to init Dial rabbitMQ")
+
+	channel, err := conn.Channel()
+	failOnError(err, "Failed to connect on Channel")
+
+	return conn, channel
 }

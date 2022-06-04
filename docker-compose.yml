@@ -6,7 +6,7 @@ services:
     #network_mode: host # Not work on Mac OS
     container_name: beelzebub
     restart: always
-    ports: # Remove me, if use configuration network_mode: host
+    ports: # Remove me, if you use configuration network_mode: host
       - "22:22"
       - "8080:8080"
       - "80:80"
@@ -16,13 +16,3 @@ services:
       - rabbitmq
     volumes:
       - "./configurations:/configurations"
-
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: 'rabbitmq'
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
