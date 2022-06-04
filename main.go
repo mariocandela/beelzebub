@@ -33,9 +33,13 @@ func main() {
 		if !configured {
 			rabbitMQURI = coreConfigurations.Core.Tracing.RabbitMQURI
 		}
-		conn, channel := buildRabbitMQ(rabbitMQURI)
-		defer channel.Close()
+		conn, err := amqp.Dial(rabbitMQURI)
+		failOnError(err, "Failed to connect to RabbitMQ")
 		defer conn.Close()
+
+		channel, err = conn.Channel()
+		failOnError(err, "Failed to open a channel")
+		defer channel.Close()
 	}
 
 	// Init Protocol strategies
@@ -77,6 +81,7 @@ func traceStrategyStdoutAndRabbitMQ(event tracer.Event) {
 	}).Info("New Event")
 
 	if channel != nil {
+		log.Debug("Push Event on queue")
 		eventJSON, err := json.Marshal(event)
 		failOnError(err, "Failed to Marshal Event")
 
@@ -121,14 +126,4 @@ func configureLoggingByConfigurations(configurations parser.Logging) *os.File {
 		log.SetLevel(log.InfoLevel)
 	}
 	return file
-}
-
-func buildRabbitMQ(rabbitMQURI string) (*amqp.Connection, *amqp.Channel) {
-	conn, err := amqp.Dial(rabbitMQURI)
-	failOnError(err, "Failed to init Dial rabbitMQ")
-
-	channel, err := conn.Channel()
-	failOnError(err, "Failed to connect on Channel")
-
-	return conn, channel
 }
