@@ -1,4 +1,4 @@
-# Beelzebub ![Build/Unit Test](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg)
+# Beelzebub ![CI](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg) ![Docker](https://github.com/mariocandela/beelzebub/actions/workflows/docker-image.yml/badge.svg)
 
 A secure multi protocol low interaction event-driven honeypot, extremely easy to configure by yaml 🚀
 
