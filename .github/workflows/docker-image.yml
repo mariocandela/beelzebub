@@ -1,0 +1,27 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Docker login
+      env:
+        DOCKER_USER: ${{secrets.DOCKER_USER}}
+        DOCKER_ACCESS_TOKEN: ${{secrets.DOCKER_ACCESS_TOKEN}}
+      run: |
+        docker login -u $DOCKER_USER -p $DOCKER_ACCESS_TOKEN 
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag m4r10/beelzebub:$(date +%s)
+      
+    - name: Docker Push
+      run: docker push chamodshehanka/node-test
