@@ -1,6 +1,6 @@
 # Beelzebub ![Build/Unit Test](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg)
 
-A secure multi protocol low interaction honeypot, extremely easy to configure by yaml 🚀
+A secure multi protocol low interaction event-driven honeypot, extremely easy to configure by yaml 🚀
 
 ## Quick Start
 
