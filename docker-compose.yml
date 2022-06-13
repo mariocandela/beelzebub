@@ -12,7 +12,5 @@ services:
       - "80:80"
     environment:
       RABBITMQ_URI: ${RABBITMQ_URI}
-    depends_on:
-      - rabbitmq
     volumes:
       - "./configurations:/configurations"
