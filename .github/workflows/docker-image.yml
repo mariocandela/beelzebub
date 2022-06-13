@@ -21,7 +21,7 @@ jobs:
       run: |
         docker login -u $DOCKER_USER -p $DOCKER_ACCESS_TOKEN 
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag m4r10/beelzebub:$(date +%s)
+      run: docker build . --file Dockerfile --tag m4r10/beelzebub:latest
       
     - name: Docker Push
-      run: docker push m4r10/beelzebub
+      run: docker push m4r10/beelzebub:latest
