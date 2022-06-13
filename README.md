@@ -1,4 +1,4 @@
-# Beelzebub ![CI](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg)
+# Beelzebub ![Build/Unit Test](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg)
 
 A secure multi protocol low interaction honeypot, extremely easy to configure by yaml 🚀
 
