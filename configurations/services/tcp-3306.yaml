@@ -1,0 +1,7 @@
+apiVersion: "v1"
+protocol: "tcp"
+address: ":3306"
+description: "Mysql"
+commands:
+  - regex: "hello"
+    handler: "WORLD"

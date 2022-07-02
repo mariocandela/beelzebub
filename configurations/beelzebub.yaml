@@ -5,5 +5,5 @@ core:
     logDisableTimestamp: true
     logsPath: ./logs
   tracing:
-    rabbitMQEnabled: false
-    rabbitMQURI: ""
+    rabbitMQEnabled: true
+    rabbitMQURI: "amqp://beelzebub:b33lz3b4b@localhost:8888/"
