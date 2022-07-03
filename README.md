@@ -25,6 +25,12 @@ $ go build
 $ ./beelzebub
  ```
 
+Unit Test:
+
+```bash
+$ go test ./...
+ ```
+
 ## Example configuration service 
 
 The configurations are inside the /configurations/services directory, just add a new file for each service/port.
@@ -116,6 +122,7 @@ deadlineTimeoutSeconds: 60
 
 - SSH Honeypot
 - HTTP Honeypot
+- TCP Honeypot
 - Easy to create a new strategy
 - Easy to extend event tracking logic
 - Strong code quality
@@ -125,7 +132,12 @@ deadlineTimeoutSeconds: 60
 ## TODO
 
 - telnet
-- tcp
+- UDP
+
+# ROADMAP
+
+- SaaS Platform
+
 
 ## Documentation
 

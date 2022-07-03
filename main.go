@@ -45,6 +45,7 @@ func main() {
 	// Init Protocol strategies
 	secureShellStrategy := &protocols.SecureShellStrategy{}
 	hypertextTransferProtocolStrategy := &protocols.HypertextTransferProtocolStrategy{}
+	transmissionControlProtocolStrategy := &protocols.TransmissionControlProtocolStrategy{}
 
 	// Init protocol manager, with simple log on stout trace strategy and default protocol HTTP
 	protocolManager := protocols.InitProtocolManager(traceStrategyStdoutAndRabbitMQ, hypertextTransferProtocolStrategy)
@@ -56,6 +57,9 @@ func main() {
 			break
 		case "ssh":
 			protocolManager.SetProtocolStrategy(secureShellStrategy)
+			break
+		case "tcp":
+			protocolManager.SetProtocolStrategy(transmissionControlProtocolStrategy)
 			break
 		default:
 			log.Fatalf("Protocol %s not managed", beelzebubServiceConfiguration.Protocol)
