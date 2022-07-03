@@ -38,6 +38,7 @@ type BeelzebubServiceConfiguration struct {
 	DeadlineTimeoutSeconds int       `yaml:"deadlineTimeoutSeconds"`
 	PasswordRegex          string    `yaml:"passwordRegex"`
 	Description            string    `yaml:"description"`
+	Banner                 string    `yaml:"banner"`
 }
 
 type Command struct {

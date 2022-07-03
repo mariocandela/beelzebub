@@ -52,10 +52,11 @@ type Protocol int
 const (
 	HTTP Protocol = iota
 	SSH
+	TCP
 )
 
 func (status Protocol) String() string {
-	return [...]string{"HTTP", "SSH"}[status]
+	return [...]string{"HTTP", "SSH", "TCP"}[status]
 }
 
 type Status int
