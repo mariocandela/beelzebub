@@ -2,7 +2,7 @@
 
 [![logo-1.png](https://i.postimg.cc/KvbsJFp3/logo-1.png)](https://postimg.cc/yWfPNqH7)
 
-A secure multi protocol low interaction event-driven honeypot, extremely easy to configure by yaml 🚀
+A secure honeypot framework, extremely easy to configure by yaml 🚀
 
 ## Examples: 
 
