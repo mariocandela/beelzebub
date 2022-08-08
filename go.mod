@@ -3,7 +3,7 @@ module beelzebub
 go 1.16
 
 require (
-	github.com/gliderlabs/ssh v0.3.3
+	github.com/gliderlabs/ssh v0.3.4
 	github.com/google/uuid v1.3.0
 	github.com/rabbitmq/amqp091-go v1.3.4
 	github.com/sirupsen/logrus v1.9.0
