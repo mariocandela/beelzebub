@@ -23,4 +23,4 @@ jobs:
       run: docker build . --file Dockerfile --tag m4r10/beelzebub:${{  github.ref_name }}
       
     - name: Docker Push
-      run: docker push m4r10/beelzebub:latest
+      run: docker push m4r10/beelzebub:${{  github.ref_name }}
