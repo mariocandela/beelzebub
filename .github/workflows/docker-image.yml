@@ -2,7 +2,8 @@ name: Docker Hub Image
 
 on:
   push:
-    branches: [ "main" ]
+    tags:
+      - 'v*.*.*'
 
 jobs:
 
@@ -19,7 +20,7 @@ jobs:
       run: |
         docker login -u $DOCKER_USER -p $DOCKER_ACCESS_TOKEN 
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag m4r10/beelzebub:latest
+      run: docker build . --file Dockerfile --tag m4r10/beelzebub:${{  github.ref_name }}
       
     - name: Docker Push
       run: docker push m4r10/beelzebub:latest
