@@ -4,6 +4,7 @@ import (
 	"beelzebub/parser"
 	"beelzebub/protocols"
 	"beelzebub/tracer"
+	"context"
 	"encoding/json"
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -99,7 +100,8 @@ func traceStrategyStdoutAndRabbitMQ(event tracer.Event) {
 		)
 		failOnError(err, "Failed to declare a queue")
 
-		err = channel.Publish(
+		err = channel.PublishWithContext(
+			context.TODO(),
 			"",
 			queue.Name,
 			false,
