@@ -16,22 +16,22 @@ import (
 
 const RabbitmqQueueName = "event"
 
-type Beelzebub struct {
+type Builder struct {
 	beelzebubCoreConfigurations    parser.BeelzebubCoreConfigurations
 	beelzebubServicesConfiguration []parser.BeelzebubServiceConfiguration
 	traceStrategy                  tracer.Strategy
 	rabbitMQChannel                *amqp.Channel
 }
 
-func (b *Beelzebub) setBeelzebubCoreConfigurations(beelzebubCoreConfigurations parser.BeelzebubCoreConfigurations) {
+func (b *Builder) setBeelzebubCoreConfigurations(beelzebubCoreConfigurations parser.BeelzebubCoreConfigurations) {
 	b.beelzebubCoreConfigurations = beelzebubCoreConfigurations
 }
 
-func (b *Beelzebub) setTraceStrategy(traceStrategy tracer.Strategy) {
+func (b *Builder) setTraceStrategy(traceStrategy tracer.Strategy) {
 	b.traceStrategy = traceStrategy
 }
 
-func (b *Beelzebub) buildLogger(configurations parser.Logging) {
+func (b *Builder) buildLogger(configurations parser.Logging) {
 	file, err := os.OpenFile(configurations.LogsPath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
@@ -50,7 +50,7 @@ func (b *Beelzebub) buildLogger(configurations parser.Logging) {
 	}
 }
 
-func (b *Beelzebub) buildRabbitMQ(rabbitMQURI string) error {
+func (b *Builder) buildRabbitMQ(rabbitMQURI string) error {
 	//TODO manage conn.close()
 	conn, err := amqp.Dial(rabbitMQURI)
 	if err != nil {
@@ -77,7 +77,7 @@ func (b *Beelzebub) buildRabbitMQ(rabbitMQURI string) error {
 	return nil
 }
 
-func (b *Beelzebub) Run() error {
+func (b *Builder) Run() error {
 	// Init Protocol strategies
 	secureShellStrategy := &protocols.SecureShellStrategy{}
 	hypertextTransferProtocolStrategy := &protocols.HypertextTransferProtocolStrategy{}
@@ -138,14 +138,14 @@ func (b *Beelzebub) Run() error {
 	return nil
 }
 
-func (b *Beelzebub) build() *Beelzebub {
-	return &Beelzebub{
+func (b *Builder) build() Builder {
+	return Builder{
 		beelzebubCoreConfigurations:    b.beelzebubCoreConfigurations,
 		beelzebubServicesConfiguration: b.beelzebubServicesConfiguration,
 		traceStrategy:                  b.traceStrategy,
 	}
 }
 
-func newBuilder() *Beelzebub {
-	return &Beelzebub{}
+func newBuilder() *Builder {
+	return &Builder{}
 }
