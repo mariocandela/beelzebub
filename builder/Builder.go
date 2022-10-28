@@ -17,24 +17,19 @@ import (
 const RabbitmqQueueName = "event"
 
 type Builder struct {
-	beelzebubCoreConfigurations    parser.BeelzebubCoreConfigurations
 	beelzebubServicesConfiguration []parser.BeelzebubServiceConfiguration
 	traceStrategy                  tracer.Strategy
 	rabbitMQChannel                *amqp.Channel
-}
-
-func (b *Builder) setBeelzebubCoreConfigurations(beelzebubCoreConfigurations parser.BeelzebubCoreConfigurations) {
-	b.beelzebubCoreConfigurations = beelzebubCoreConfigurations
 }
 
 func (b *Builder) setTraceStrategy(traceStrategy tracer.Strategy) {
 	b.traceStrategy = traceStrategy
 }
 
-func (b *Builder) buildLogger(configurations parser.Logging) {
+func (b *Builder) buildLogger(configurations parser.Logging) (*os.File, error) {
 	file, err := os.OpenFile(configurations.LogsPath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
-		log.Fatalf("error opening file: %v", err)
+		return nil, err
 	}
 
 	log.SetOutput(io.MultiWriter(os.Stdout, file))
@@ -48,33 +43,27 @@ func (b *Builder) buildLogger(configurations parser.Logging) {
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
+	return file, err
 }
 
-func (b *Builder) buildRabbitMQ(rabbitMQURI string) error {
+func (b *Builder) buildRabbitMQ(rabbitMQURI string) (*amqp.Connection, error) {
 	//TODO manage conn.close()
 	conn, err := amqp.Dial(rabbitMQURI)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	b.rabbitMQChannel, err = conn.Channel()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = b.rabbitMQChannel.QueueDeclare(
-		RabbitmqQueueName,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
+	//creates a queue if it doesn't already exist, or ensures that an existing queue matches the same parameters.
+	if _, err = b.rabbitMQChannel.QueueDeclare(RabbitmqQueueName, false, false, false, false, nil); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return conn, nil
 }
 
 func (b *Builder) Run() error {
@@ -85,6 +74,7 @@ func (b *Builder) Run() error {
 
 	// Init protocol manager, with simple log on stout trace strategy and default protocol HTTP
 	protocolManager := protocols.InitProtocolManager(func(event tracer.Event) {
+		//TODO trace strategy
 		log.WithFields(log.Fields{
 			"status": event.Status,
 			"event":  event,
@@ -138,14 +128,13 @@ func (b *Builder) Run() error {
 	return nil
 }
 
-func (b *Builder) build() Builder {
-	return Builder{
-		beelzebubCoreConfigurations:    b.beelzebubCoreConfigurations,
+func (b *Builder) build() *Builder {
+	return &Builder{
 		beelzebubServicesConfiguration: b.beelzebubServicesConfiguration,
 		traceStrategy:                  b.traceStrategy,
 	}
 }
 
-func newBuilder() *Builder {
+func NewBuilder() *Builder {
 	return &Builder{}
 }
