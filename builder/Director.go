@@ -2,6 +2,11 @@ package builder
 
 import (
 	"beelzebub/parser"
+	"beelzebub/tracer"
+	"context"
+	"encoding/json"
+	amqp "github.com/rabbitmq/amqp091-go"
+	log "github.com/sirupsen/logrus"
 )
 
 type Director struct {
@@ -24,12 +29,15 @@ func (d *Director) BuildBeelzebub(beelzebubCoreConfigurations *parser.BeelzebubC
 	//TODO manage file.close() with method stopBeelzebub on this director
 	//defer file.Close()
 
+	d.builder.setTraceStrategy(d.standardOutStrategy)
+
 	if beelzebubCoreConfigurations.Core.Tracing.RabbitMQEnabled {
-		//Manage close connection on rabbitMQ
+		d.builder.setTraceStrategy(d.rabbitMQTraceStrategy)
 		_, err := d.builder.buildRabbitMQ(beelzebubCoreConfigurations.Core.Tracing.RabbitMQURI)
 		if err != nil {
 			return nil, err
 		}
+
 		//TODO manage connection.Close() with method stopBeelzebub on this director
 		//defer connection.Close()
 
@@ -38,4 +46,31 @@ func (d *Director) BuildBeelzebub(beelzebubCoreConfigurations *parser.BeelzebubC
 	//TODO Set tracing strategy
 
 	return d.builder.build(), nil
+}
+
+func (d *Director) standardOutStrategy(event tracer.Event) {
+	log.WithFields(log.Fields{
+		"status": event.Status,
+		"event":  event,
+	}).Info("New Event")
+}
+
+func (d *Director) rabbitMQTraceStrategy(event tracer.Event) {
+	log.WithFields(log.Fields{
+		"status": event.Status,
+		"event":  event,
+	}).Info("New Event")
+
+	log.Debug("Push Event on queue")
+	eventJSON, err := json.Marshal(event)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	publishing := amqp.Publishing{ContentType: "application/json", Body: eventJSON}
+
+	if err = d.builder.rabbitMQChannel.PublishWithContext(context.TODO(), "", RabbitmqQueueName, false, false, publishing); err != nil {
+		log.Error(err.Error())
+	}
 }

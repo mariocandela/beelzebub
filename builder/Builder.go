@@ -4,8 +4,6 @@ import (
 	"beelzebub/parser"
 	"beelzebub/protocols"
 	"beelzebub/tracer"
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -47,7 +45,6 @@ func (b *Builder) buildLogger(configurations parser.Logging) (*os.File, error) {
 }
 
 func (b *Builder) buildRabbitMQ(rabbitMQURI string) (*amqp.Connection, error) {
-	//TODO manage conn.close()
 	conn, err := amqp.Dial(rabbitMQURI)
 	if err != nil {
 		return nil, err
@@ -73,37 +70,7 @@ func (b *Builder) Run() error {
 	transmissionControlProtocolStrategy := &protocols.TransmissionControlProtocolStrategy{}
 
 	// Init protocol manager, with simple log on stout trace strategy and default protocol HTTP
-	protocolManager := protocols.InitProtocolManager(func(event tracer.Event) {
-		//TODO trace strategy
-		log.WithFields(log.Fields{
-			"status": event.Status,
-			"event":  event,
-		}).Info("New Event")
-
-		if b.rabbitMQChannel != nil {
-			log.Debug("Push Event on queue")
-			eventJSON, err := json.Marshal(event)
-			if err != nil {
-				log.Error(err.Error())
-				return
-			}
-
-			err = b.rabbitMQChannel.PublishWithContext(
-				context.TODO(),
-				"",
-				RabbitmqQueueName,
-				false,
-				false,
-				amqp.Publishing{
-					ContentType: "application/json",
-					Body:        eventJSON,
-				})
-			if err != nil {
-				log.Error(err.Error())
-				return
-			}
-		}
-	}, hypertextTransferProtocolStrategy)
+	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
 
 	for _, beelzebubServiceConfiguration := range b.beelzebubServicesConfiguration {
 		switch beelzebubServiceConfiguration.Protocol {
