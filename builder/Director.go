@@ -22,25 +22,18 @@ func NewDirector(builder *Builder) *Director {
 func (d *Director) BuildBeelzebub(beelzebubCoreConfigurations *parser.BeelzebubCoreConfigurations, beelzebubServicesConfiguration []parser.BeelzebubServiceConfiguration) (*Builder, error) {
 	d.builder.beelzebubServicesConfiguration = beelzebubServicesConfiguration
 
-	_, err := d.builder.buildLogger(beelzebubCoreConfigurations.Core.Logging)
-	if err != nil {
+	if err := d.builder.buildLogger(beelzebubCoreConfigurations.Core.Logging); err != nil {
 		return nil, err
 	}
-	//TODO manage file.close() with method stopBeelzebub on this director
-	//defer file.Close()
 
 	d.builder.setTraceStrategy(d.standardOutStrategy)
 
 	if beelzebubCoreConfigurations.Core.Tracing.RabbitMQEnabled {
 		d.builder.setTraceStrategy(d.rabbitMQTraceStrategy)
-		_, err := d.builder.buildRabbitMQ(beelzebubCoreConfigurations.Core.Tracing.RabbitMQURI)
+		err := d.builder.buildRabbitMQ(beelzebubCoreConfigurations.Core.Tracing.RabbitMQURI)
 		if err != nil {
 			return nil, err
 		}
-
-		//TODO manage connection.Close() with method stopBeelzebub on this director
-		//defer connection.Close()
-
 	}
 
 	//TODO Set tracing strategy

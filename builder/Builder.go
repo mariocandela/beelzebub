@@ -18,19 +18,21 @@ type Builder struct {
 	beelzebubServicesConfiguration []parser.BeelzebubServiceConfiguration
 	traceStrategy                  tracer.Strategy
 	rabbitMQChannel                *amqp.Channel
+	rabbitMQConnection             *amqp.Connection
+	logsFile                       *os.File
 }
 
 func (b *Builder) setTraceStrategy(traceStrategy tracer.Strategy) {
 	b.traceStrategy = traceStrategy
 }
 
-func (b *Builder) buildLogger(configurations parser.Logging) (*os.File, error) {
-	file, err := os.OpenFile(configurations.LogsPath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
+func (b *Builder) buildLogger(configurations parser.Logging) error {
+	logsFile, err := os.OpenFile(configurations.LogsPath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	log.SetOutput(io.MultiWriter(os.Stdout, file))
+	log.SetOutput(io.MultiWriter(os.Stdout, logsFile))
 
 	log.SetFormatter(&log.JSONFormatter{
 		DisableTimestamp: configurations.LogDisableTimestamp,
@@ -41,26 +43,42 @@ func (b *Builder) buildLogger(configurations parser.Logging) (*os.File, error) {
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
-	return file, err
+	b.logsFile = logsFile
+	return err
 }
 
-func (b *Builder) buildRabbitMQ(rabbitMQURI string) (*amqp.Connection, error) {
-	conn, err := amqp.Dial(rabbitMQURI)
+func (b *Builder) buildRabbitMQ(rabbitMQURI string) error {
+	rabbitMQConnection, err := amqp.Dial(rabbitMQURI)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	b.rabbitMQChannel, err = conn.Channel()
+	b.rabbitMQChannel, err = rabbitMQConnection.Channel()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	//creates a queue if it doesn't already exist, or ensures that an existing queue matches the same parameters.
 	if _, err = b.rabbitMQChannel.QueueDeclare(RabbitmqQueueName, false, false, false, false, nil); err != nil {
-		return nil, err
+		return err
 	}
 
-	return conn, nil
+	b.rabbitMQConnection = rabbitMQConnection
+	return nil
+}
+
+func (b *Builder) Close() error {
+	if err := b.rabbitMQChannel.Close(); err != nil {
+		return err
+	}
+	if err := b.rabbitMQConnection.Close(); err != nil {
+		return err
+	}
+	if err := b.logsFile.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (b *Builder) Run() error {

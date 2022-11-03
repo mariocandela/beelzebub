@@ -4,13 +4,10 @@ import (
 	"beelzebub/builder"
 	"beelzebub/parser"
 	"fmt"
-	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
 )
 
 var quit = make(chan struct{})
-
-var channel *amqp.Channel
 
 func main() {
 	parser := parser.Init("./configurations/beelzebub.yaml", "./configurations/services/")
@@ -32,7 +29,9 @@ func main() {
 
 	if err := beelzebubBuilder.Run(); err != nil {
 		log.Fatal(err)
+		return
 	}
+	defer beelzebubBuilder.Close()
 
 	<-quit
 }
