@@ -36,8 +36,6 @@ func (d *Director) BuildBeelzebub(beelzebubCoreConfigurations *parser.BeelzebubC
 		}
 	}
 
-	//TODO Set tracing strategy
-
 	return d.builder.build(), nil
 }
 

@@ -87,7 +87,7 @@ func (b *Builder) Run() error {
 	hypertextTransferProtocolStrategy := &protocols.HypertextTransferProtocolStrategy{}
 	transmissionControlProtocolStrategy := &protocols.TransmissionControlProtocolStrategy{}
 
-	// Init protocol manager, with simple log on stout trace strategy and default protocol HTTP
+	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
 
 	for _, beelzebubServiceConfiguration := range b.beelzebubServicesConfiguration {
