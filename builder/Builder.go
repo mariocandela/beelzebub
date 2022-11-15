@@ -44,7 +44,7 @@ func (b *Builder) buildLogger(configurations parser.Logging) error {
 		log.SetLevel(log.InfoLevel)
 	}
 	b.logsFile = logsFile
-	return err
+	return nil
 }
 
 func (b *Builder) buildRabbitMQ(rabbitMQURI string) error {
