@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-const chatGPTFirstQuestion = "I want you to act as a Linux terminal. I will type commands and you will reply with what the terminal should show. I want you to only reply with the terminal output inside one unique code block, and nothing else. Do no write explanations. Do not type commands unless I instruct you to do so.\n\nA:pwd\n\nQ:/home/user\n\n"
-
 type History struct {
 	Input, Output string
 }
@@ -48,6 +46,9 @@ type gptRequest struct {
 	PresencePenalty  int      `json:"presence_penalty"`
 	Stop             []string `json:"stop"`
 }
+
+//Contributed by: @f Reference: https://www.engraved.blog/building-a-virtual-machine-inside/
+const chatGPTFirstQuestion = "I want you to act as a Linux terminal. I will type commands and you will reply with what the terminal should show. I want you to only reply with the terminal output inside one unique code block, and nothing else. Do no write explanations. Do not type commands unless I instruct you to do so.\n\nA:pwd\n\nQ:/home/user\n\n"
 
 func buildPrompt(histories []History, command string) string {
 	var sb strings.Builder
