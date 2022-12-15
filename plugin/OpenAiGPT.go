@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+const ChatGPTPluginName = "OpenAIChatGPT"
+const openAIGPTEndpoint = "https://api.openai.com/v1/completions"
+
 type History struct {
 	Input, Output string
 }
@@ -84,12 +87,16 @@ func (openAIGPT *OpenAIGPTVirtualTerminal) GetCompletions(command string) (strin
 		return "", err
 	}
 
+	if openAIGPT.OpenAPIChatGPTSecretKey == "" {
+		return "", errors.New("OpenAPIChatGPTSecretKey is empty")
+	}
+
 	_, err = client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(requestJson).
 		SetAuthToken(openAIGPT.OpenAPIChatGPTSecretKey).
 		SetResult(&response).
-		Post("https://api.openai.com/v1/completions")
+		Post(openAIGPTEndpoint)
 
 	if err != nil {
 		return "", err

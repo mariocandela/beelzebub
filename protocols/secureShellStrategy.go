@@ -66,18 +66,17 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 						}
 
 						if matched {
-							var commandOutput string
+							commandOutput := command.Handler
 
-							if command.Plugin == "OpenAIChatGPT" {
+							if command.Plugin == plugin.ChatGPTPluginName {
 								openAIGPTVirtualTerminal := plugin.OpenAIGPTVirtualTerminal{Histories: histories, OpenAPIChatGPTSecretKey: beelzebubServiceConfiguration.Plugin.OpenAPIChatGPTSecretKey}
 
 								if commandOutput, err = openAIGPTVirtualTerminal.GetCompletions(commandInput); err != nil {
 									log.Errorf("Error GetCompletions: %s, %s", commandInput, err.Error())
 									commandOutput = "command not found"
 								}
-							} else {
-								commandOutput = command.Handler
 							}
+
 							histories = append(histories, plugin.History{Input: commandInput, Output: commandOutput})
 
 							term.Write(append([]byte(commandOutput), '\n'))
