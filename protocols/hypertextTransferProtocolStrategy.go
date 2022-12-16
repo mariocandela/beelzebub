@@ -47,7 +47,7 @@ func (httpStrategy HypertextTransferProtocolStrategy) Init(beelzebubServiceConfi
 	log.WithFields(log.Fields{
 		"port":     beelzebubServiceConfiguration.Address,
 		"commands": len(beelzebubServiceConfiguration.Commands),
-	}).Infof("Init service %s", beelzebubServiceConfiguration.Protocol)
+	}).Infof("Init service: %s", beelzebubServiceConfiguration.Description)
 	return nil
 }
 

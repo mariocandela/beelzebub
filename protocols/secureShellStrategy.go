@@ -2,6 +2,7 @@ package protocols
 
 import (
 	"beelzebub/parser"
+	"beelzebub/plugin"
 	"beelzebub/tracer"
 	"fmt"
 	"github.com/gliderlabs/ssh"
@@ -39,6 +40,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 				})
 
 				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
+				var histories []plugin.History
 				for {
 					commandInput, err := term.ReadLine()
 					if err != nil {
@@ -64,7 +66,21 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 						}
 
 						if matched {
-							term.Write(append([]byte(command.Handler), '\n'))
+							commandOutput := command.Handler
+
+							if command.Plugin == plugin.ChatGPTPluginName {
+								openAIGPTVirtualTerminal := plugin.OpenAIGPTVirtualTerminal{Histories: histories, OpenAPIChatGPTSecretKey: beelzebubServiceConfiguration.Plugin.OpenAPIChatGPTSecretKey}
+								openAIGPTVirtualTerminal.InjectDependency()
+
+								if commandOutput, err = openAIGPTVirtualTerminal.GetCompletions(commandInput); err != nil {
+									log.Errorf("Error GetCompletions: %s, %s", commandInput, err.Error())
+									commandOutput = "command not found"
+								}
+							}
+
+							histories = append(histories, plugin.History{Input: commandInput, Output: commandOutput})
+
+							term.Write(append([]byte(commandOutput), '\n'))
 							break
 						}
 					}

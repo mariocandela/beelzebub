@@ -28,6 +28,10 @@ type Tracing struct {
 	RabbitMQURI     string `yaml:"rabbitMQURI"`
 }
 
+type Plugin struct {
+	OpenAPIChatGPTSecretKey string `yaml:"openAPIChatGPTSecretKey"`
+}
+
 type BeelzebubServiceConfiguration struct {
 	ApiVersion             string    `yaml:"apiVersion"`
 	Protocol               string    `yaml:"protocol"`
@@ -39,6 +43,7 @@ type BeelzebubServiceConfiguration struct {
 	PasswordRegex          string    `yaml:"passwordRegex"`
 	Description            string    `yaml:"description"`
 	Banner                 string    `yaml:"banner"`
+	Plugin                 Plugin    `yaml:"plugin"`
 }
 
 type Command struct {
@@ -46,6 +51,7 @@ type Command struct {
 	Handler    string   `yaml:"handler"`
 	Headers    []string `yaml:"headers"`
 	StatusCode int      `yaml:"statusCode"`
+	Plugin     string   `yaml:"plugin"`
 }
 
 type configurationsParser struct {
