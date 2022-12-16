@@ -70,6 +70,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 
 							if command.Plugin == plugin.ChatGPTPluginName {
 								openAIGPTVirtualTerminal := plugin.OpenAIGPTVirtualTerminal{Histories: histories, OpenAPIChatGPTSecretKey: beelzebubServiceConfiguration.Plugin.OpenAPIChatGPTSecretKey}
+								openAIGPTVirtualTerminal.InjectDependency()
 
 								if commandOutput, err = openAIGPTVirtualTerminal.GetCompletions(commandInput); err != nil {
 									log.Errorf("Error GetCompletions: %s, %s", commandInput, err.Error())
