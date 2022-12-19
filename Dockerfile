@@ -29,6 +29,8 @@ RUN cp /build/main .
 # Build a small image
 FROM scratch
 
+# copy the ca-certificate.crt from the builder stage
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /dist/main /
 
 ENTRYPOINT ["/main"]
