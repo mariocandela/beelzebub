@@ -31,6 +31,18 @@ Unit Test:
 $ go test ./...
  ```
 
+## Features
+
+- OpenAPI ChatBot GPT-3 integration 
+- SSH Honeypot
+- HTTP Honeypot
+- TCP Honeypot
+- Easy to create a new strategy
+- Easy to extend event tracking logic
+- Strong code quality
+- Docker
+- RabbitMQ integration
+
 ## Example configuration service 
 
 The configurations are inside the /configurations/services directory, just add a new file for each service/port.
@@ -135,18 +147,6 @@ deadlineTimeoutSeconds: 60
  ```
 
 ![alt text](https://i.postimg.cc/jdpfT0LB/Schermata-2022-06-02-alle-12-46-50.png)
-
-## Features
-
-- OpenAPI ChatBot GPT-3 integration 
-- SSH Honeypot
-- HTTP Honeypot
-- TCP Honeypot
-- Easy to create a new strategy
-- Easy to extend event tracking logic
-- Strong code quality
-- Docker
-- RabbitMQ integration
 
 ## TODO
 
