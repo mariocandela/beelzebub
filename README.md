@@ -173,3 +173,5 @@ Happy hacking!
 ## License
 
 This project is licensed under [GNU GPL 3 License](LICENSE).
+
+[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?business=P75FH5LXKQTAC&no_recurring=0&currency_code=EUR)
