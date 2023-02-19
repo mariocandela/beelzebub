@@ -6,12 +6,6 @@ endif
 
 INTEGRATION_TEST_PATH?=./integration_test
 
-ENV_LOCAL_TEST=\
-  POSTGRES_PASSWORD=mysecretpassword \
-  POSTGRES_DB=myawesomeproject \
-  POSTGRES_HOST=postgres \
-  POSTGRES_USER=postgres
-
 docker.start.components:
 	${DOCKER_COMPOSE} up -d rabbitmq
 
