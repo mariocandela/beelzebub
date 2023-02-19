@@ -51,7 +51,7 @@ type Command struct {
 	Handler    string   `yaml:"handler"`
 	Headers    []string `yaml:"headers"`
 	StatusCode int      `yaml:"statusCode"`
-	Plugin     string   `yaml:"plugins"`
+	Plugin     string   `yaml:"plugin"`
 }
 
 type configurationsParser struct {
