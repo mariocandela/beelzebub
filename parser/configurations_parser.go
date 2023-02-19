@@ -43,7 +43,7 @@ type BeelzebubServiceConfiguration struct {
 	PasswordRegex          string    `yaml:"passwordRegex"`
 	Description            string    `yaml:"description"`
 	Banner                 string    `yaml:"banner"`
-	Plugin                 Plugin    `yaml:"plugins"`
+	Plugin                 Plugin    `yaml:"plugin"`
 }
 
 type Command struct {
