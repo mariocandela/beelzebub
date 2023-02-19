@@ -1,0 +1,9 @@
+core:
+  logging:
+    debug: false
+    debugReportCaller: false
+    logDisableTimestamp: true
+    logsPath: ./logs
+  tracing:
+    rabbitMQEnabled: false
+    rabbitMQURI: ""

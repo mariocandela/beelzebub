@@ -27,11 +27,24 @@ $ go build
 $ ./beelzebub
  ```
 
-Unit Test:
+###Unit Test:
 
 ```bash
 $ go test ./...
  ```
+
+###Integration test:
+
+Start dependencies 
+```bash
+$ make docker.start.components
+ ```
+
+Run integration testing
+```bash
+$ make test.integration
+ ```
+
 
 ## Features
 

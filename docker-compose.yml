@@ -16,3 +16,10 @@ services:
       RABBITMQ_URI: ${RABBITMQ_URI}
     volumes:
       - "./configurations:/configurations"
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - "5672:5672"
+      - "15672:15672"
