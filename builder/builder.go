@@ -3,6 +3,7 @@ package builder
 import (
 	"beelzebub/parser"
 	"beelzebub/protocols"
+	"beelzebub/protocols/strategies"
 	"beelzebub/tracer"
 	"errors"
 	"fmt"
@@ -83,9 +84,9 @@ func (b *Builder) Close() error {
 
 func (b *Builder) Run() error {
 	// Init Protocol strategies
-	secureShellStrategy := &protocols.SecureShellStrategy{}
-	hypertextTransferProtocolStrategy := &protocols.HypertextTransferProtocolStrategy{}
-	transmissionControlProtocolStrategy := &protocols.TransmissionControlProtocolStrategy{}
+	secureShellStrategy := &strategies.SecureShellStrategy{}
+	hypertextTransferProtocolStrategy := &strategies.HypertextTransferProtocolStrategy{}
+	transmissionControlProtocolStrategy := &strategies.TransmissionControlProtocolStrategy{}
 
 	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
