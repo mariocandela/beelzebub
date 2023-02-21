@@ -30,7 +30,7 @@ $ ./beelzebub
 ###Unit Test:
 
 ```bash
-$ go test ./...
+$ go test $(go list ./... | grep -v integration_test)
  ```
 
 ###Integration test:
