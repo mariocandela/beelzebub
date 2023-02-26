@@ -14,6 +14,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - run: apt-get update && apt-get install -y ca-certificates
+
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
