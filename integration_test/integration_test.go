@@ -21,20 +21,15 @@ type IntegrationTestSuite struct {
 	sshHoneypotHost  string
 }
 
-func (suite *IntegrationTestSuite) skipIntegration() {
-	suite.T().Helper()
-	if os.Getenv("INTEGRATION") == "" {
-		suite.T().Skip("skipping integration tests, set environment variable INTEGRATION")
-	}
-}
-
 func TestIntegrationTestSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
 func (suite *IntegrationTestSuite) SetupSuite() {
-	suite.skipIntegration()
-
+	suite.T().Helper()
+	if os.Getenv("INTEGRATION") == "" {
+		suite.T().Skip("skipping integration tests, set environment variable INTEGRATION")
+	}
 	suite.httpHoneypotHost = "http://localhost:8080"
 	suite.tcpHoneypotHost = "localhost:3306"
 	suite.sshHoneypotHost = "localhost"
@@ -60,7 +55,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.Require().NoError(suite.beelzebubBuilder.Run())
 }
 
-func (suite *IntegrationTestSuite) TestEndToEndInvokeHTTPHoneypot() {
+func (suite *IntegrationTestSuite) TestInvokeHTTPHoneypot() {
 	response, err := resty.New().R().
 		Get(suite.httpHoneypotHost + "/index.php")
 
@@ -76,7 +71,7 @@ func (suite *IntegrationTestSuite) TestEndToEndInvokeHTTPHoneypot() {
 	suite.Equal("mocked response", string(response.Body()))
 }
 
-func (suite *IntegrationTestSuite) TestEndToEndInvokeTCPHoneypot() {
+func (suite *IntegrationTestSuite) TestInvokeTCPHoneypot() {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", suite.tcpHoneypotHost)
 	suite.Require().NoError(err)
 
@@ -95,7 +90,7 @@ func (suite *IntegrationTestSuite) TestEndToEndInvokeTCPHoneypot() {
 	suite.Equal("8.0.29\n", string(reply[:n]))
 }
 
-func (suite *IntegrationTestSuite) TestEndToEndInvokeSSHHoneypot() {
+func (suite *IntegrationTestSuite) TestInvokeSSHHoneypot() {
 	client, err := goph.NewConn(
 		&goph.Config{
 			User:     "root",
