@@ -4,7 +4,11 @@ ifeq (${DOCKER_COMPOSE},)
 DOCKER_COMPOSE = docker compose
 endif
 
-docker.stop:
+beelzebub.start:
+	${DOCKER_COMPOSE} build;
+	${DOCKER_COMPOSE} up -d;
+
+beelzebub.stop:
 	${DOCKER_COMPOSE} down;
 
 test.unit:
