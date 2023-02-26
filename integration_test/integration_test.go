@@ -35,9 +35,9 @@ func TestIntegrationTestSuite(t *testing.T) {
 func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.skipIntegration()
 
-	suite.httpHoneypotHost = "http://127.0.0.1:8080"
-	suite.tcpHoneypotHost = "127.0.0.1:3306"
-	suite.sshHoneypotHost = "127.0.0.1"
+	suite.httpHoneypotHost = "http://localhost:8080"
+	suite.tcpHoneypotHost = "localhost:3306"
+	suite.sshHoneypotHost = "localhost"
 
 	beelzebubConfigPath := "./configurations/beelzebub.yaml"
 	servicesConfigDirectory := "./configurations/services/"
