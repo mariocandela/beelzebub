@@ -30,7 +30,7 @@ jobs:
 
     - name: Unit tests
       run: |
-        go test -coverprofile coverage.tmp.out -covermode count
+        go test ./... -coverprofile coverage.tmp.out -covermode count
         go tool cover -func coverage.tmp.out
 
     - name: Quality Gate - Test coverage shall be above threshold
