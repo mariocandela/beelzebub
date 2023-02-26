@@ -30,15 +30,10 @@ $ ./beelzebub
 ###Unit Test:
 
 ```bash
-$ go test $(go list ./... | grep -v integration_test)
+$ make test.unit
  ```
 
 ###Integration test:
-
-Start dependencies 
-```bash
-$ make docker.start.components
- ```
 
 Run integration testing
 ```bash

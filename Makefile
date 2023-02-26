@@ -4,16 +4,17 @@ ifeq (${DOCKER_COMPOSE},)
 DOCKER_COMPOSE = docker compose
 endif
 
-INTEGRATION_TEST_PATH?=./integration_test
-
-docker.start.components:
-	${DOCKER_COMPOSE} up -d rabbitmq
-
 docker.stop:
 	${DOCKER_COMPOSE} down;
 
+test.unit:
+	go test ./...
+
+test.unit.verbose:
+	go test ./... -v
+
 test.integration:
-	go test -tags=integration $(INTEGRATION_TEST_PATH) -count=1 -run
+	INTEGRATION=1 go test ./...
 
 test.integration.verbose:
-	go test -tags=integration $(INTEGRATION_TEST_PATH) -count=1 -v -run
+	INTEGRATION=1 go test ./... -v
