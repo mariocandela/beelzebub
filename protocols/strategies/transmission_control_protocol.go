@@ -1,4 +1,4 @@
-package protocols
+package strategies
 
 import (
 	"beelzebub/parser"

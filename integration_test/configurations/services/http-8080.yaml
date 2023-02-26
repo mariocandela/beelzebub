@@ -1,0 +1,19 @@
+apiVersion: "v1"
+protocol: "http"
+address: ":8080"
+description: "Wordpress 6.0"
+commands:
+  - regex: "index.php"
+    handler: "mocked response"
+    headers:
+      - "Content-Type: text/html"
+      - "Server: Apache/2.4.53 (Debian)"
+      - "X-Powered-By: PHP/7.4.29"
+    statusCode: 200
+  - regex: "^(/wp-login.php|/wp-admin)$"
+    handler: "mocked response"
+    headers:
+      - "Content-Type: text/html"
+      - "Server: Apache/2.4.53 (Debian)"
+      - "X-Powered-By: PHP/7.4.29"
+    statusCode: 400

@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  build:
+  CI:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -16,7 +16,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.16
+        go-version: 1.20.0
 
     - name: Dependences
       run: go mod download
@@ -28,9 +28,13 @@ jobs:
     - name: Build
       run: go build -v ./...
 
+    - name: Integration tests
+      run: |
+        INTEGRATION=1 go test ./... -v
+
     - name: Unit tests
       run: |
-        go test ./... -coverprofile coverage.tmp.out -covermode count
+        go test ./... -v -coverprofile coverage.tmp.out -covermode count
         go tool cover -func coverage.tmp.out
 
     - name: Quality Gate - Test coverage shall be above threshold

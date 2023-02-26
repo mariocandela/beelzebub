@@ -27,11 +27,19 @@ $ go build
 $ ./beelzebub
  ```
 
-Unit Test:
+###Unit Test:
 
 ```bash
-$ go test ./...
+$ make test.unit
  ```
+
+###Integration test:
+
+Run integration testing
+```bash
+$ make test.integration
+ ```
+
 
 ## Features
 

@@ -1,8 +1,8 @@
-package protocols
+package strategies
 
 import (
 	"beelzebub/parser"
-	"beelzebub/plugin"
+	"beelzebub/plugins"
 	"beelzebub/tracer"
 	"fmt"
 	"github.com/gliderlabs/ssh"
@@ -40,7 +40,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 				})
 
 				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
-				var histories []plugin.History
+				var histories []plugins.History
 				for {
 					commandInput, err := term.ReadLine()
 					if err != nil {
@@ -68,8 +68,8 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 						if matched {
 							commandOutput := command.Handler
 
-							if command.Plugin == plugin.ChatGPTPluginName {
-								openAIGPTVirtualTerminal := plugin.OpenAIGPTVirtualTerminal{Histories: histories, OpenAPIChatGPTSecretKey: beelzebubServiceConfiguration.Plugin.OpenAPIChatGPTSecretKey}
+							if command.Plugin == plugins.ChatGPTPluginName {
+								openAIGPTVirtualTerminal := plugins.OpenAIGPTVirtualTerminal{Histories: histories, OpenAPIChatGPTSecretKey: beelzebubServiceConfiguration.Plugin.OpenAPIChatGPTSecretKey}
 								openAIGPTVirtualTerminal.InjectDependency()
 
 								if commandOutput, err = openAIGPTVirtualTerminal.GetCompletions(commandInput); err != nil {
@@ -78,7 +78,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 								}
 							}
 
-							histories = append(histories, plugin.History{Input: commandInput, Output: commandOutput})
+							histories = append(histories, plugins.History{Input: commandInput, Output: commandOutput})
 
 							term.Write(append([]byte(commandOutput), '\n'))
 							break
