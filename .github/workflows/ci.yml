@@ -28,14 +28,14 @@ jobs:
     - name: Build
       run: go build -v ./...
 
-    - name: Integration tests
-      run: |
-        INTEGRATION=1 go test ./... -v
-
     - name: Unit tests
       run: |
         go test ./... -v -coverprofile coverage.tmp.out -covermode count
         go tool cover -func coverage.tmp.out
+
+    - name: Integration tests
+      run: |
+        INTEGRATION=1 go test ./... -v
 
     - name: Quality Gate - Test coverage shall be above threshold
       env:
