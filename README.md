@@ -6,6 +6,8 @@ A secure honeypot framework low code, extremely easy to configure by yaml 🚀
 
 How to integrate with OpenAI GPT-3: [`Medium Article`](https://medium.com/@mario.candela.personal/how-to-build-a-highly-effective-honeypot-with-beelzebub-and-chatgpt-a2f0f05b3e1)
 
+Beelzebub telegram bot: [`telegram channel`](https://t.me/beelzebubhoneypot)
+
 ## Examples: 
 
 [`mariocandela/beelzebub-example`](https://github.com/mariocandela/beelzebub-example)
