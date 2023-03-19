@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  rabbitmq:
+    image: rabbitmq:3-alpine
+    container_name: 'rabbitmq'
+    ports:
+        - 5672:5672
+    environment:
+      - RABBITMQ_DEFAULT_USER=integration
+      - RABBITMQ_DEFAULT_PASS=integration
