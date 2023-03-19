@@ -3,14 +3,18 @@ package integration
 import (
 	"beelzebub/builder"
 	"beelzebub/parser"
-	"github.com/go-resty/resty/v2"
-	"github.com/melbahja/goph"
-	"github.com/stretchr/testify/suite"
-	"golang.org/x/crypto/ssh"
+	"beelzebub/tracer"
+	"encoding/json"
 	"net"
 	"net/http"
 	"os"
 	"testing"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/melbahja/goph"
+	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/stretchr/testify/suite"
+	"golang.org/x/crypto/ssh"
 )
 
 type IntegrationTestSuite struct {
@@ -19,6 +23,7 @@ type IntegrationTestSuite struct {
 	httpHoneypotHost string
 	tcpHoneypotHost  string
 	sshHoneypotHost  string
+	rabbitMQURI      string
 }
 
 func TestIntegrationTestSuite(t *testing.T) {
@@ -41,6 +46,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 
 	coreConfigurations, err := parser.ReadConfigurationsCore()
 	suite.Require().NoError(err)
+	suite.rabbitMQURI = coreConfigurations.Core.Tracing.RabbitMQURI
 
 	beelzebubServicesConfiguration, err := parser.ReadConfigurationsServices()
 	suite.Require().NoError(err)
@@ -108,7 +114,35 @@ func (suite *IntegrationTestSuite) TestInvokeSSHHoneypot() {
 	suite.Equal("root@ubuntu:~$ ", string(out))
 }
 
-//TODO test rabbitmq
+func (suite *IntegrationTestSuite) TestRabbitMQ() {
+	conn, err := amqp.Dial(suite.rabbitMQURI)
+	suite.Require().NoError(err)
+	defer conn.Close()
+
+	ch, err := conn.Channel()
+	suite.Require().NoError(err)
+	defer ch.Close()
+
+	msgs, err := ch.Consume("event", "", true, false, false, false, nil)
+	suite.Require().NoError(err)
+
+	//Invoke HTTP Honeypot
+	response, err := resty.New().R().Get(suite.httpHoneypotHost + "/index.php")
+
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusOK, response.StatusCode())
+
+	for msg := range msgs {
+		var event tracer.Event
+		err := json.Unmarshal(msg.Body, &event)
+		suite.Require().NoError(err)
+
+		suite.Equal("GET", event.HTTPMethod)
+		suite.Equal("/index.php", event.RequestURI)
+		break
+	}
+
+}
 
 func (suite *IntegrationTestSuite) TestShutdownBeelzebub() {
 	suite.Require().NoError(suite.beelzebubBuilder.Close())
