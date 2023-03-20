@@ -55,10 +55,10 @@ jobs:
       run: |
         make test.dependencies.start
 
-    - name: remove me try sleep
+    - name: wait healthiness #fix me, use wait until RabbitMQ is ready
       run: sleep 10
 
     - name: Integration tests
       run: |
-        make test.integration
+        make test.integration.verbose
         make test.dependencies.down
