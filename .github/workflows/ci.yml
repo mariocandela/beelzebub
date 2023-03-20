@@ -18,7 +18,7 @@ jobs:
       with:
         go-version: 1.20.0
 
-    - name: Dependences
+    - name: Dependencies
       run: go mod download
 
     - name: Vet
@@ -33,17 +33,13 @@ jobs:
         go test ./... -v -coverprofile coverage.tmp.out -covermode count
         go tool cover -func coverage.tmp.out
 
-    - name: Integration tests
-      run: |
-        INTEGRATION=1 go test ./... -v
-
     - name: Quality Gate - Test coverage shall be above threshold
       env:
         TESTCOVERAGE_THRESHOLD: 70
       run: |
         echo "Quality Gate: checking test coverage is above threshold ..."
         echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"
-        # Excluded the concrete strategy from the coverage calculation, this will be tested in the integration tests
+        # Excluded the concrete strategy from the coverage calculation, because tested by integration tests
         cat coverage.tmp.out | grep -v "secureShellStrategy.go" | grep -v "hypertextTransferProtocolStrategy.go" | grep -v "transmissionControlProtocolStrategy.go" > coverage.out
         totalCoverage=`go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
         echo "Current test coverage : $totalCoverage %"
@@ -54,3 +50,18 @@ jobs:
             echo "Failed"
             exit 1
         fi
+
+    - name: Start integration test dependencies
+      run: |
+        make test.dependencies.start
+
+    - name: Check services healthiness
+        uses: thegabriele97/dockercompose-health-action@main
+        with:
+          timeout: '60'
+          workdir: 'integration_test'
+
+    - name: Integration tests
+      run: |
+        make test.integration
+        make test.dependencies.down
