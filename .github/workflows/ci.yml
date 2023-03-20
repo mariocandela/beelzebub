@@ -55,14 +55,8 @@ jobs:
       run: |
         make test.dependencies.start
 
-    #- name: Check services healthiness
-    #  uses: thegabriele97/dockercompose-health-action@main
-    #  with:
-    #    timeout: '60'
-    #    workdir: 'integration_test'*/
-
     - name: remove me try sleep
-      run: sleep 60 
+      run: sleep 10
 
     - name: Integration tests
       run: |
