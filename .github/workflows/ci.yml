@@ -58,9 +58,8 @@ jobs:
     - name: Wait for RabbitMQ to be ready
       run: |
         sleep 2
-        docker ps 
         count=0
-        until docker exec rabbitmq rabbitmqctl list_queues; do
+        until docker exec rabbitmq rabbitmqctl list_queues > /dev/null 2>&1; do
           count=$((count+1))
           if [ $count -gt 10 ]; then
             echo "RabbitMQ did not start within the specified time"
