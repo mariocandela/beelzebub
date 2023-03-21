@@ -17,6 +17,12 @@ test.unit:
 test.unit.verbose:
 	go test ./... -v
 
+test.dependencies.start:
+	${DOCKER_COMPOSE} -f ./integration_test/docker-compose.yml up -d
+
+test.dependencies.down:
+	${DOCKER_COMPOSE} -f ./integration_test/docker-compose.yml down
+
 test.integration:
 	INTEGRATION=1 go test ./...
 
