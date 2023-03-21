@@ -55,8 +55,9 @@ jobs:
       run: |
         make test.dependencies.start
 
-    - name: wait healthiness #fix me, use wait until RabbitMQ is ready
-      run: sleep 10
+    - name: Wait for RabbitMQ to be ready
+      run: |
+        wget -qO- https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh | bash -s -- localhost:5672 -t 30
 
     - name: Integration tests
       run: |
