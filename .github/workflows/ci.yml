@@ -57,7 +57,7 @@ jobs:
 
     - name: Wait for RabbitMQ to be ready
       run: |
-        wget -qO- https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh | bash -s -- localhost:5672 -t 30
+        wget -qO- https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh | bash -s -t 10 localhost:5672 -- echo "RabbitMQ is up"
 
     - name: Integration tests
       run: |
