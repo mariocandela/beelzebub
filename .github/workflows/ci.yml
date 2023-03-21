@@ -57,7 +57,17 @@ jobs:
 
     - name: Wait for RabbitMQ to be ready
       run: |
-        wget -qO- https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh | bash -s -t 10 localhost:5672 -- echo "RabbitMQ is up"
+        max_attempts=10
+        count=0
+        until nc -z localhost 5672; do
+          count=$((count+1))
+          if [ $count -gt $max_attempts ]; then
+            echo "RabbitMQ did not start within the specified time"
+            exit 1
+          fi
+          echo "Waiting for RabbitMQ to start..."
+          sleep 2
+        done
 
     - name: Integration tests
       run: |
