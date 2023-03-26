@@ -7,10 +7,13 @@ import (
 	"beelzebub/tracer"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
-	"io"
-	"os"
 )
 
 const RabbitmqQueueName = "event"
@@ -81,6 +84,15 @@ func (b *Builder) Close() error {
 }
 
 func (b *Builder) Run() error {
+	// Init Promotheus openmetrics
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		//TODO manage port by configuration file
+		if err := http.ListenAndServe(":2112", nil); err != nil {
+			log.Fatalf("Error init Promotheus openmetrics: %s", err.Error())
+		}
+	}()
+
 	// Init Protocol strategies
 	secureShellStrategy := &strategies.SecureShellStrategy{}
 	hypertextTransferProtocolStrategy := &strategies.HypertextTransferProtocolStrategy{}
@@ -109,6 +121,7 @@ func (b *Builder) Run() error {
 			return errors.New(fmt.Sprintf("Error during init protocol: %s, %s", beelzebubServiceConfiguration.Protocol, err.Error()))
 		}
 	}
+
 	return nil
 }
 

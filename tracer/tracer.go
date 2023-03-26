@@ -2,28 +2,10 @@ package tracer
 
 import (
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
-
-type Strategy func(event Event)
-
-type Tracer interface {
-	TraceEvent(event Event)
-}
-
-type tracer struct {
-	strategy Strategy
-}
-
-func Init(strategy Strategy) *tracer {
-	return &tracer{
-		strategy: strategy,
-	}
-}
-
-func (tracer *tracer) TraceEvent(event Event) {
-	event.DateTime = time.Now().UTC().Format(time.RFC3339)
-	tracer.strategy(event)
-}
 
 type Event struct {
 	DateTime        string
@@ -70,4 +52,67 @@ const (
 
 func (status Status) String() string {
 	return [...]string{"Start", "End", "Stateless", "Interaction"}[status]
+}
+
+type Strategy func(event Event)
+
+type Tracer interface {
+	TraceEvent(event Event)
+}
+
+type tracer struct {
+	strategy Strategy
+}
+
+var (
+	eventsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "beelzebub",
+		Name:      "events_total",
+		Help:      "The total number of events",
+	})
+	eventsSSHTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "beelzebub",
+		Name:      "ssh_events_total",
+		Help:      "The total number of SSH events",
+	})
+	eventsTCPTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "beelzebub",
+		Name:      "tcp_events_total",
+		Help:      "The total number of TCP events",
+	})
+	eventsHTTPTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "beelzebub",
+		Name:      "http_events_total",
+		Help:      "The total number of HTTP events",
+	})
+)
+
+func Init(strategy Strategy) *tracer {
+	return &tracer{
+		strategy: strategy,
+	}
+}
+
+func (tracer *tracer) TraceEvent(event Event) {
+	event.DateTime = time.Now().UTC().Format(time.RFC3339)
+
+	tracer.strategy(event)
+
+	//Openmetrics
+	eventsTotal.Inc()
+
+	switch event.Protocol {
+	case HTTP.String():
+		eventsHTTPTotal.Inc()
+		break
+	case SSH.String():
+		eventsSSHTotal.Inc()
+		break
+	case TCP.String():
+		eventsTCPTotal.Inc()
+		break
+	}
+
+	//TODO add metrics total event by IP
+
 }
