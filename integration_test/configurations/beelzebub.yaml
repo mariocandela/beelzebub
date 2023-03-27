@@ -7,3 +7,6 @@ core:
   tracing:
     rabbitMQEnabled: true
     rabbitMQURI: "amqp://integration:integration@localhost:5672/"
+  prometheus:
+    path: "/metrics"
+    port: ":2112"

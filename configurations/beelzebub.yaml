@@ -7,3 +7,7 @@ core:
   tracing:
     rabbitMQEnabled: false
     rabbitMQURI: ""
+  prometheus:
+    path: "/metrics"
+    port: ":2112"
+

@@ -20,6 +20,7 @@ const RabbitmqQueueName = "event"
 
 type Builder struct {
 	beelzebubServicesConfiguration []parser.BeelzebubServiceConfiguration
+	beelzebubCoreConfigurations    *parser.BeelzebubCoreConfigurations
 	traceStrategy                  tracer.Strategy
 	rabbitMQChannel                *amqp.Channel
 	rabbitMQConnection             *amqp.Connection
@@ -84,12 +85,12 @@ func (b *Builder) Close() error {
 }
 
 func (b *Builder) Run() error {
-	// Init Promotheus openmetrics
+	// Init Prometheus openmetrics
 	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		//TODO manage port by configuration file
-		if err := http.ListenAndServe(":2112", nil); err != nil {
-			log.Fatalf("Error init Promotheus openmetrics: %s", err.Error())
+		http.Handle(b.beelzebubCoreConfigurations.Core.Prometheus.Path, promhttp.Handler())
+
+		if err := http.ListenAndServe(b.beelzebubCoreConfigurations.Core.Prometheus.Port, nil); err != nil {
+			log.Fatalf("Error init Prometheus: %s", err.Error())
 		}
 	}()
 
@@ -129,6 +130,7 @@ func (b *Builder) build() *Builder {
 	return &Builder{
 		beelzebubServicesConfiguration: b.beelzebubServicesConfiguration,
 		traceStrategy:                  b.traceStrategy,
+		beelzebubCoreConfigurations:    b.beelzebubCoreConfigurations,
 	}
 }
 
