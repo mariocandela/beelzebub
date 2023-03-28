@@ -12,6 +12,7 @@ services:
       - "8080:8080"
       - "80:80"
       - "3306:3306"
+      - "2112:2112" # Prometheus openmetrics
     environment:
       RABBITMQ_URI: ${RABBITMQ_URI}
     volumes:
