@@ -20,6 +20,7 @@ import (
 type IntegrationTestSuite struct {
 	suite.Suite
 	beelzebubBuilder *builder.Builder
+	prometheusHost   string
 	httpHoneypotHost string
 	tcpHoneypotHost  string
 	sshHoneypotHost  string
@@ -38,6 +39,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.httpHoneypotHost = "http://localhost:8080"
 	suite.tcpHoneypotHost = "localhost:3306"
 	suite.sshHoneypotHost = "localhost"
+	suite.prometheusHost = "https://localhost:2112/metrics"
 
 	beelzebubConfigPath := "./configurations/beelzebub.yaml"
 	servicesConfigDirectory := "./configurations/services/"
@@ -142,6 +144,19 @@ func (suite *IntegrationTestSuite) TestRabbitMQ() {
 		break
 	}
 
+}
+func (suite *IntegrationTestSuite) TestPrometheus() {
+	//Invoke HTTP Honeypot
+	response, err := resty.New().R().Get(suite.httpHoneypotHost + "/index.php")
+
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusOK, response.StatusCode())
+
+	response, err = resty.New().R().Get(suite.prometheusHost)
+
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusOK, response.StatusCode())
+	suite.T().Log(string(response.Body()))
 }
 
 func (suite *IntegrationTestSuite) TestShutdownBeelzebub() {

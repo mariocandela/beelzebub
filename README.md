@@ -45,13 +45,11 @@ $ make test.integration
 
 ## Features
 
-- OpenAPI ChatBot GPT-3 integration 
+- OpenAPI ChatBot GPT-3 Linux virtualization 
 - SSH Honeypot
 - HTTP Honeypot
 - TCP Honeypot
-- Easy to create a new strategy
-- Easy to extend event tracking logic
-- Strong code quality
+- Prometheus openmetrics
 - Docker
 - RabbitMQ integration
 
