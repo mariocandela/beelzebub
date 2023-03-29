@@ -39,7 +39,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.httpHoneypotHost = "http://localhost:8080"
 	suite.tcpHoneypotHost = "localhost:3306"
 	suite.sshHoneypotHost = "localhost"
-	suite.prometheusHost = "https://localhost:2112/metrics"
+	suite.prometheusHost = "http://localhost:2112/metrics"
 
 	beelzebubConfigPath := "./configurations/beelzebub.yaml"
 	servicesConfigDirectory := "./configurations/services/"
