@@ -112,7 +112,4 @@ func (tracer *tracer) TraceEvent(event Event) {
 		eventsTCPTotal.Inc()
 		break
 	}
-
-	//TODO add metrics total event by IP
-
 }
