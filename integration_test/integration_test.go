@@ -156,7 +156,6 @@ func (suite *IntegrationTestSuite) TestPrometheus() {
 
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusOK, response.StatusCode())
-	suite.T().Log(string(response.Body()))
 }
 
 func (suite *IntegrationTestSuite) TestShutdownBeelzebub() {
