@@ -2,17 +2,19 @@ package parser
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 )
 
 type BeelzebubCoreConfigurations struct {
 	Core struct {
-		Logging Logging `yaml:"logging"`
-		Tracing Tracing `yaml:"tracing"`
+		Logging    Logging    `yaml:"logging"`
+		Tracing    Tracing    `yaml:"tracing"`
+		Prometheus Prometheus `yaml:"prometheus"`
 	}
 }
 
@@ -26,6 +28,11 @@ type Logging struct {
 type Tracing struct {
 	RabbitMQEnabled bool   `yaml:"rabbitMQEnabled"`
 	RabbitMQURI     string `yaml:"rabbitMQURI"`
+}
+
+type Prometheus struct {
+	Path string `yaml:"path"`
+	Port string `yaml:"port"`
 }
 
 type Plugin struct {

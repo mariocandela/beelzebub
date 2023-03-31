@@ -5,6 +5,7 @@ import (
 	"beelzebub/tracer"
 	"context"
 	"encoding/json"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
 )
@@ -21,7 +22,7 @@ func NewDirector(builder *Builder) *Director {
 
 func (d *Director) BuildBeelzebub(beelzebubCoreConfigurations *parser.BeelzebubCoreConfigurations, beelzebubServicesConfiguration []parser.BeelzebubServiceConfiguration) (*Builder, error) {
 	d.builder.beelzebubServicesConfiguration = beelzebubServicesConfiguration
-
+	d.builder.beelzebubCoreConfigurations = beelzebubCoreConfigurations
 	if err := d.builder.buildLogger(beelzebubCoreConfigurations.Core.Logging); err != nil {
 		return nil, err
 	}

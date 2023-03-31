@@ -1,14 +1,19 @@
-# Beelzebub ![CI](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg) ![Docker](https://github.com/mariocandela/beelzebub/actions/workflows/docker-image.yml/badge.svg)
-
+![CI](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg) ![Docker](https://github.com/mariocandela/beelzebub/actions/workflows/docker-image.yml/badge.svg) ![codeql](https://github.com/mariocandela/beelzebub/actions/workflows/codeql.yml/badge.svg)
+# Beelzebub
 [![logo-1.png](https://i.postimg.cc/KvbsJFp3/logo-1.png)](https://postimg.cc/yWfPNqH7)
 
 A secure honeypot framework low code, extremely easy to configure by yaml 🚀
 
+## OpenAI GPT integration
 How to integrate with OpenAI GPT-3: [`Medium Article`](https://medium.com/@mario.candela.personal/how-to-build-a-highly-effective-honeypot-with-beelzebub-and-chatgpt-a2f0f05b3e1)
 
-Beelzebub telegram bot: [`telegram channel`](https://t.me/beelzebubhoneypot)
+[![OpenAI Integration Diagram](https://static.swimlanes.io/24d6634a381aa8eb0decf5bac7ae214d.png)](https://static.swimlanes.io/24d6634a381aa8eb0decf5bac7ae214d.png)
 
-## Examples: 
+## Telegram bot realtime attacks
+
+ bot: [`telegram channel`](https://t.me/beelzebubhoneypot)
+
+## Examples 
 
 [`mariocandela/beelzebub-example`](https://github.com/mariocandela/beelzebub-example)
 
@@ -45,13 +50,11 @@ $ make test.integration
 
 ## Features
 
-- OpenAPI ChatBot GPT-3 integration 
+- OpenAPI ChatBot GPT-3 Linux virtualization 
 - SSH Honeypot
 - HTTP Honeypot
 - TCP Honeypot
-- Easy to create a new strategy
-- Easy to extend event tracking logic
-- Strong code quality
+- Prometheus openmetrics
 - Docker
 - RabbitMQ integration
 

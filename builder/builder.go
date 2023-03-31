@@ -7,16 +7,20 @@ import (
 	"beelzebub/tracer"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
-	"io"
-	"os"
 )
 
 const RabbitmqQueueName = "event"
 
 type Builder struct {
 	beelzebubServicesConfiguration []parser.BeelzebubServiceConfiguration
+	beelzebubCoreConfigurations    *parser.BeelzebubCoreConfigurations
 	traceStrategy                  tracer.Strategy
 	rabbitMQChannel                *amqp.Channel
 	rabbitMQConnection             *amqp.Connection
@@ -81,6 +85,15 @@ func (b *Builder) Close() error {
 }
 
 func (b *Builder) Run() error {
+	// Init Prometheus openmetrics
+	go func() {
+		http.Handle(b.beelzebubCoreConfigurations.Core.Prometheus.Path, promhttp.Handler())
+
+		if err := http.ListenAndServe(b.beelzebubCoreConfigurations.Core.Prometheus.Port, nil); err != nil {
+			log.Fatalf("Error init Prometheus: %s", err.Error())
+		}
+	}()
+
 	// Init Protocol strategies
 	secureShellStrategy := &strategies.SecureShellStrategy{}
 	hypertextTransferProtocolStrategy := &strategies.HypertextTransferProtocolStrategy{}
@@ -109,6 +122,7 @@ func (b *Builder) Run() error {
 			return errors.New(fmt.Sprintf("Error during init protocol: %s, %s", beelzebubServiceConfiguration.Protocol, err.Error()))
 		}
 	}
+
 	return nil
 }
 
@@ -116,6 +130,7 @@ func (b *Builder) build() *Builder {
 	return &Builder{
 		beelzebubServicesConfiguration: b.beelzebubServicesConfiguration,
 		traceStrategy:                  b.traceStrategy,
+		beelzebubCoreConfigurations:    b.beelzebubCoreConfigurations,
 	}
 }
 
