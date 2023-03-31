@@ -87,10 +87,12 @@ func (b *Builder) Close() error {
 func (b *Builder) Run() error {
 	// Init Prometheus openmetrics
 	go func() {
-		http.Handle(b.beelzebubCoreConfigurations.Core.Prometheus.Path, promhttp.Handler())
+		if (b.beelzebubCoreConfigurations.Core.Prometheus != parser.Prometheus{}) {
+			http.Handle(b.beelzebubCoreConfigurations.Core.Prometheus.Path, promhttp.Handler())
 
-		if err := http.ListenAndServe(b.beelzebubCoreConfigurations.Core.Prometheus.Port, nil); err != nil {
-			log.Fatalf("Error init Prometheus: %s", err.Error())
+			if err := http.ListenAndServe(b.beelzebubCoreConfigurations.Core.Prometheus.Port, nil); err != nil {
+				log.Fatalf("Error init Prometheus: %s", err.Error())
+			}
 		}
 	}()
 
