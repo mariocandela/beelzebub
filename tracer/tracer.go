@@ -12,6 +12,7 @@ type Event struct {
 	RemoteAddr      string
 	Protocol        string
 	Command         string
+	CommandOutput   string
 	Status          string
 	Msg             string
 	ID              string

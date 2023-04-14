@@ -5,13 +5,14 @@ import (
 	"beelzebub/plugins"
 	"beelzebub/tracer"
 	"fmt"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
-	"regexp"
-	"strings"
-	"time"
 )
 
 type SecureShellStrategy struct {
@@ -46,15 +47,7 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 					if err != nil {
 						break
 					}
-					tr.TraceEvent(tracer.Event{
-						Msg:         "New SSH Terminal Session",
-						RemoteAddr:  sess.RemoteAddr().String(),
-						Status:      tracer.Interaction.String(),
-						Command:     commandInput,
-						ID:          uuidSession.String(),
-						Protocol:    tracer.SSH.String(),
-						Description: beelzebubServiceConfiguration.Description,
-					})
+
 					if commandInput == "exit" {
 						break
 					}
@@ -81,6 +74,17 @@ func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parse
 							histories = append(histories, plugins.History{Input: commandInput, Output: commandOutput})
 
 							term.Write(append([]byte(commandOutput), '\n'))
+
+							tr.TraceEvent(tracer.Event{
+								Msg:           "New SSH Terminal Session",
+								RemoteAddr:    sess.RemoteAddr().String(),
+								Status:        tracer.Interaction.String(),
+								Command:       commandInput,
+								CommandOutput: commandOutput,
+								ID:            uuidSession.String(),
+								Protocol:      tracer.SSH.String(),
+								Description:   beelzebubServiceConfiguration.Description,
+							})
 							break
 						}
 					}
