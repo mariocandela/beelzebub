@@ -28,3 +28,32 @@ test.integration:
 
 test.integration.verbose:
 	INTEGRATION=1 go test ./... -v
+
+# .PHONY : is an idiomatic way to differentiate commands from files in GNU Make
+.PHONY:
+	
+	beelzebub.start
+
+.PHONY:
+	
+	beelzebub.stop
+
+.PHONY:
+
+	test.unit
+
+.PHONY:
+
+	test.dependencies.start
+
+.PHONY:
+
+	test.dependencies.down
+
+.PHONY:
+
+	test.integration
+
+.PHONY:
+
+	test.integration.verbose
