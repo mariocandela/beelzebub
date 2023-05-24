@@ -4,56 +4,60 @@ ifeq (${DOCKER_COMPOSE},)
 DOCKER_COMPOSE = docker compose
 endif
 
-beelzebub.start:
-	${DOCKER_COMPOSE} build;
-	${DOCKER_COMPOSE} up -d;
-
-beelzebub.stop:
-	${DOCKER_COMPOSE} down;
-
-test.unit:
-	go test ./...
-
-test.unit.verbose:
-	go test ./... -v
-
-test.dependencies.start:
-	${DOCKER_COMPOSE} -f ./integration_test/docker-compose.yml up -d
-
-test.dependencies.down:
-	${DOCKER_COMPOSE} -f ./integration_test/docker-compose.yml down
-
-test.integration:
-	INTEGRATION=1 go test ./...
-
-test.integration.verbose:
-	INTEGRATION=1 go test ./... -v
-
 # .PHONY : is an idiomatic way to differentiate commands from files in GNU Make
 .PHONY:
 	
 	beelzebub.start
 
+beelzebub.start:
+	${DOCKER_COMPOSE} build;
+	${DOCKER_COMPOSE} up -d;
+
 .PHONY:
 	
 	beelzebub.stop
+
+beelzebub.stop:
+	${DOCKER_COMPOSE} down;
 
 .PHONY:
 
 	test.unit
 
+test.unit:
+	go test ./...
+
+.PHONY:
+
+	test.unit.verbose
+
+test.unit.verbose:
+	go test ./... -v
+
 .PHONY:
 
 	test.dependencies.start
+
+test.dependencies.start:
+	${DOCKER_COMPOSE} -f ./integration_test/docker-compose.yml up -d
 
 .PHONY:
 
 	test.dependencies.down
 
+test.dependencies.down:
+	${DOCKER_COMPOSE} -f ./integration_test/docker-compose.yml down
+
 .PHONY:
 
 	test.integration
 
+test.integration:
+	INTEGRATION=1 go test ./...
+
 .PHONY:
 
 	test.integration.verbose
+
+test.integration.verbose:
+	INTEGRATION=1 go test ./... -v
