@@ -4,7 +4,6 @@ ifeq (${DOCKER_COMPOSE},)
 DOCKER_COMPOSE = docker compose
 endif
 
-# .PHONY : is an idiomatic way to differentiate commands from files in GNU Make
 .PHONY:
 	
 	beelzebub.start
