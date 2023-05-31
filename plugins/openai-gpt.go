@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/go-resty/resty/v2"
 )
 
 const ChatGPTPluginName = "OpenAIGPTLinuxTerminal"
@@ -104,7 +107,7 @@ func (openAIGPTVirtualTerminal *OpenAIGPTVirtualTerminal) GetCompletions(command
 	if err != nil {
 		return "", err
 	}
-
+	log.Debug(response)
 	if len(response.Result().(*gptResponse).Choices) == 0 {
 		return "", errors.New("no choices")
 	}

@@ -4,6 +4,7 @@ import (
 	"beelzebub/builder"
 	"beelzebub/parser"
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,14 +24,11 @@ func main() {
 	director := builder.NewDirector(beelzebubBuilder)
 
 	beelzebubBuilder, err = director.BuildBeelzebub(coreConfigurations, beelzebubServicesConfiguration)
-	if err != nil {
-		log.Fatal(err)
-	}
+	failOnError(err, fmt.Sprintf("Error during BuildBeelzebub: "))
 
-	if err := beelzebubBuilder.Run(); err != nil {
-		log.Fatal(err)
-		return
-	}
+	err = beelzebubBuilder.Run()
+	failOnError(err, fmt.Sprintf("Error during run beelzebub core: "))
+
 	defer beelzebubBuilder.Close()
 
 	<-quit

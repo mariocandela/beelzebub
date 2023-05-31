@@ -15,10 +15,10 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-type SecureShellStrategy struct {
+type SSHStrategy struct {
 }
 
-func (SSHStrategy *SecureShellStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
 	go func() {
 		server := &ssh.Server{
 			Addr:        beelzebubServiceConfiguration.Address,

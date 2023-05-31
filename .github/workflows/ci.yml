@@ -40,7 +40,7 @@ jobs:
         echo "Quality Gate: checking test coverage is above threshold ..."
         echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"
         # Excluded the concrete strategy from the coverage calculation, because tested by integration tests
-        cat coverage.tmp.out | grep -v "secureShellStrategy.go" | grep -v "hypertextTransferProtocolStrategy.go" | grep -v "transmissionControlProtocolStrategy.go" > coverage.out
+        cat coverage.tmp.out | grep -v "ssh.go" | grep -v "http.go" | grep -v "tcp.go" > coverage.out
         totalCoverage=`go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
         echo "Current test coverage : $totalCoverage %"
         if (( $(echo "$totalCoverage $TESTCOVERAGE_THRESHOLD" | awk '{print ($1 > $2)}') )); then
