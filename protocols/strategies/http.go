@@ -4,19 +4,20 @@ import (
 	"beelzebub/parser"
 	"beelzebub/tracer"
 	"fmt"
-	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
-type HypertextTransferProtocolStrategy struct {
+type HTTPStrategy struct {
 	beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration
 }
 
-func (httpStrategy HypertextTransferProtocolStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
 	httpStrategy.beelzebubServiceConfiguration = beelzebubServiceConfiguration
 	serverMux := http.NewServeMux()
 

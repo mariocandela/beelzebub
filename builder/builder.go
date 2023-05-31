@@ -97,9 +97,9 @@ func (b *Builder) Run() error {
 	}()
 
 	// Init Protocol strategies
-	secureShellStrategy := &strategies.SecureShellStrategy{}
-	hypertextTransferProtocolStrategy := &strategies.HypertextTransferProtocolStrategy{}
-	transmissionControlProtocolStrategy := &strategies.TransmissionControlProtocolStrategy{}
+	secureShellStrategy := &strategies.SSHStrategy{}
+	hypertextTransferProtocolStrategy := &strategies.HTTPStrategy{}
+	transmissionControlProtocolStrategy := &strategies.TCPStrategy{}
 
 	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
