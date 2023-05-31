@@ -3,6 +3,7 @@ package main
 import (
 	"beelzebub/builder"
 	"beelzebub/parser"
+	"flag"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
@@ -11,7 +12,14 @@ import (
 var quit = make(chan struct{})
 
 func main() {
-	parser := parser.Init("./configurations/beelzebub.yaml", "./configurations/services/")
+	var configurationsCorePath string
+	var configurationsServicesDirectory string
+
+	flag.StringVar(&configurationsCorePath, "confCore", "./configurations/beelzebub.yaml", "Provide the path of configurations core")
+	flag.StringVar(&configurationsServicesDirectory, "confServices", "./configurations/services/", "Directory config services")
+	flag.Parse()
+
+	parser := parser.Init(configurationsCorePath, configurationsServicesDirectory)
 
 	coreConfigurations, err := parser.ReadConfigurationsCore()
 	failOnError(err, fmt.Sprintf("Error during ReadConfigurationsCore: "))
