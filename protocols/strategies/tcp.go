@@ -4,16 +4,17 @@ import (
 	"beelzebub/parser"
 	"beelzebub/tracer"
 	"fmt"
-	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 	"net"
 	"time"
+
+	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
-type TransmissionControlProtocolStrategy struct {
+type TCPStrategy struct {
 }
 
-func (TCPStrategy *TransmissionControlProtocolStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
 	listen, err := net.Listen("tcp", beelzebubServiceConfiguration.Address)
 	if err != nil {
 		log.Errorf("Error during init TCP Protocol: %s", err.Error())
