@@ -134,10 +134,6 @@ func gelAllFilesNameByDirName(dirName string) ([]string, error) {
 	for _, file := range files {
 		if !file.IsDir() && strings.Contains(file.Name(), extension) {
 			filesName = append(filesName, file.Name())
-		} else {
-			log.WithFields(log.Fields{
-				"name": file.Name(),
-			}).Warning("Ignore file")
 		}
 	}
 	return filesName, nil
