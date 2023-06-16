@@ -124,15 +124,14 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 }
 
 func gelAllFilesNameByDirName(dirName string) ([]string, error) {
-	var filesName []string
-	const extension = ".yaml"
 	files, err := ioutil.ReadDir(dirName)
 	if err != nil {
 		return nil, err
 	}
 
+	var filesName []string
 	for _, file := range files {
-		if !file.IsDir() && strings.Contains(file.Name(), extension) {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".yaml") {
 			filesName = append(filesName, file.Name())
 		}
 	}
