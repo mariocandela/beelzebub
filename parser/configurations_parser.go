@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -124,13 +125,18 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 
 func gelAllFilesNameByDirName(dirName string) ([]string, error) {
 	var filesName []string
+	const extension = ".yaml"
 	files, err := ioutil.ReadDir(dirName)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, file := range files {
-		filesName = append(filesName, file.Name())
+		if !file.IsDir() && strings.Contains(file.Name(), extension) {
+			filesName = append(filesName, file.Name())
+		} else {
+			log.Debugf("Ignore ")
+		}
 	}
 	return filesName, nil
 }
