@@ -53,7 +53,6 @@ func (d *Director) rabbitMQTraceStrategy(event tracer.Event) {
 		"event":  event,
 	}).Info("New Event")
 
-	log.Debug("Push Event on queue")
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		log.Error(err.Error())
@@ -64,5 +63,10 @@ func (d *Director) rabbitMQTraceStrategy(event tracer.Event) {
 
 	if err = d.builder.rabbitMQChannel.PublishWithContext(context.TODO(), "", RabbitmqQueueName, false, false, publishing); err != nil {
 		log.Error(err.Error())
+	} else {
+		log.WithFields(log.Fields{
+			"status": event.Status,
+			"event":  event,
+		}).Debug("Event published")
 	}
 }
