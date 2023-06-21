@@ -4,16 +4,18 @@ import (
 	"beelzebub/builder"
 	"beelzebub/parser"
 	"flag"
-	"fmt"
 
 	log "github.com/sirupsen/logrus"
 )
 
-var quit = make(chan struct{})
-
 func main() {
-	var configurationsCorePath string
-	var configurationsServicesDirectory string
+	// removed unnecessary fmt.Sprintf call
+	// consolidated variables into a single declaration to reduce loc and keep DRY
+	var (
+		quit = make(chan struct{})
+		configurationsCorePath string
+		configurationsServicesDirectory string
+	) 
 
 	flag.StringVar(&configurationsCorePath, "confCore", "./configurations/beelzebub.yaml", "Provide the path of configurations core")
 	flag.StringVar(&configurationsServicesDirectory, "confServices", "./configurations/services/", "Directory config services")
@@ -22,20 +24,20 @@ func main() {
 	parser := parser.Init(configurationsCorePath, configurationsServicesDirectory)
 
 	coreConfigurations, err := parser.ReadConfigurationsCore()
-	failOnError(err, fmt.Sprintf("Error during ReadConfigurationsCore: "))
+	failOnError(err, "Error during ReadConfigurationsCore: ")
 
 	beelzebubServicesConfiguration, err := parser.ReadConfigurationsServices()
-	failOnError(err, fmt.Sprintf("Error during ReadConfigurationsServices: "))
+	failOnError(err, "Error during ReadConfigurationsServices: ")
 
 	beelzebubBuilder := builder.NewBuilder()
 
 	director := builder.NewDirector(beelzebubBuilder)
 
 	beelzebubBuilder, err = director.BuildBeelzebub(coreConfigurations, beelzebubServicesConfiguration)
-	failOnError(err, fmt.Sprintf("Error during BuildBeelzebub: "))
+	failOnError(err, "Error during BuildBeelzebub: ")
 
 	err = beelzebubBuilder.Run()
-	failOnError(err, fmt.Sprintf("Error during run beelzebub core: "))
+	failOnError(err, "Error during run beelzebub core: ")
 
 	defer beelzebubBuilder.Close()
 
