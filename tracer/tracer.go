@@ -109,7 +109,6 @@ func (tracer *tracer) TraceEvent(event Event) {
 	case SSH.String():
 		eventsSSHTotal.Inc()
 	case TCP.String():
-		// Removed redundant case breaks
 		eventsTCPTotal.Inc()
 	}
 }
