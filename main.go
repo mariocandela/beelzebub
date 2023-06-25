@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-	// removed unnecessary fmt.Sprintf call
 	var (
 		quit = make(chan struct{})
 		configurationsCorePath string
