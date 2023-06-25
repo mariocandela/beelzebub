@@ -10,7 +10,6 @@ import (
 
 func main() {
 	// removed unnecessary fmt.Sprintf call
-	// consolidated variables into a single declaration to reduce loc and keep DRY
 	var (
 		quit = make(chan struct{})
 		configurationsCorePath string
