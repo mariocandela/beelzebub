@@ -30,7 +30,10 @@ type Event struct {
 	Description     string
 }
 
-type Protocol int
+type (
+	Protocol int
+	Status int
+)
 
 const (
 	HTTP Protocol = iota
@@ -41,8 +44,6 @@ const (
 func (status Protocol) String() string {
 	return [...]string{"HTTP", "SSH", "TCP"}[status]
 }
-
-type Status int
 
 const (
 	Start Status = iota
@@ -105,12 +106,9 @@ func (tracer *tracer) TraceEvent(event Event) {
 	switch event.Protocol {
 	case HTTP.String():
 		eventsHTTPTotal.Inc()
-		break
 	case SSH.String():
 		eventsSSHTotal.Inc()
-		break
 	case TCP.String():
 		eventsTCPTotal.Inc()
-		break
 	}
 }
