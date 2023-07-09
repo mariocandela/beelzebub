@@ -65,8 +65,6 @@ type gptRequest struct {
 	Stop             []string `json:"stop"`
 }
 
-// Reference: https://www.engraved.blog/building-a-virtual-machine-inside/
-
 func buildPrompt(histories []History, command string) string {
 	var sb strings.Builder
 
