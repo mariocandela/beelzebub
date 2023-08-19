@@ -7,6 +7,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+const Workers = 5
+
 type Event struct {
 	DateTime        string
 	RemoteAddr      string
@@ -32,7 +34,7 @@ type Event struct {
 
 type (
 	Protocol int
-	Status int
+	Status   int
 )
 
 const (
@@ -63,7 +65,8 @@ type Tracer interface {
 }
 
 type tracer struct {
-	strategy Strategy
+	strategy   Strategy
+	eventsChan chan Event
 }
 
 var (
@@ -90,17 +93,27 @@ var (
 )
 
 func Init(strategy Strategy) *tracer {
-	return &tracer{
-		strategy: strategy,
+	tracer := &tracer{
+		strategy:   strategy,
+		eventsChan: make(chan Event),
 	}
+
+	for i := 0; i <= Workers; i++ {
+		go tracer.worker()
+	}
+
+	return tracer
+}
+
+func (tracer *tracer) SetStrategy(strategy Strategy) {
+	tracer.strategy = strategy
 }
 
 func (tracer *tracer) TraceEvent(event Event) {
 	event.DateTime = time.Now().UTC().Format(time.RFC3339)
 
-	tracer.strategy(event)
+	tracer.eventsChan <- event
 
-	//Openmetrics
 	eventsTotal.Inc()
 
 	switch event.Protocol {
@@ -110,5 +123,11 @@ func (tracer *tracer) TraceEvent(event Event) {
 		eventsSSHTotal.Inc()
 	case TCP.String():
 		eventsTCPTotal.Inc()
+	}
+}
+
+func (tracer *tracer) worker() {
+	for event := range tracer.eventsChan {
+		tracer.strategy(event)
 	}
 }
