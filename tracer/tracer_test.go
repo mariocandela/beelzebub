@@ -1,8 +1,11 @@
 package tracer
 
 import (
-	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInit(t *testing.T) {
@@ -15,23 +18,30 @@ func TestInit(t *testing.T) {
 
 func TestTraceEvent(t *testing.T) {
 	eventCalled := Event{}
+	var wg sync.WaitGroup
 
 	mockStrategy := func(event Event) {
+		defer wg.Done()
+
 		eventCalled = event
 	}
 
 	tracer := Init(mockStrategy)
 
+	time.Sleep(time.Second)
+
+	wg.Add(1)
 	tracer.TraceEvent(Event{
 		ID:       "mockID",
 		Protocol: HTTP.String(),
 		Status:   Stateless.String(),
 	})
+	wg.Wait()
 
 	assert.NotNil(t, eventCalled.ID)
-	assert.Equal(t, eventCalled.ID, "mockID")
-	assert.Equal(t, eventCalled.Protocol, HTTP.String())
-	assert.Equal(t, eventCalled.Status, Stateless.String())
+	assert.Equal(t, "mockID", eventCalled.ID)
+	assert.Equal(t, HTTP.String(), eventCalled.Protocol)
+	assert.Equal(t, Stateless.String(), eventCalled.Status)
 }
 
 func TestStringStatus(t *testing.T) {
