@@ -95,7 +95,7 @@ var (
 func Init(strategy Strategy) *tracer {
 	tracer := &tracer{
 		strategy:   strategy,
-		eventsChan: make(chan Event),
+		eventsChan: make(chan Event, Workers),
 	}
 
 	for i := 0; i <= Workers; i++ {
