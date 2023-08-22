@@ -5,6 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
 )
 
 const Workers = 5
@@ -98,8 +99,13 @@ func Init(strategy Strategy) *tracer {
 		eventsChan: make(chan Event, Workers),
 	}
 
-	for i := 0; i <= Workers; i++ {
-		go tracer.worker()
+	for i := 0; i < Workers; i++ {
+		go func(i int) {
+			log.Debug("Init trace worker: ", i)
+			for event := range tracer.eventsChan {
+				tracer.strategy(event)
+			}
+		}(i)
 	}
 
 	return tracer
@@ -123,11 +129,5 @@ func (tracer *tracer) TraceEvent(event Event) {
 		eventsSSHTotal.Inc()
 	case TCP.String():
 		eventsTCPTotal.Inc()
-	}
-}
-
-func (tracer *tracer) worker() {
-	for event := range tracer.eventsChan {
-		tracer.strategy(event)
 	}
 }
