@@ -29,9 +29,9 @@ func (d *Director) BuildBeelzebub(beelzebubCoreConfigurations *parser.BeelzebubC
 
 	d.builder.setTraceStrategy(d.standardOutStrategy)
 
-	if beelzebubCoreConfigurations.Core.Tracing.RabbitMQEnabled {
+	if beelzebubCoreConfigurations.Core.Tracings.RabbitMQ.Enabled {
 		d.builder.setTraceStrategy(d.rabbitMQTraceStrategy)
-		err := d.builder.buildRabbitMQ(beelzebubCoreConfigurations.Core.Tracing.RabbitMQURI)
+		err := d.builder.buildRabbitMQ(beelzebubCoreConfigurations.Core.Tracings.RabbitMQ.URI)
 		if err != nil {
 			return nil, err
 		}

@@ -14,7 +14,7 @@ import (
 type BeelzebubCoreConfigurations struct {
 	Core struct {
 		Logging    Logging    `yaml:"logging"`
-		Tracing    Tracing    `yaml:"tracing"`
+		Tracings   Tracings   `yaml:"tracings"`
 		Prometheus Prometheus `yaml:"prometheus"`
 	}
 }
@@ -26,9 +26,21 @@ type Logging struct {
 	LogsPath            string `yaml:"logsPath,omitempty"`
 }
 
-type Tracing struct {
-	RabbitMQEnabled bool   `yaml:"rabbitMQEnabled"`
-	RabbitMQURI     string `yaml:"rabbitMQURI"`
+type Tracings struct {
+	RabbitMQ `yaml:"rabbit-mq"`
+	WebHook  `yaml:"web-hook"`
+}
+
+type RabbitMQ struct {
+	Enabled bool   `yaml:"enabled"`
+	URI     string `yaml:"uri"`
+}
+
+type WebHook struct {
+	Enabled bool     `yaml:"enabled"`
+	URL     string   `yaml:"url"`
+	Method  string   `yaml:"method"`
+	Headers []string `yaml:"headers"`
 }
 
 type Prometheus struct {

@@ -4,9 +4,16 @@ core:
     debugReportCaller: false
     logDisableTimestamp: true
     logsPath: ./logs
-  tracing:
-    rabbitMQEnabled: true
-    rabbitMQURI: "amqp://integration:integration@localhost:5672/"
+  tracings:
+    rabbit-mq:
+      enabled: true
+      uri: "amqp://integration:integration@localhost:5672/"
+    web-hook:
+      enabled: false
+      method: "post"
+      url: "https://test.com"
+      headers:
+        - "Authorization: Bearer efewfref"
   prometheus:
     path: "/metrics"
     port: ":2112"

@@ -48,7 +48,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 
 	coreConfigurations, err := parser.ReadConfigurationsCore()
 	suite.Require().NoError(err)
-	suite.rabbitMQURI = coreConfigurations.Core.Tracing.RabbitMQURI
+	suite.rabbitMQURI = coreConfigurations.Core.Tracings.RabbitMQ.URI
 
 	beelzebubServicesConfiguration, err := parser.ReadConfigurationsServices()
 	suite.Require().NoError(err)
