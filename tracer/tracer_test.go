@@ -53,7 +53,7 @@ func TestSetStrategy(t *testing.T) {
 
 	tracer := Init(mockStrategy)
 
-	tracer.SetStrategy(mockStrategy)
+	tracer.setStrategy(mockStrategy)
 
 	wg.Add(1)
 	tracer.TraceEvent(Event{
