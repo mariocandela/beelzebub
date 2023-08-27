@@ -63,10 +63,11 @@ type Strategy func(event Event)
 
 type Tracer interface {
 	TraceEvent(event Event)
+	AddStrategy(strategy Strategy)
 }
 
 type tracer struct {
-	strategy   Strategy
+	strategies []Strategy
 	eventsChan chan Event
 }
 
@@ -95,15 +96,19 @@ var (
 
 func Init(strategy Strategy) *tracer {
 	tracer := &tracer{
-		strategy:   strategy,
+		strategies: make([]Strategy, 0, 20),
 		eventsChan: make(chan Event, Workers),
 	}
+
+	tracer.AddStrategy(strategy)
 
 	for i := 0; i < Workers; i++ {
 		go func(i int) {
 			log.Debug("Init trace worker: ", i)
 			for event := range tracer.eventsChan {
-				tracer.strategy(event)
+				for _, strategy := range tracer.strategies {
+					strategy(event)
+				}
 			}
 		}(i)
 	}
@@ -111,8 +116,8 @@ func Init(strategy Strategy) *tracer {
 	return tracer
 }
 
-func (tracer *tracer) SetStrategy(strategy Strategy) {
-	tracer.strategy = strategy
+func (tracer *tracer) AddStrategy(strategy Strategy) {
+	tracer.strategies = append(tracer.strategies, strategy)
 }
 
 func (tracer *tracer) TraceEvent(event Event) {
