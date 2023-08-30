@@ -9,27 +9,21 @@ RUN apk add git
 
 WORKDIR /build
 
-# Copy and download dependency using go mod
-COPY go.mod .
-COPY go.sum .
+# Download dependency
+COPY . .
 RUN go mod download
 
-# Copy the code into the container
-COPY . .
 
-# Build the application
+# Build
 RUN go build -o main .
 
-# Move to /dist directory as the place for resulting binary folder
 WORKDIR /dist
 
-# Copy binary from build to main folder
 RUN cp /build/main .
 
-# Build a small image
+# Use scratch image as finally tiny container 
 FROM scratch
 
-# copy the ca-certificate.crt from the builder stage
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /dist/main /
 

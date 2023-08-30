@@ -4,17 +4,13 @@
 
 ## Overview
 
-Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and utilizes virtualization techniques powered by GPT-3, the OpenAI language model.
+Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and utilizes virtualization techniques powered by OpenAI Generative Pre-trained Transformer.
 
 ![Beelzebub Logo](https://i.postimg.cc/KvbsJFp3/logo-1.png)
 
 ## OpenAI GPT Integration
 
 Learn how to integrate Beelzebub with OpenAI GPT-3 by referring to our comprehensive guide on Medium: [Medium Article](https://medium.com/@mario.candela.personal/how-to-build-a-highly-effective-honeypot-with-beelzebub-and-chatgpt-a2f0f05b3e1)
-
-For a visual representation of the integration, you can explore the following diagram:
-
-[![OpenAI Integration Diagram](https://static.swimlanes.io/24d6634a381aa8eb0decf5bac7ae214d.png)](https://static.swimlanes.io/24d6634a381aa8eb0decf5bac7ae214d.png)
 
 ## Telegram Bot for Real-Time Attacks
 
@@ -243,7 +239,7 @@ passwordRegex: "^(root|qwerty|Smoker666)$"
 deadlineTimeoutSeconds: 60
 ```
 
-![Screenshot](https://i.postimg.cc/jdpfT0LB/Schermata-2022-06-02-alle-12-46-50.png)
+[![asciicast](https://asciinema.org/a/604522.svg)](https://asciinema.org/a/604522)
 
 ## Roadmap
 
@@ -257,6 +253,6 @@ Happy hacking!
 
 ## License
 
-Beelzebub is licensed under the [GNU GPL 3 License](LICENSE).
+Beelzebub is licensed under the [MIT License](LICENSE).
 
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?business=P75FH5LXKQTAC&no_recurring=0&currency_code=EUR)

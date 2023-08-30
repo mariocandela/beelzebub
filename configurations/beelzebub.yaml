@@ -4,9 +4,10 @@ core:
     debugReportCaller: false
     logDisableTimestamp: true
     logsPath: ./logs
-  tracing:
-    rabbitMQEnabled: false
-    rabbitMQURI: ""
+  tracings:
+    rabbit-mq:
+      enabled: false
+      uri: ""
   prometheus:
     path: "/metrics"
     port: ":2112"

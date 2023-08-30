@@ -2,8 +2,9 @@ package parser
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func mockReadfilebytesConfigurationsCore(filePath string) ([]byte, error) {
@@ -14,9 +15,10 @@ core:
     debugReportCaller: false
     logDisableTimestamp: true
     logsPath: ./logs
-  tracing:
-    rabbitMQEnabled: true
-    rabbitMQURI: provaMock`)
+  tracings:
+    rabbit-mq:
+      enabled: true
+      uri: "amqp://user:password@localhost/"`)
 	return configurationsCoreBytes, nil
 }
 
@@ -80,8 +82,8 @@ func TestReadConfigurationsCoreValid(t *testing.T) {
 	assert.Equal(t, coreConfigurations.Core.Logging.LogDisableTimestamp, true)
 	assert.Equal(t, coreConfigurations.Core.Logging.DebugReportCaller, false)
 	assert.Equal(t, coreConfigurations.Core.Logging.LogsPath, "./logs")
-	assert.Equal(t, coreConfigurations.Core.Tracing.RabbitMQEnabled, true)
-	assert.Equal(t, coreConfigurations.Core.Tracing.RabbitMQURI, "provaMock")
+	assert.Equal(t, coreConfigurations.Core.Tracings.RabbitMQ.Enabled, true)
+	assert.Equal(t, coreConfigurations.Core.Tracings.RabbitMQ.URI, "amqp://user:password@localhost/")
 }
 
 func TestReadConfigurationsServicesFail(t *testing.T) {
