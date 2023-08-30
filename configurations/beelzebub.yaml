@@ -8,12 +8,6 @@ core:
     rabbit-mq:
       enabled: false
       uri: ""
-    web-hook:
-      enabled: false
-      method: "post"
-      url: "https://test.com"
-      headers:
-        - "Authorization: Bearer efewfref"
   prometheus:
     path: "/metrics"
     port: ":2112"

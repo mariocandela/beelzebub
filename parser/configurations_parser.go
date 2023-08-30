@@ -28,21 +28,12 @@ type Logging struct {
 
 type Tracings struct {
 	RabbitMQ `yaml:"rabbit-mq"`
-	WebHook  `yaml:"web-hook"`
 }
 
 type RabbitMQ struct {
 	Enabled bool   `yaml:"enabled"`
 	URI     string `yaml:"uri"`
 }
-
-type WebHook struct {
-	Enabled bool     `yaml:"enabled"`
-	URL     string   `yaml:"url"`
-	Method  string   `yaml:"method"`
-	Headers []string `yaml:"headers"`
-}
-
 type Prometheus struct {
 	Path string `yaml:"path"`
 	Port string `yaml:"port"`

@@ -8,12 +8,6 @@ core:
     rabbit-mq:
       enabled: true
       uri: "amqp://integration:integration@localhost:5672/"
-    web-hook:
-      enabled: false
-      method: "post"
-      url: "https://test.com"
-      headers:
-        - "Authorization: Bearer efewfref"
   prometheus:
     path: "/metrics"
     port: ":2112"
