@@ -4,7 +4,7 @@
 
 ## Overview
 
-Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and utilizes virtualization techniques powered by AI Large language model.
+Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and utilizes virtualization techniques powered by OpenAI Generative Pre-trained Transformer.
 
 ![Beelzebub Logo](https://i.postimg.cc/KvbsJFp3/logo-1.png)
 
@@ -239,6 +239,8 @@ passwordRegex: "^(root|qwerty|Smoker666)$"
 deadlineTimeoutSeconds: 60
 ```
 
+[![asciicast](https://asciinema.org/a/604522.svg)](https://asciinema.org/a/604522)
+
 ## Roadmap
 
 Our future plans for Beelzebub include developing it into a robust PaaS platform.
@@ -251,6 +253,6 @@ Happy hacking!
 
 ## License
 
-Beelzebub is licensed under the [GNU GPL 3 License](LICENSE).
+Beelzebub is licensed under the [MIT License](LICENSE).
 
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?business=P75FH5LXKQTAC&no_recurring=0&currency_code=EUR)
