@@ -6,7 +6,7 @@ type: application
 version: 0.1.0
 appVersion: "v3.0.0"
 
-maintainers: # (optional)
+maintainers:
   - name: mariocandela
     email: mario.candela.personal@gmail.com
     url: https://github.com/mariocandela

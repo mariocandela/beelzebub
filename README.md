@@ -58,6 +58,17 @@ We provide two quick start options for build and run Beelzebub: using Docker Com
    $ ./beelzebub
    ```
 
+### Deploy on kubernetes cluster
+
+1. Install helm
+
+2 Deploy beelzebub:
+
+   ```bash
+   $ helm install beelzebub ./beelzebub-chart
+   ```
+
+
 ## Testing
 
 We provide two types of tests: unit tests and integration tests.
