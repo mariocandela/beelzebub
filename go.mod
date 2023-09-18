@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/gliderlabs/ssh v0.3.5
-	github.com/go-resty/resty/v2 v2.7.0
+	github.com/go-resty/resty/v2 v2.8.0
 	github.com/google/uuid v1.3.1
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/melbahja/goph v1.3.1
@@ -31,7 +31,7 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
