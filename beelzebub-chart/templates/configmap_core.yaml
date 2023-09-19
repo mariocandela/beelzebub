@@ -1,23 +1,22 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: "beelzebub-configmap"
+  name: "beelzebub-configuration"
   labels:
     {{- include "beelzebub-chart.labels" . | nindent 4 }}
 data:
   beelzebub.yaml: |
     core:
-    logging:
+      logging:
         debug: false
         debugReportCaller: false
         logDisableTimestamp: true
         logsPath: ./logs
-    tracings:
+      tracings:
         rabbit-mq:
-        enabled: false
-        uri: ""
-    prometheus:
+          enabled: false
+          uri: ""
+      prometheus:
         path: "/metrics"
         port: ":2112"
-
  

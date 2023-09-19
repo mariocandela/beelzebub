@@ -33,28 +33,36 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           volumeMounts:
-            - name: config-volume
+            - name: config-core-volume
               mountPath: /configurations/beelzebub.yaml
               subPath: beelzebub.yaml
+              readOnly: true
+            - name: config-services-volume
+              mountPath: /configurations/services/http-80.yaml
+              subPath: http-80.yaml
+              readOnly: true
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
+          # livenessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
-        - name: config-volume
+        - name: config-core-volume
           configMap:
-            name: beelzebub-configmap
+            name: beelzebub-configuration
+        - name: config-services-volume
+          configMap:
+            name: beelzebub-services
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
