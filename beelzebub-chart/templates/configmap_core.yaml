@@ -5,18 +5,5 @@ metadata:
   labels:
     {{- include "beelzebub-chart.labels" . | nindent 4 }}
 data:
-  beelzebub.yaml: |
-    core:
-      logging:
-        debug: false
-        debugReportCaller: false
-        logDisableTimestamp: true
-        logsPath: ./logs
-      tracings:
-        rabbit-mq:
-          enabled: false
-          uri: ""
-      prometheus:
-        path: "/metrics"
-        port: ":2112"
- 
+  beelzebub.yaml:
+    {{- toYaml .Values.beelzebubCoreConfigs | nindent 12 }}
