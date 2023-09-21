@@ -38,8 +38,8 @@ spec:
               subPath: beelzebub.yaml
               readOnly: true
             - name: config-services-volume
-              mountPath: /configurations/services/http-80.yaml
-              subPath: http-80.yaml
+              mountPath: /configurations/services/service.yaml
+              subPath: service.yaml
               readOnly: true
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
