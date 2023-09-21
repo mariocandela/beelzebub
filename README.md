@@ -58,17 +58,21 @@ We provide two quick start options for build and run Beelzebub: using Docker Com
    $ ./beelzebub
    ```
 
-### Deploy on kubernetes cluster
+### Deploy on kubernetes cluster using helm
 
 1. Install helm
 
-2 Deploy beelzebub:
+2. Deploy beelzebub:
 
    ```bash
    $ helm install beelzebub ./beelzebub-chart
    ```
 
+3. Next release
 
+   ```bash
+   $ helm upgrade beelzebub ./beelzebub-chart
+   ```
 ## Testing
 
 We provide two types of tests: unit tests and integration tests.
@@ -93,13 +97,14 @@ $ make test.integration
 
 Beelzebub offers a wide range of features to enhance your honeypot environment:
 
-- OpenAPI ChatBot GPT-3 Linux virtualization
+- OpenAI Generative Pre-trained Transformer act as Linux virtualization
 - SSH Honeypot
 - HTTP Honeypot
 - TCP Honeypot
 - Prometheus openmetrics integration
 - Docker integration
 - RabbitMQ integration
+- kubernetes
 
 ## Example Configuration
 
