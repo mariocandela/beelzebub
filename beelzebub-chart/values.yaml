@@ -1,0 +1,96 @@
+# Default values for beelzebub-chart.
+replicaCount: 1
+
+image:
+  repository: m4r10/beelzebub
+  pullPolicy: IfNotPresent
+  tag: v3.0.0
+
+
+beelzebubCoreConfigs: |
+    core:
+      logging:
+        debug: false
+        debugReportCaller: false
+        logDisableTimestamp: true
+        logsPath: ./logs
+      tracings:
+        rabbit-mq:
+          enabled: false
+          uri: ""
+      prometheus:
+        path: "/metrics"
+        port: ":2112"
+
+beelsebubServiceConfigs: | 
+  apiVersion: "v1"
+  protocol: "ssh"
+  address: ":2222"
+  description: "SSH interactive"
+  commands:
+    - regex: "^ls$"
+      handler: "Documents Images  Desktop Downloads .m2 .kube .ssh  .docker"
+    - regex: "^pwd$"
+      handler: "/home/"
+    - regex: "^uname -m$"
+      handler: "x86_64"
+    - regex: "^docker ps$"
+      handler: "CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES"
+    - regex: "^docker .*$"
+      handler: "Error response from daemon: dial unix docker.raw.sock: connect: connection refused"
+    - regex: "^uname$"
+      handler: "Linux"
+    - regex: "^ps$"
+      handler: "  PID TTY           TIME CMD\n21642 ttys000    0:00.07 /bin/dockerd"
+    - regex: "^(.+)$"
+      handler: "command not found"
+  serverVersion: "OpenSSH"
+  serverName: "ubuntu"
+  passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
+  deadlineTimeoutSeconds: 60
+
+# Port and address(beelsebubServiceConfigs) must equals.
+service:
+  type: ClusterIP
+  port: 2222
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "beelzebub-service-account"
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

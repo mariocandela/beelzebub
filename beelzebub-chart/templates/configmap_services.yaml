@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "beelzebub-services"
+  labels:
+    {{- include "beelzebub-chart.labels" . | nindent 4 }}
+data:
+  service.yaml:
+    {{- toYaml .Values.beelsebubServiceConfigs | nindent 12 }}
