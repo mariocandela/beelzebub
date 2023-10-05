@@ -1,9 +1,9 @@
 package protocols
 
 import (
-	"beelzebub/parser"
-	"beelzebub/tracer"
 	"errors"
+	"github.com/mariocandela/beelzebub/parser"
+	"github.com/mariocandela/beelzebub/tracer"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
