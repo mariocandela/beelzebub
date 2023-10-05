@@ -1,10 +1,10 @@
 package builder
 
 import (
-	"beelzebub/parser"
-	"beelzebub/tracer"
 	"context"
 	"encoding/json"
+	"github.com/mariocandela/beelzebub/parser"
+	"github.com/mariocandela/beelzebub/tracer"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"

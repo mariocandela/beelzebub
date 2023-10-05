@@ -1,12 +1,12 @@
 package builder
 
 import (
-	"beelzebub/parser"
-	"beelzebub/protocols"
-	"beelzebub/protocols/strategies"
-	"beelzebub/tracer"
 	"errors"
 	"fmt"
+	"github.com/mariocandela/beelzebub/parser"
+	"github.com/mariocandela/beelzebub/protocols"
+	"github.com/mariocandela/beelzebub/protocols/strategies"
+	"github.com/mariocandela/beelzebub/tracer"
 	"io"
 	"net/http"
 	"os"

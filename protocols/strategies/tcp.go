@@ -1,9 +1,9 @@
 package strategies
 
 import (
-	"beelzebub/parser"
-	"beelzebub/tracer"
 	"fmt"
+	"github.com/mariocandela/beelzebub/parser"
+	"github.com/mariocandela/beelzebub/tracer"
 	"net"
 	"time"
 

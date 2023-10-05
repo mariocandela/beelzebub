@@ -1,8 +1,8 @@
 package protocols
 
 import (
-	"beelzebub/parser"
-	"beelzebub/tracer"
+	"github.com/mariocandela/beelzebub/parser"
+	"github.com/mariocandela/beelzebub/tracer"
 )
 
 type ServiceStrategy interface {

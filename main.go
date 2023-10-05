@@ -1,19 +1,19 @@
 package main
 
 import (
-	"beelzebub/builder"
-	"beelzebub/parser"
 	"flag"
+	"github.com/mariocandela/beelzebub/builder"
+	"github.com/mariocandela/beelzebub/parser"
 
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	var (
-		quit = make(chan struct{})
-		configurationsCorePath string
+		quit                            = make(chan struct{})
+		configurationsCorePath          string
 		configurationsServicesDirectory string
-	) 
+	)
 
 	flag.StringVar(&configurationsCorePath, "confCore", "./configurations/beelzebub.yaml", "Provide the path of configurations core")
 	flag.StringVar(&configurationsServicesDirectory, "confServices", "./configurations/services/", "Directory config services")

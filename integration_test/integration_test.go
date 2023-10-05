@@ -1,10 +1,10 @@
 package integration
 
 import (
-	"beelzebub/builder"
-	"beelzebub/parser"
-	"beelzebub/tracer"
 	"encoding/json"
+	"github.com/mariocandela/beelzebub/builder"
+	"github.com/mariocandela/beelzebub/parser"
+	"github.com/mariocandela/beelzebub/tracer"
 	"net"
 	"net/http"
 	"os"
