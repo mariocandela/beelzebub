@@ -93,6 +93,7 @@ func (m mockCounter) Inc() {
 }
 
 func (m mockCounter) Add(f float64) {
+	counter = int(f)
 }
 
 func TestUpdatePrometheusCounters(t *testing.T) {

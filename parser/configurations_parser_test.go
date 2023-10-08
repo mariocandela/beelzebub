@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -117,4 +118,32 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Handler, "login")
 	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands[0].Headers), 1)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Headers[0], "Content-Type: text/html")
+}
+
+func TestGelAllFilesNameByDirName(t *testing.T) {
+
+	var dir = t.TempDir()
+
+	files, err := gelAllFilesNameByDirName(dir)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(files))
+}
+
+func TestGelAllFilesNameByDirNameFiles(t *testing.T) {
+
+	var dir = t.TempDir()
+
+	testFiles := []string{"file1.yaml", "file2.yaml", "file3.txt", "subdir", "file4.yaml"}
+	for _, filename := range testFiles {
+		filePath := dir + "/" + filename
+		file, err := os.Create(filePath)
+		assert.NoError(t, err)
+		file.Close()
+	}
+
+	files, err := gelAllFilesNameByDirName(dir)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(files))
 }
