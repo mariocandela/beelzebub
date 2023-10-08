@@ -1,6 +1,7 @@
 # Beelzebub
 
 [![CI](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg)](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml) [![Docker](https://github.com/mariocandela/beelzebub/actions/workflows/docker-image.yml/badge.svg)](https://github.com/mariocandela/beelzebub/actions/workflows/docker-image.yml) [![codeql](https://github.com/mariocandela/beelzebub/actions/workflows/codeql.yml/badge.svg)](https://github.com/mariocandela/beelzebub/actions/workflows/codeql.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mariocandela/beelzebub)](https://goreportcard.com/report/github.com/mariocandela/beelzebub)
 
 ## Overview
 
