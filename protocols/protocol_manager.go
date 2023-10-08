@@ -16,7 +16,7 @@ type ProtocolManager struct {
 
 func InitProtocolManager(tracerStrategy tracer.Strategy, strategy ServiceStrategy) *ProtocolManager {
 	return &ProtocolManager{
-		tracer:   tracer.Init(tracerStrategy),
+		tracer:   tracer.GetInstance(tracerStrategy),
 		strategy: strategy,
 	}
 }

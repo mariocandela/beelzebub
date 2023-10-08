@@ -46,7 +46,15 @@ func TestBuildPromptWithHistory(t *testing.T) {
 		prompt)
 }
 
-func TestBuildGetCompletions(t *testing.T) {
+func TestBuildGetCompletionsFailValidation(t *testing.T) {
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "")
+
+	_, err := openAIGPTVirtualTerminal.GetCompletions("test")
+
+	assert.Equal(t, "openAIKey is empty", err.Error())
+}
+
+func TestBuildGetCompletionsWithResults(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
@@ -68,10 +76,8 @@ func TestBuildGetCompletions(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := OpenAIGPTVirtualTerminal{
-		OpenAPIChatGPTSecretKey: "sdjdnklfjndslkjanfk",
-		client:                  client,
-	}
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk")
+	openAIGPTVirtualTerminal.client = client
 
 	//When
 	str, err := openAIGPTVirtualTerminal.GetCompletions("ls")
@@ -79,4 +85,32 @@ func TestBuildGetCompletions(t *testing.T) {
 	//Then
 	assert.Nil(t, err)
 	assert.Equal(t, "prova.txt", str)
+}
+
+func TestBuildGetCompletionsWithoutResults(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	// Given
+	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
+				Choices: []Choice{},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk")
+	openAIGPTVirtualTerminal.client = client
+
+	//When
+	_, err := openAIGPTVirtualTerminal.GetCompletions("ls")
+
+	//Then
+	assert.Equal(t, "no choices", err.Error())
 }

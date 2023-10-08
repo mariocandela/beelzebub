@@ -91,7 +91,9 @@ $ make test.unit
 To run integration tests:
 
 ```bash
+$ make test.dependencies.start
 $ make test.integration
+$ make test.dependencies.down
 ```
 
 ## Key Features

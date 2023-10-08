@@ -5,33 +5,27 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	
+
 	log "github.com/sirupsen/logrus"
-	
+
 	"github.com/go-resty/resty/v2"
 )
 
 const (
 	// Reference: https://www.engraved.blog/building-a-virtual-machine-inside/
 	promptVirtualizeLinuxTerminal = "I want you to act as a Linux terminal. I will type commands and you will reply with what the terminal should show. I want you to only reply with the terminal output inside one unique code block, and nothing else. Do no write explanations. Do not type commands unless I instruct you to do so.\n\nA:pwd\n\nQ:/home/user\n\n"
-	ChatGPTPluginName = "OpenAIGPTLinuxTerminal"
-	openAIGPTEndpoint = "https://api.openai.com/v1/completions"
-) 
+	ChatGPTPluginName             = "OpenAIGPTLinuxTerminal"
+	openAIGPTEndpoint             = "https://api.openai.com/v1/completions"
+)
 
 type History struct {
 	Input, Output string
 }
-	
-type OpenAIGPTVirtualTerminal struct {
-	Histories               []History
-	OpenAPIChatGPTSecretKey string
-	client                  *resty.Client
-}
 
-func (openAIGPTVirtualTerminal *OpenAIGPTVirtualTerminal) InjectDependency() {
-	if openAIGPTVirtualTerminal.client == nil {
-		openAIGPTVirtualTerminal.client = resty.New()
-	}
+type openAIGPTVirtualTerminal struct {
+	Histories []History
+	openAIKey string
+	client    *resty.Client
 }
 
 type Choice struct {
@@ -65,6 +59,14 @@ type gptRequest struct {
 	Stop             []string `json:"stop"`
 }
 
+func Init(history []History, openAIKey string) *openAIGPTVirtualTerminal {
+	return &openAIGPTVirtualTerminal{
+		Histories: history,
+		openAIKey: openAIKey,
+		client:    resty.New(),
+	}
+}
+
 func buildPrompt(histories []History, command string) string {
 	var sb strings.Builder
 
@@ -79,7 +81,7 @@ func buildPrompt(histories []History, command string) string {
 	return sb.String()
 }
 
-func (openAIGPTVirtualTerminal *OpenAIGPTVirtualTerminal) GetCompletions(command string) (string, error) {
+func (openAIGPTVirtualTerminal *openAIGPTVirtualTerminal) GetCompletions(command string) (string, error) {
 	requestJson, err := json.Marshal(gptRequest{
 		Model:            "text-davinci-003",
 		Prompt:           buildPrompt(openAIGPTVirtualTerminal.Histories, command),
@@ -94,14 +96,14 @@ func (openAIGPTVirtualTerminal *OpenAIGPTVirtualTerminal) GetCompletions(command
 		return "", err
 	}
 
-	if openAIGPTVirtualTerminal.OpenAPIChatGPTSecretKey == "" {
-		return "", errors.New("OpenAPIChatGPTSecretKey is empty")
+	if openAIGPTVirtualTerminal.openAIKey == "" {
+		return "", errors.New("openAIKey is empty")
 	}
 
 	response, err := openAIGPTVirtualTerminal.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(requestJson).
-		SetAuthToken(openAIGPTVirtualTerminal.OpenAPIChatGPTSecretKey).
+		SetAuthToken(openAIGPTVirtualTerminal.openAIKey).
 		SetResult(&gptResponse{}).
 		Post(openAIGPTEndpoint)
 
