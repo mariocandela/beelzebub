@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,7 +126,7 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 }
 
 func gelAllFilesNameByDirName(dirName string) ([]string, error) {
-	files, err := ioutil.ReadDir(dirName)
+	files, err := os.ReadDir(dirName)
 	if err != nil {
 		return nil, err
 	}

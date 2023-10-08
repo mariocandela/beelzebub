@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml/badge.svg)](https://github.com/mariocandela/beelzebub/actions/workflows/ci.yml) [![Docker](https://github.com/mariocandela/beelzebub/actions/workflows/docker-image.yml/badge.svg)](https://github.com/mariocandela/beelzebub/actions/workflows/docker-image.yml) [![codeql](https://github.com/mariocandela/beelzebub/actions/workflows/codeql.yml/badge.svg)](https://github.com/mariocandela/beelzebub/actions/workflows/codeql.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mariocandela/beelzebub)](https://goreportcard.com/report/github.com/mariocandela/beelzebub)
+[![codecov](https://codecov.io/gh/mariocandela/beelzebub/graph/badge.svg?token=8XTK7D4WHE)](https://codecov.io/gh/mariocandela/beelzebub)
 
 ## Overview
 
@@ -91,7 +92,9 @@ $ make test.unit
 To run integration tests:
 
 ```bash
+$ make test.dependencies.start
 $ make test.integration
+$ make test.dependencies.down
 ```
 
 ## Key Features

@@ -1,11 +1,12 @@
 package tracer
 
 import (
+	log "github.com/sirupsen/logrus"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	log "github.com/sirupsen/logrus"
 )
 
 const Workers = 5
@@ -44,8 +45,8 @@ const (
 	TCP
 )
 
-func (status Protocol) String() string {
-	return [...]string{"HTTP", "SSH", "TCP"}[status]
+func (protocol Protocol) String() string {
+	return [...]string{"HTTP", "SSH", "TCP"}[protocol]
 }
 
 const (
@@ -66,49 +67,60 @@ type Tracer interface {
 }
 
 type tracer struct {
-	strategy   Strategy
-	eventsChan chan Event
+	strategy        Strategy
+	eventsChan      chan Event
+	eventsTotal     prometheus.Counter
+	eventsSSHTotal  prometheus.Counter
+	eventsTCPTotal  prometheus.Counter
+	eventsHTTPTotal prometheus.Counter
 }
 
-var (
-	eventsTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "beelzebub",
-		Name:      "events_total",
-		Help:      "The total number of events",
-	})
-	eventsSSHTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "beelzebub",
-		Name:      "ssh_events_total",
-		Help:      "The total number of SSH events",
-	})
-	eventsTCPTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "beelzebub",
-		Name:      "tcp_events_total",
-		Help:      "The total number of TCP events",
-	})
-	eventsHTTPTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "beelzebub",
-		Name:      "http_events_total",
-		Help:      "The total number of HTTP events",
-	})
-)
+var lock = &sync.Mutex{}
+var singleton *tracer
 
-func Init(strategy Strategy) *tracer {
-	tracer := &tracer{
-		strategy:   strategy,
-		eventsChan: make(chan Event, Workers),
-	}
-
-	for i := 0; i < Workers; i++ {
-		go func(i int) {
-			log.Debug("Init trace worker: ", i)
-			for event := range tracer.eventsChan {
-				tracer.strategy(event)
+func GetInstance(strategy Strategy) *tracer {
+	if singleton == nil {
+		lock.Lock()
+		defer lock.Unlock()
+		// This is to prevent expensive lock operations every time the GetInstance method is called
+		if singleton == nil {
+			singleton = &tracer{
+				strategy:   strategy,
+				eventsChan: make(chan Event, Workers),
+				eventsTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "events_total",
+					Help:      "The total number of events",
+				}),
+				eventsSSHTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "ssh_events_total",
+					Help:      "The total number of SSH events",
+				}),
+				eventsTCPTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "tcp_events_total",
+					Help:      "The total number of TCP events",
+				}),
+				eventsHTTPTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "http_events_total",
+					Help:      "The total number of HTTP events",
+				}),
 			}
-		}(i)
+
+			for i := 0; i < Workers; i++ {
+				go func(i int) {
+					log.Debug("GetInstance trace worker: ", i)
+					for event := range singleton.eventsChan {
+						singleton.strategy(event)
+					}
+				}(i)
+			}
+		}
 	}
 
-	return tracer
+	return singleton
 }
 
 func (tracer *tracer) setStrategy(strategy Strategy) {
@@ -120,14 +132,17 @@ func (tracer *tracer) TraceEvent(event Event) {
 
 	tracer.eventsChan <- event
 
-	eventsTotal.Inc()
+	tracer.updatePrometheusCounters(event.Protocol)
+}
 
-	switch event.Protocol {
+func (tracer *tracer) updatePrometheusCounters(protocol string) {
+	switch protocol {
 	case HTTP.String():
-		eventsHTTPTotal.Inc()
+		tracer.eventsHTTPTotal.Inc()
 	case SSH.String():
-		eventsSSHTotal.Inc()
+		tracer.eventsSSHTotal.Inc()
 	case TCP.String():
-		eventsTCPTotal.Inc()
+		tracer.eventsTCPTotal.Inc()
 	}
+	tracer.eventsTotal.Inc()
 }
