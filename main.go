@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/mariocandela/beelzebub/builder"
-	"github.com/mariocandela/beelzebub/parser"
+	"github.com/mariocandela/beelzebub/v3/builder"
+	"github.com/mariocandela/beelzebub/v3/parser"
 
 	log "github.com/sirupsen/logrus"
 )

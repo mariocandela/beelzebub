@@ -2,10 +2,11 @@ package strategies
 
 import (
 	"fmt"
-	"github.com/mariocandela/beelzebub/parser"
-	"github.com/mariocandela/beelzebub/plugins"
-	"github.com/mariocandela/beelzebub/tracer"
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/plugins"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 	"regexp"
+
 	"strings"
 	"time"
 

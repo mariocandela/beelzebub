@@ -3,8 +3,8 @@ package builder
 import (
 	"context"
 	"encoding/json"
-	"github.com/mariocandela/beelzebub/parser"
-	"github.com/mariocandela/beelzebub/tracer"
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"

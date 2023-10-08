@@ -1,4 +1,4 @@
-module github.com/mariocandela/beelzebub
+module github.com/mariocandela/beelzebub/v3
 
 go 1.20
 
