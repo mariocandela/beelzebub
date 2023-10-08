@@ -147,3 +147,26 @@ func TestGelAllFilesNameByDirNameFiles(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(files))
 }
+
+func TestGelAllFilesNameByDirNameError(t *testing.T) {
+
+	files, err := gelAllFilesNameByDirName("nosuchfile")
+
+	assert.Nil(t, files)
+	assert.Equal(t, "open nosuchfile: no such file or directory", err.Error())
+}
+
+func TestReadFileBytesByFilePath(t *testing.T) {
+
+	var dir = t.TempDir()
+	filePath := dir + "/test.yaml"
+
+	f, err := os.Create(filePath)
+	assert.NoError(t, err)
+	f.Close()
+
+	bytes, err := readFileBytesByFilePath(filePath)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "", string(bytes))
+}
