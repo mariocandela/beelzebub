@@ -1,3 +1,4 @@
+// Package parser is responsible for parsing the configurations of the core and honeypot service
 package parser
 
 import (
@@ -10,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// BeelzebubCoreConfigurations is the struct that contains the configurations of the core
 type BeelzebubCoreConfigurations struct {
 	Core struct {
 		Logging    Logging    `yaml:"logging"`
@@ -18,6 +20,7 @@ type BeelzebubCoreConfigurations struct {
 	}
 }
 
+// Logging is the struct that contains the configurations of the logging
 type Logging struct {
 	Debug               bool   `yaml:"debug"`
 	DebugReportCaller   bool   `yaml:"debugReportCaller"`
@@ -25,6 +28,7 @@ type Logging struct {
 	LogsPath            string `yaml:"logsPath,omitempty"`
 }
 
+// Tracings is the struct that contains the configurations of the tracings
 type Tracings struct {
 	RabbitMQ `yaml:"rabbit-mq"`
 }
@@ -42,6 +46,7 @@ type Plugin struct {
 	OpenAPIChatGPTSecretKey string `yaml:"openAPIChatGPTSecretKey"`
 }
 
+// BeelzebubServiceConfiguration is the struct that contains the configurations of the honeypot service
 type BeelzebubServiceConfiguration struct {
 	ApiVersion             string    `yaml:"apiVersion"`
 	Protocol               string    `yaml:"protocol"`
@@ -56,6 +61,7 @@ type BeelzebubServiceConfiguration struct {
 	Plugin                 Plugin    `yaml:"plugin"`
 }
 
+// Command is the struct that contains the configurations of the commands
 type Command struct {
 	Regex      string   `yaml:"regex"`
 	Handler    string   `yaml:"handler"`
@@ -85,6 +91,7 @@ func Init(configurationsCorePath, configurationsServicesDirectory string) *confi
 	}
 }
 
+// ReadConfigurationsCore is the method that reads the configurations of the core from files
 func (bp configurationsParser) ReadConfigurationsCore() (*BeelzebubCoreConfigurations, error) {
 	buf, err := bp.readFileBytesByFilePathDependency(bp.configurationsCorePath)
 	if err != nil {
@@ -100,6 +107,7 @@ func (bp configurationsParser) ReadConfigurationsCore() (*BeelzebubCoreConfigura
 	return beelzebubConfiguration, nil
 }
 
+// ReadConfigurationsServices is the method that reads the configurations of the honeypot services from files
 func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceConfiguration, error) {
 	services, err := bp.gelAllFilesNameByDirNameDependency(bp.configurationsServicesDirectory)
 	if err != nil {
