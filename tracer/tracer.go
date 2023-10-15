@@ -1,3 +1,4 @@
+// Package tracer is responsible for tracing the events that occur in the honeypots
 package tracer
 
 import (
@@ -9,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// Workers is the number of workers that will
 const Workers = 5
 
 type Event struct {
@@ -78,14 +80,14 @@ type tracer struct {
 var lock = &sync.Mutex{}
 var singleton *tracer
 
-func GetInstance(strategy Strategy) *tracer {
+func GetInstance(defaultStrategy Strategy) *tracer {
 	if singleton == nil {
 		lock.Lock()
 		defer lock.Unlock()
 		// This is to prevent expensive lock operations every time the GetInstance method is called
 		if singleton == nil {
 			singleton = &tracer{
-				strategy:   strategy,
+				strategy:   defaultStrategy,
 				eventsChan: make(chan Event, Workers),
 				eventsTotal: promauto.NewCounter(prometheus.CounterOpts{
 					Namespace: "beelzebub",
@@ -111,7 +113,7 @@ func GetInstance(strategy Strategy) *tracer {
 
 			for i := 0; i < Workers; i++ {
 				go func(i int) {
-					log.Debug("GetInstance trace worker: ", i)
+					log.Debug("Trace worker: ", i)
 					for event := range singleton.eventsChan {
 						singleton.strategy(event)
 					}
