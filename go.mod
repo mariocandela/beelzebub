@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/go-resty/resty/v2 v2.10.0
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/jarcoal/httpmock v1.3.1
 	github.com/melbahja/goph v1.4.0
 	github.com/prometheus/client_golang v1.17.0
