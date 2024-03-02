@@ -19,7 +19,11 @@ core:
   tracings:
     rabbit-mq:
       enabled: true
-      uri: "amqp://user:password@localhost/"`)
+      uri: "amqp://user:password@localhost/"
+    beelzebub-cloud:
+      enabled: true
+      uri: "amqp://user:password@localhost/"
+      auth-token: "iejfdjsl-aosdajosoidaj-dunfkjnfkjsdnkn"`)
 	return configurationsCoreBytes, nil
 }
 
@@ -85,6 +89,9 @@ func TestReadConfigurationsCoreValid(t *testing.T) {
 	assert.Equal(t, coreConfigurations.Core.Logging.LogsPath, "./logs")
 	assert.Equal(t, coreConfigurations.Core.Tracings.RabbitMQ.Enabled, true)
 	assert.Equal(t, coreConfigurations.Core.Tracings.RabbitMQ.URI, "amqp://user:password@localhost/")
+	assert.Equal(t, coreConfigurations.Core.Tracings.BeelzebubCloud.Enabled, true)
+	assert.Equal(t, coreConfigurations.Core.Tracings.BeelzebubCloud.URI, "amqp://user:password@localhost/")
+	assert.Equal(t, coreConfigurations.Core.Tracings.BeelzebubCloud.AuthToken, "iejfdjsl-aosdajosoidaj-dunfkjnfkjsdnkn")
 }
 
 func TestReadConfigurationsServicesFail(t *testing.T) {
