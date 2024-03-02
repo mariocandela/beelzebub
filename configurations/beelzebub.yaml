@@ -8,6 +8,10 @@ core:
     rabbit-mq:
       enabled: false
       uri: ""
+    beelzebub-cloud:
+      enabled: false
+      uri: ""
+      auth-token: ""
   prometheus:
     path: "/metrics"
     port: ":2112"
