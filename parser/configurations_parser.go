@@ -30,9 +30,15 @@ type Logging struct {
 
 // Tracings is the struct that contains the configurations of the tracings
 type Tracings struct {
-	RabbitMQ `yaml:"rabbit-mq"`
+	RabbitMQ       `yaml:"rabbit-mq"`
+	BeelzebubCloud `yaml:"beelzebub-cloud"`
 }
 
+type BeelzebubCloud struct {
+	Enabled   bool   `yaml:"enabled"`
+	URI       string `yaml:"uri"`
+	AuthToken string `yaml:"auth-token"`
+}
 type RabbitMQ struct {
 	Enabled bool   `yaml:"enabled"`
 	URI     string `yaml:"uri"`

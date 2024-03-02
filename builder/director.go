@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -37,6 +38,10 @@ func (d *Director) BuildBeelzebub(beelzebubCoreConfigurations *parser.BeelzebubC
 		}
 	}
 
+	if beelzebubCoreConfigurations.Core.Tracings.BeelzebubCloud.Enabled {
+		d.builder.setTraceStrategy(d.beelzebubCloudStrategy)
+	}
+
 	return d.builder.build(), nil
 }
 
@@ -45,6 +50,27 @@ func (d *Director) standardOutStrategy(event tracer.Event) {
 		"status": event.Status,
 		"event":  event,
 	}).Info("New Event")
+}
+
+func (d *Director) beelzebubCloudStrategy(event tracer.Event) {
+	log.WithFields(log.Fields{
+		"status": event.Status,
+		"event":  event,
+	}).Info("New Event")
+
+	conf := d.builder.beelzebubCoreConfigurations.Core.Tracings.BeelzebubCloud
+
+	beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken)
+
+	result, err := beelzebubCloud.SendEvent(event)
+	if err != nil {
+		log.Error(err.Error())
+	} else {
+		log.WithFields(log.Fields{
+			"status": result,
+			"event":  event,
+		}).Debug("Event published on beelzebub cloud")
+	}
 }
 
 func (d *Director) rabbitMQTraceStrategy(event tracer.Event) {
