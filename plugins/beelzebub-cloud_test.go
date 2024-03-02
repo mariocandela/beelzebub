@@ -27,7 +27,7 @@ func TestBuildSendEventWithResults(t *testing.T) {
 	// Given
 	httpmock.RegisterResponder("POST", uri,
 		func(req *http.Request) (*http.Response, error) {
-			resp, err := httpmock.NewJsonResponse(201, &tracer.Event{})
+			resp, err := httpmock.NewJsonResponse(200, &tracer.Event{})
 			if err != nil {
 				return httpmock.NewStringResponse(500, ""), nil
 			}
