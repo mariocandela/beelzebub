@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	promptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Remember previous commands and consider their effects on subsequent outputs.\\n\\nA:pwd\\n\\nQ:/home/user\\n\\n"
+	promptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Remember previous commands and consider their effects on subsequent outputs.\n\nA:pwd\n\nQ:/home/user\n\n"
 	ChatGPTPluginName             = "OpenAIGPTLinuxTerminal"
 	openAIGPTEndpoint             = "https://api.openai.com/v1/completions"
 )
