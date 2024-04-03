@@ -4,16 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/go-resty/resty/v2"
 )
 
 const (
-	// Reference: https://www.engraved.blog/building-a-virtual-machine-inside/
-	promptVirtualizeLinuxTerminal = "I want you to act as a Linux terminal. I will type commands and you will reply with what the terminal should show. I want you to only reply with the terminal output inside one unique code block, and nothing else. Do no write explanations. Do not type commands unless I instruct you to do so.\n\nA:pwd\n\nQ:/home/user\n\n"
+	promptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Remember previous commands and consider their effects on subsequent outputs.\n\nA:pwd\n\nQ:/home/user\n\n"
 	ChatGPTPluginName             = "OpenAIGPTLinuxTerminal"
 	openAIGPTEndpoint             = "https://api.openai.com/v1/completions"
 )
@@ -83,7 +81,7 @@ func buildPrompt(histories []History, command string) string {
 
 func (openAIGPTVirtualTerminal *openAIGPTVirtualTerminal) GetCompletions(command string) (string, error) {
 	requestJson, err := json.Marshal(gptRequest{
-		Model:            "text-davinci-003",
+		Model:            "gpt-3.5-turbo-instruct",
 		Prompt:           buildPrompt(openAIGPTVirtualTerminal.Histories, command),
 		Temperature:      0,
 		MaxTokens:        100,
