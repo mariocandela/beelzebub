@@ -3,6 +3,7 @@ package plugins
 import (
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
@@ -47,7 +48,7 @@ func TestBuildPromptWithHistory(t *testing.T) {
 }
 
 func TestBuildGetCompletionsFailValidation(t *testing.T) {
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "")
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "", tracer.SSH)
 
 	_, err := openAIGPTVirtualTerminal.GetCompletions("test")
 
@@ -76,7 +77,7 @@ func TestBuildGetCompletionsWithResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk")
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk", tracer.SSH)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
@@ -105,7 +106,7 @@ func TestBuildGetCompletionsWithoutResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk")
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk", tracer.SSH)
 	openAIGPTVirtualTerminal.client = client
 
 	//When

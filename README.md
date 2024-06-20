@@ -12,9 +12,9 @@ Beelzebub is an advanced honeypot framework designed to provide a highly secure 
 
 <img src="https://beelzebub.netlify.app/go-beelzebub.png" alt="Beelzebub Logo" width="200"/>
 
-## OpenAI GPT Integration
+## LLM Honeypot
 
-Learn how to integrate Beelzebub with OpenAI GPT-3 by referring to our comprehensive guide on Medium: [Medium Article](https://medium.com/@mario.candela.personal/how-to-build-a-highly-effective-honeypot-with-beelzebub-and-chatgpt-a2f0f05b3e1)
+Learn how to integrate Beelzebub with LLM OpenAI by referring to our comprehensive guide on Medium: [Medium Article](https://medium.com/@mario.candela.personal/how-to-build-a-highly-effective-honeypot-with-beelzebub-and-chatgpt-a2f0f05b3e1)
 
 ## Telegram Bot for Real-Time Attacks
 

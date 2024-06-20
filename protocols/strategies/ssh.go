@@ -63,7 +63,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 							commandOutput := command.Handler
 
 							if command.Plugin == plugins.ChatGPTPluginName {
-								openAIGPTVirtualTerminal := plugins.Init(histories, beelzebubServiceConfiguration.Plugin.OpenAPIChatGPTSecretKey)
+								openAIGPTVirtualTerminal := plugins.Init(histories, beelzebubServiceConfiguration.Plugin.OpenAPIChatGPTSecretKey, tracer.SSH)
 
 								if commandOutput, err = openAIGPTVirtualTerminal.GetCompletions(commandInput); err != nil {
 									log.Errorf("Error GetCompletions: %s, %s", commandInput, err.Error())
