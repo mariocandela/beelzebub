@@ -55,7 +55,7 @@ func TestBuildGetCompletionsFailValidation(t *testing.T) {
 	assert.Equal(t, "openAIKey is empty", err.Error())
 }
 
-func TestBuildGetCompletionsWithResults(t *testing.T) {
+func TestBuildGetCompletionsSSHWithResults(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
@@ -88,7 +88,7 @@ func TestBuildGetCompletionsWithResults(t *testing.T) {
 	assert.Equal(t, "prova.txt", str)
 }
 
-func TestBuildGetCompletionsWithoutResults(t *testing.T) {
+func TestBuildGetCompletionsSSHWithoutResults(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
@@ -111,6 +111,67 @@ func TestBuildGetCompletionsWithoutResults(t *testing.T) {
 
 	//When
 	_, err := openAIGPTVirtualTerminal.GetCompletions("ls")
+
+	//Then
+	assert.Equal(t, "no choices", err.Error())
+}
+
+func TestBuildGetCompletionsHTTPWithResults(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	// Given
+	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
+				Choices: []Choice{
+					{
+						Text: "[default]\nregion = us-west-2\noutput = json",
+					},
+				},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk", tracer.HTTP)
+	openAIGPTVirtualTerminal.client = client
+
+	//When
+	str, err := openAIGPTVirtualTerminal.GetCompletions("GET /.aws/credentials")
+
+	//Then
+	assert.Nil(t, err)
+	assert.Equal(t, "[default]\nregion = us-west-2\noutput = json", str)
+}
+
+func TestBuildGetCompletionsHTTPWithoutResults(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	// Given
+	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
+				Choices: []Choice{},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk", tracer.HTTP)
+	openAIGPTVirtualTerminal.client = client
+
+	//When
+	_, err := openAIGPTVirtualTerminal.GetCompletions("GET /.aws/credentials")
 
 	//Then
 	assert.Equal(t, "no choices", err.Error())
