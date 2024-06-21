@@ -3,6 +3,7 @@ package strategies
 import (
 	"fmt"
 	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	"io"
 	"net/http"
@@ -31,8 +32,24 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 			}
 
 			if matched {
+				responseHTTPBody := command.Handler
+
+				if command.Plugin == plugins.ChatGPTPluginName {
+					openAIGPTVirtualTerminal := plugins.Init([]plugins.History{}, beelzebubServiceConfiguration.Plugin.OpenAPIChatGPTSecretKey, tracer.HTTP)
+
+					command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
+
+					if completions, err := openAIGPTVirtualTerminal.GetCompletions(command); err != nil {
+						log.Errorf("Error GetCompletions: %s, %s", command, err.Error())
+						responseHTTPBody = "404 Not Found!"
+					} else {
+						responseHTTPBody = completions
+					}
+
+				}
+
 				setResponseHeaders(responseWriter, command.Headers, command.StatusCode)
-				fmt.Fprintf(responseWriter, command.Handler)
+				fmt.Fprintf(responseWriter, responseHTTPBody)
 				break
 			}
 		}
