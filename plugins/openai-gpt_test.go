@@ -55,6 +55,14 @@ func TestBuildGetCompletionsFailValidation(t *testing.T) {
 	assert.Equal(t, "openAIKey is empty", err.Error())
 }
 
+func TestBuildGetCompletionsFailValidationStrategyType(t *testing.T) {
+	openAIGPTVirtualTerminal := Init(make([]History, 0), "", tracer.TCP)
+
+	_, err := openAIGPTVirtualTerminal.GetCompletions("test")
+
+	assert.Equal(t, "no prompt for protocol selected", err.Error())
+}
+
 func TestBuildGetCompletionsSSHWithResults(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
