@@ -49,7 +49,7 @@ type Prometheus struct {
 }
 
 type Plugin struct {
-	OpenAPIChatGPTSecretKey string `yaml:"openAPIChatGPTSecretKey"`
+	OpenAISecretKey string `yaml:"openAISecretKey"`
 }
 
 // BeelzebubServiceConfiguration is the struct that contains the configurations of the honeypot service
