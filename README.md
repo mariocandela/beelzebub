@@ -224,7 +224,7 @@ serverName: "ubuntu"
 passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
 deadlineTimeoutSeconds: 60
 plugin:
-  openAPIChatGPTSecretKey: "Your OpenAI Secret Key"
+  openAISecretKey: "Your OpenAI Secret Key"
 ```
 
 ###### SSH Honeypot on Port 22

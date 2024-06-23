@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	systemPromptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Remember previous commands and consider their effects on subsequent outputs."
+	systemPromptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Your entire response/output is going to consist of a simple text with \n for new line, and you will NOT wrap it within string md markers"
 	systemPromptVirtualizeHTTPServer    = "You will act as an unsecure HTTP Server with multiple vulnerability like aws and git credentials stored into root http directory. The user will send HTTP requests, and you are to reply with what the server should show. Do not provide explanations or type commands unless explicitly instructed by the user."
 	ChatGPTPluginName                   = "LLMHoneypot"
 	openAIGPTEndpoint                   = "https://api.openai.com/v1/chat/completions"
@@ -128,7 +128,7 @@ func (openAIVirtualHoneypot *openAIVirtualHoneypot) GetCompletions(command strin
 	}
 
 	requestJson, err := json.Marshal(gptRequest{
-		Model:    "gpt-4", //"gpt-3.5-turbo",
+		Model:    "gpt-4o",
 		Messages: prompt,
 	})
 	if err != nil {

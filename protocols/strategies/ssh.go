@@ -71,7 +71,8 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 								}
 							}
 
-							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: commandOutput})
+							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: commandInput})
+							histories = append(histories, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
 
 							term.Write(append([]byte(commandOutput), '\n'))
 
