@@ -3,34 +3,28 @@ package plugins
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/tracer"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	promptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Remember previous commands and consider their effects on subsequent outputs.\n\nA:pwd\n\nQ:/home/user\n\n"
-	promptVirtualizeHTTPServer    = "You will act as an HTTP Server. The user will type HTTP request path uri, and you are to reply with what the HTTP Server body content. Your responses must be contained within a single HTTP body content. Do not provide explanations or type commands unless explicitly instructed by the user."
-	ChatGPTPluginName             = "LLMHoneypot"
-	openAIGPTEndpoint             = "https://api.openai.com/v1/completions"
+	systemPromptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Remember previous commands and consider their effects on subsequent outputs."
+	systemPromptVirtualizeHTTPServer    = "You will act as an unsecure HTTP Server with multiple vulnerability like aws and git credentials stored into root http directory. The user will send HTTP requests, and you are to reply with what the server should show. Do not provide explanations or type commands unless explicitly instructed by the user."
+	ChatGPTPluginName                   = "LLMHoneypot"
+	openAIGPTEndpoint                   = "https://api.openai.com/v1/chat/completions"
 )
 
-type History struct {
-	Input, Output string
-}
-
 type openAIVirtualHoneypot struct {
-	Histories []History
+	Histories []Message
 	openAIKey string
 	client    *resty.Client
 	protocol  tracer.Protocol
 }
 
 type Choice struct {
-	Text         string      `json:"text"`
+	Message      Message     `json:"message"`
 	Index        int         `json:"index"`
 	Logprobs     interface{} `json:"logprobs"`
 	FinishReason string      `json:"finish_reason"`
@@ -50,17 +44,28 @@ type gptResponse struct {
 }
 
 type gptRequest struct {
-	Model            string   `json:"model"`
-	Prompt           string   `json:"prompt"`
-	Temperature      int      `json:"temperature"`
-	MaxTokens        int      `json:"max_tokens"`
-	TopP             int      `json:"top_p"`
-	FrequencyPenalty int      `json:"frequency_penalty"`
-	PresencePenalty  int      `json:"presence_penalty"`
-	Stop             []string `json:"stop"`
+	Model    string    `json:"model"`
+	Messages []Message `json:"messages"`
 }
 
-func Init(history []History, openAIKey string, protocol tracer.Protocol) *openAIVirtualHoneypot {
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type Role int
+
+const (
+	SYSTEM Role = iota
+	USER
+	ASSISTANT
+)
+
+func (role Role) String() string {
+	return [...]string{"system", "user", "assistant"}[role]
+}
+
+func Init(history []Message, openAIKey string, protocol tracer.Protocol) *openAIVirtualHoneypot {
 	return &openAIVirtualHoneypot{
 		Histories: history,
 		openAIKey: openAIKey,
@@ -69,41 +74,62 @@ func Init(history []History, openAIKey string, protocol tracer.Protocol) *openAI
 	}
 }
 
-func buildPrompt(histories []History, command string) string {
-	var sb strings.Builder
+func buildPrompt(histories []Message, protocol tracer.Protocol, command string) ([]Message, error) {
+	var messages []Message
 
-	sb.WriteString(promptVirtualizeLinuxTerminal)
-
-	for _, history := range histories {
-		sb.WriteString(fmt.Sprintf("A:%s\n\nQ:%s\n\n", history.Input, history.Output))
+	switch protocol {
+	case tracer.SSH:
+		messages = append(messages, Message{
+			Role:    SYSTEM.String(),
+			Content: systemPromptVirtualizeLinuxTerminal,
+		})
+		messages = append(messages, Message{
+			Role:    USER.String(),
+			Content: "pwd",
+		})
+		messages = append(messages, Message{
+			Role:    ASSISTANT.String(),
+			Content: "/home/user",
+		})
+		for _, history := range histories {
+			messages = append(messages, history)
+		}
+	case tracer.HTTP:
+		messages = append(messages, Message{
+			Role:    SYSTEM.String(),
+			Content: systemPromptVirtualizeHTTPServer,
+		})
+		messages = append(messages, Message{
+			Role:    USER.String(),
+			Content: "GET /index.html",
+		})
+		messages = append(messages, Message{
+			Role:    ASSISTANT.String(),
+			Content: "<html><body>Hello, World!</body></html>",
+		})
+	default:
+		return nil, errors.New("no prompt for protocol selected")
 	}
-	// Append command to evaluate
-	sb.WriteString(fmt.Sprintf("A:%s\n\nQ:", command))
+	messages = append(messages, Message{
+		Role:    USER.String(),
+		Content: command,
+	})
 
-	return sb.String()
+	return messages, nil
 }
 
 func (openAIVirtualHoneypot *openAIVirtualHoneypot) GetCompletions(command string) (string, error) {
-	var prompt string
+	var err error
 
-	switch openAIVirtualHoneypot.protocol {
-	case tracer.SSH:
-		prompt = buildPrompt(openAIVirtualHoneypot.Histories, command)
-	case tracer.HTTP:
-		prompt = promptVirtualizeHTTPServer
-	default:
-		return "", errors.New("no prompt for protocol selected")
+	prompt, err := buildPrompt(openAIVirtualHoneypot.Histories, openAIVirtualHoneypot.protocol, command)
+
+	if err != nil {
+		return "", err
 	}
 
 	requestJson, err := json.Marshal(gptRequest{
-		Model:            "gpt-3.5-turbo-instruct",
-		Prompt:           prompt,
-		Temperature:      0,
-		MaxTokens:        100,
-		TopP:             1,
-		FrequencyPenalty: 0,
-		PresencePenalty:  0,
-		Stop:             []string{"\n"},
+		Model:    "gpt-4", //"gpt-3.5-turbo",
+		Messages: prompt,
 	})
 	if err != nil {
 		return "", err
@@ -113,6 +139,7 @@ func (openAIVirtualHoneypot *openAIVirtualHoneypot) GetCompletions(command strin
 		return "", errors.New("openAIKey is empty")
 	}
 
+	log.Debug(string(requestJson))
 	response, err := openAIVirtualHoneypot.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(requestJson).
@@ -128,5 +155,5 @@ func (openAIVirtualHoneypot *openAIVirtualHoneypot) GetCompletions(command strin
 		return "", errors.New("no choices")
 	}
 
-	return response.Result().(*gptResponse).Choices[0].Text, nil
+	return response.Result().(*gptResponse).Choices[0].Message.Content, nil
 }

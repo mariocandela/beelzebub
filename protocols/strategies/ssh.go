@@ -42,7 +42,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 				})
 
 				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
-				var histories []plugins.History
+				var histories []plugins.Message
 				for {
 					commandInput, err := term.ReadLine()
 					if err != nil {
@@ -71,7 +71,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 								}
 							}
 
-							histories = append(histories, plugins.History{Input: commandInput, Output: commandOutput})
+							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: commandOutput})
 
 							term.Write(append([]byte(commandOutput), '\n'))
 

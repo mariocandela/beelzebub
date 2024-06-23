@@ -9,46 +9,42 @@ import (
 	"testing"
 )
 
+const SystemPromptLen = 4
+
 func TestBuildPromptEmptyHistory(t *testing.T) {
 	//Given
-	var histories []History
+	var histories []Message
 	command := "pwd"
 
 	//When
-	prompt := buildPrompt(histories, command)
+	prompt, err := buildPrompt(histories, tracer.SSH, command)
 
 	//Then
-	assert.Equal(t,
-		"You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Remember previous commands and consider their effects on subsequent outputs.\n\nA:pwd\n\nQ:/home/user\n\nA:pwd\n\nQ:",
-		prompt)
+	assert.Nil(t, err)
+	assert.Equal(t, SystemPromptLen, len(prompt))
 }
 
 func TestBuildPromptWithHistory(t *testing.T) {
 	//Given
-	var histories = []History{
+	var histories = []Message{
 		{
-			Input:  "cat hello.txt",
-			Output: "world",
-		},
-		{
-			Input:  "echo 1234",
-			Output: "1234",
+			Role:    "cat hello.txt",
+			Content: "world",
 		},
 	}
 
 	command := "pwd"
 
 	//When
-	prompt := buildPrompt(histories, command)
+	prompt, err := buildPrompt(histories, tracer.SSH, command)
 
 	//Then
-	assert.Equal(t,
-		"You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Remember previous commands and consider their effects on subsequent outputs.\n\nA:pwd\n\nQ:/home/user\n\nA:cat hello.txt\n\nQ:world\n\nA:echo 1234\n\nQ:1234\n\nA:pwd\n\nQ:",
-		prompt)
+	assert.Nil(t, err)
+	assert.Equal(t, SystemPromptLen+1, len(prompt))
 }
 
 func TestBuildGetCompletionsFailValidation(t *testing.T) {
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "", tracer.SSH)
+	openAIGPTVirtualTerminal := Init(make([]Message, 0), "", tracer.SSH)
 
 	_, err := openAIGPTVirtualTerminal.GetCompletions("test")
 
@@ -56,7 +52,7 @@ func TestBuildGetCompletionsFailValidation(t *testing.T) {
 }
 
 func TestBuildGetCompletionsFailValidationStrategyType(t *testing.T) {
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "", tracer.TCP)
+	openAIGPTVirtualTerminal := Init(make([]Message, 0), "", tracer.TCP)
 
 	_, err := openAIGPTVirtualTerminal.GetCompletions("test")
 
@@ -74,7 +70,10 @@ func TestBuildGetCompletionsSSHWithResults(t *testing.T) {
 			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
 				Choices: []Choice{
 					{
-						Text: "prova.txt",
+						Message: Message{
+							Role:    SYSTEM.String(),
+							Content: "prova.txt",
+						},
 					},
 				},
 			})
@@ -85,7 +84,7 @@ func TestBuildGetCompletionsSSHWithResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk", tracer.SSH)
+	openAIGPTVirtualTerminal := Init(make([]Message, 0), "sdjdnklfjndslkjanfk", tracer.SSH)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
@@ -114,7 +113,7 @@ func TestBuildGetCompletionsSSHWithoutResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk", tracer.SSH)
+	openAIGPTVirtualTerminal := Init(make([]Message, 0), "sdjdnklfjndslkjanfk", tracer.SSH)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
@@ -135,7 +134,10 @@ func TestBuildGetCompletionsHTTPWithResults(t *testing.T) {
 			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
 				Choices: []Choice{
 					{
-						Text: "[default]\nregion = us-west-2\noutput = json",
+						Message: Message{
+							Role:    SYSTEM.String(),
+							Content: "[default]\nregion = us-west-2\noutput = json",
+						},
 					},
 				},
 			})
@@ -146,7 +148,7 @@ func TestBuildGetCompletionsHTTPWithResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk", tracer.HTTP)
+	openAIGPTVirtualTerminal := Init(make([]Message, 0), "sdjdnklfjndslkjanfk", tracer.HTTP)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
@@ -175,7 +177,7 @@ func TestBuildGetCompletionsHTTPWithoutResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]History, 0), "sdjdnklfjndslkjanfk", tracer.HTTP)
+	openAIGPTVirtualTerminal := Init(make([]Message, 0), "sdjdnklfjndslkjanfk", tracer.HTTP)
 	openAIGPTVirtualTerminal.client = client
 
 	//When

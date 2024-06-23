@@ -35,7 +35,7 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 				responseHTTPBody := command.Handler
 
 				if command.Plugin == plugins.ChatGPTPluginName {
-					openAIGPTVirtualTerminal := plugins.Init(make([]plugins.History, 0), beelzebubServiceConfiguration.Plugin.OpenAISecretKey, tracer.HTTP)
+					openAIGPTVirtualTerminal := plugins.Init(make([]plugins.Message, 0), beelzebubServiceConfiguration.Plugin.OpenAISecretKey, tracer.HTTP)
 
 					command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
 
