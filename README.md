@@ -8,7 +8,7 @@
 
 ## Overview
 
-Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and utilizes virtualization techniques powered by OpenAI Generative Pre-trained Transformer.
+Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and uses AI to mimic the behavior of a high-interaction honeypot.
 
 <img src="https://beelzebub.netlify.app/go-beelzebub.png" alt="Beelzebub Logo" width="200"/>
 
