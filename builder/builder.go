@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/protocols"
 	"github.com/mariocandela/beelzebub/v3/protocols/strategies"
 	"github.com/mariocandela/beelzebub/v3/tracer"
@@ -111,6 +112,18 @@ Honeypot Framework, happy hacking!`)
 
 	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
+
+	if b.beelzebubCoreConfigurations.Core.Tracings.BeelzebubCloud.Enabled {
+		conf := b.beelzebubCoreConfigurations.Core.Tracings.BeelzebubCloud
+
+		beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken)
+
+		if honeypotsConfiguration, err := beelzebubCloud.GetHoneypotsConfigurations(); err != nil {
+			log.Error(err.Error())
+		} else {
+			b.beelzebubServicesConfiguration = honeypotsConfiguration
+		}
+	}
 
 	for _, beelzebubServiceConfiguration := range b.beelzebubServicesConfiguration {
 		switch beelzebubServiceConfiguration.Protocol {

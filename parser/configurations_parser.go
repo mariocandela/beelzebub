@@ -15,7 +15,7 @@ import (
 type BeelzebubCoreConfigurations struct {
 	Core struct {
 		Logging    Logging    `yaml:"logging"`
-		Tracings   Tracings   `yaml:"tracings"`
+		Tracings   Tracings   `yaml:"tracings"` //TODO move this section before.
 		Prometheus Prometheus `yaml:"prometheus"`
 	}
 }
