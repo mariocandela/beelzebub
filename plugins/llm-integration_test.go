@@ -43,7 +43,7 @@ func TestBuildPromptWithHistory(t *testing.T) {
 	assert.Equal(t, SystemPromptLen+1, len(prompt))
 }
 
-func TestBuildGetCompletionsFailValidation(t *testing.T) {
+func TestBuildExecuteModelFailValidation(t *testing.T) {
 
 	llmHoneypot := LLMHoneypot{
 		Histories: make([]Message, 0),
@@ -59,7 +59,7 @@ func TestBuildGetCompletionsFailValidation(t *testing.T) {
 	assert.Equal(t, "openAIKey is empty", err.Error())
 }
 
-func TestBuildGetCompletionsFailValidationStrategyType(t *testing.T) {
+func TestBuildExecuteModelFailValidationStrategyType(t *testing.T) {
 
 	llmHoneypot := LLMHoneypot{
 		Histories: make([]Message, 0),
@@ -75,7 +75,24 @@ func TestBuildGetCompletionsFailValidationStrategyType(t *testing.T) {
 	assert.Equal(t, "no prompt for protocol selected", err.Error())
 }
 
-func TestBuildGetCompletionsSSHWithResultsOpenAI(t *testing.T) {
+func TestBuildExecuteModelFailValidationModelType(t *testing.T) {
+	// Given
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		Protocol:  tracer.SSH,
+		Model:     5,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
+
+	//When
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+
+	//Then
+	assert.Errorf(t, err, "no model selected")
+}
+
+func TestBuildExecuteModelSSHWithResultsOpenAI(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
@@ -118,7 +135,7 @@ func TestBuildGetCompletionsSSHWithResultsOpenAI(t *testing.T) {
 	assert.Equal(t, "prova.txt", str)
 }
 
-func TestBuildGetCompletionsSSHWithResultsLLama(t *testing.T) {
+func TestBuildExecuteModelSSHWithResultsLLama(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
@@ -156,7 +173,7 @@ func TestBuildGetCompletionsSSHWithResultsLLama(t *testing.T) {
 	assert.Equal(t, "prova.txt", str)
 }
 
-func TestBuildGetCompletionsSSHWithoutResults(t *testing.T) {
+func TestBuildExecuteModelSSHWithoutResults(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
@@ -191,7 +208,7 @@ func TestBuildGetCompletionsSSHWithoutResults(t *testing.T) {
 	assert.Equal(t, "no choices", err.Error())
 }
 
-func TestBuildGetCompletionsHTTPWithResults(t *testing.T) {
+func TestBuildExecuteModelHTTPWithResults(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
@@ -234,7 +251,7 @@ func TestBuildGetCompletionsHTTPWithResults(t *testing.T) {
 	assert.Equal(t, "[default]\nregion = us-west-2\noutput = json", str)
 }
 
-func TestBuildGetCompletionsHTTPWithoutResults(t *testing.T) {
+func TestBuildExecuteModelHTTPWithoutResults(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
