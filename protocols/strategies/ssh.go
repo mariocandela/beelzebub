@@ -62,11 +62,27 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 						if matched {
 							commandOutput := command.Handler
 
-							if command.Plugin == plugins.ChatGPTPluginName {
-								openAIGPTVirtualTerminal := plugins.Init(histories, beelzebubServiceConfiguration.Plugin.OpenAISecretKey, tracer.SSH)
+							if command.Plugin == plugins.LLMPluginName {
 
-								if commandOutput, err = openAIGPTVirtualTerminal.GetCompletions(commandInput); err != nil {
-									log.Errorf("Error GetCompletions: %s, %s", commandInput, err.Error())
+								llmModel, err := parser.FromString(beelzebubServiceConfiguration.Plugin.LLMModel)
+
+								if err != nil {
+									log.Errorf("Error fromString: %s", err.Error())
+									commandOutput = "command not found"
+								}
+
+								llmHoneypot := plugins.LLMHoneypot{
+									Histories: histories,
+									OpenAIKey: beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+									Protocol:  tracer.SSH,
+									Host:      beelzebubServiceConfiguration.Plugin.Host,
+									Model:     llmModel,
+								}
+
+								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+
+								if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput); err != nil {
+									log.Errorf("Error ExecuteModel: %s, %s", commandInput, err.Error())
 									commandOutput = "command not found"
 								}
 							}

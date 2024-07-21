@@ -34,13 +34,29 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 			if matched {
 				responseHTTPBody := command.Handler
 
-				if command.Plugin == plugins.ChatGPTPluginName {
-					openAIGPTVirtualTerminal := plugins.Init(make([]plugins.Message, 0), beelzebubServiceConfiguration.Plugin.OpenAISecretKey, tracer.HTTP)
+				if command.Plugin == plugins.LLMPluginName {
+
+					llmModel, err := parser.FromString(beelzebubServiceConfiguration.Plugin.LLMModel)
+
+					if err != nil {
+						log.Errorf("Error fromString: %s", err.Error())
+						responseHTTPBody = "404 Not Found!"
+					}
+
+					llmHoneypot := plugins.LLMHoneypot{
+						Histories: make([]plugins.Message, 0),
+						OpenAIKey: beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+						Protocol:  tracer.HTTP,
+						Host:      beelzebubServiceConfiguration.Plugin.Host,
+						Model:     llmModel,
+					}
+
+					llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
 
 					command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
 
-					if completions, err := openAIGPTVirtualTerminal.GetCompletions(command); err != nil {
-						log.Errorf("Error GetCompletions: %s, %s", command, err.Error())
+					if completions, err := llmHoneypotInstance.ExecuteModel(command); err != nil {
+						log.Errorf("Error ExecuteModel: %s, %s", command, err.Error())
 						responseHTTPBody = "404 Not Found!"
 					} else {
 						responseHTTPBody = completions

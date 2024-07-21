@@ -44,17 +44,33 @@ func TestBuildPromptWithHistory(t *testing.T) {
 }
 
 func TestBuildGetCompletionsFailValidation(t *testing.T) {
-	openAIGPTVirtualTerminal := Init(make([]Message, 0), "", tracer.SSH)
 
-	_, err := openAIGPTVirtualTerminal.GetCompletions("test")
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		OpenAIKey: "",
+		Protocol:  tracer.SSH,
+		Model:     GPT4O,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
+
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
 
 	assert.Equal(t, "openAIKey is empty", err.Error())
 }
 
 func TestBuildGetCompletionsFailValidationStrategyType(t *testing.T) {
-	openAIGPTVirtualTerminal := Init(make([]Message, 0), "", tracer.TCP)
 
-	_, err := openAIGPTVirtualTerminal.GetCompletions("test")
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		OpenAIKey: "",
+		Protocol:  tracer.TCP,
+		Model:     GPT4O,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
+
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
 
 	assert.Equal(t, "no prompt for protocol selected", err.Error())
 }
@@ -67,7 +83,7 @@ func TestBuildGetCompletionsSSHWithResults(t *testing.T) {
 	// Given
 	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
 		func(req *http.Request) (*http.Response, error) {
-			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
+			resp, err := httpmock.NewJsonResponse(200, &Response{
 				Choices: []Choice{
 					{
 						Message: Message{
@@ -84,11 +100,18 @@ func TestBuildGetCompletionsSSHWithResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]Message, 0), "sdjdnklfjndslkjanfk", tracer.SSH)
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		OpenAIKey: "sdjdnklfjndslkjanfk",
+		Protocol:  tracer.SSH,
+		Model:     GPT4O,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	str, err := openAIGPTVirtualTerminal.GetCompletions("ls")
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
 
 	//Then
 	assert.Nil(t, err)
@@ -103,7 +126,7 @@ func TestBuildGetCompletionsSSHWithoutResults(t *testing.T) {
 	// Given
 	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
 		func(req *http.Request) (*http.Response, error) {
-			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
+			resp, err := httpmock.NewJsonResponse(200, &Response{
 				Choices: []Choice{},
 			})
 			if err != nil {
@@ -113,11 +136,18 @@ func TestBuildGetCompletionsSSHWithoutResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]Message, 0), "sdjdnklfjndslkjanfk", tracer.SSH)
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		OpenAIKey: "sdjdnklfjndslkjanfk",
+		Protocol:  tracer.SSH,
+		Model:     GPT4O,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.GetCompletions("ls")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
 
 	//Then
 	assert.Equal(t, "no choices", err.Error())
@@ -131,7 +161,7 @@ func TestBuildGetCompletionsHTTPWithResults(t *testing.T) {
 	// Given
 	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
 		func(req *http.Request) (*http.Response, error) {
-			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
+			resp, err := httpmock.NewJsonResponse(200, &Response{
 				Choices: []Choice{
 					{
 						Message: Message{
@@ -148,11 +178,18 @@ func TestBuildGetCompletionsHTTPWithResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]Message, 0), "sdjdnklfjndslkjanfk", tracer.HTTP)
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		OpenAIKey: "sdjdnklfjndslkjanfk",
+		Protocol:  tracer.HTTP,
+		Model:     GPT4O,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	str, err := openAIGPTVirtualTerminal.GetCompletions("GET /.aws/credentials")
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials")
 
 	//Then
 	assert.Nil(t, err)
@@ -167,7 +204,7 @@ func TestBuildGetCompletionsHTTPWithoutResults(t *testing.T) {
 	// Given
 	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
 		func(req *http.Request) (*http.Response, error) {
-			resp, err := httpmock.NewJsonResponse(200, &gptResponse{
+			resp, err := httpmock.NewJsonResponse(200, &Response{
 				Choices: []Choice{},
 			})
 			if err != nil {
@@ -177,11 +214,18 @@ func TestBuildGetCompletionsHTTPWithoutResults(t *testing.T) {
 		},
 	)
 
-	openAIGPTVirtualTerminal := Init(make([]Message, 0), "sdjdnklfjndslkjanfk", tracer.HTTP)
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		OpenAIKey: "sdjdnklfjndslkjanfk",
+		Protocol:  tracer.HTTP,
+		Model:     GPT4O,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.GetCompletions("GET /.aws/credentials")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials")
 
 	//Then
 	assert.Equal(t, "no choices", err.Error())

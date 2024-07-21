@@ -53,7 +53,12 @@ commands:
   - regex: "wp-admin"
     handler: "login"
     headers:
-      - "Content-Type: text/html"`)
+      - "Content-Type: text/html"
+plugin:
+  openAISecretKey: "qwerty"
+  llmModel: "llama3"
+  host: "localhost:1563"
+`)
 	return beelzebubServiceConfiguration, nil
 }
 
@@ -112,10 +117,10 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
 
 	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
 
 	firstBeelzebubServiceConfiguration := beelzebubServicesConfiguration[0]
 
-	assert.Nil(t, err)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Protocol, "http")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.ApiVersion, "v1")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Address, ":8080")
@@ -125,6 +130,9 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Handler, "login")
 	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands[0].Headers), 1)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Headers[0], "Content-Type: text/html")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OpenAISecretKey, "qwerty")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMModel, "llama3")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Host, "localhost:1563")
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {
