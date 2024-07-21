@@ -219,28 +219,7 @@ Example with OpenAI GPT-4:
 apiVersion: "v1"
 protocol: "ssh"
 address: ":2222"
-description: "SSH interactive ChatGPT"
-commands:
-  - regex: "^(.+)$"
-    plugin: "LLMHoneypot"
-serverVersion: "OpenSSH"
-serverName: "ubuntu"
-passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
-deadlineTimeoutSeconds: 60
-plugin:
-   llmModel: "gpt4-o"
-   openAISecretKey: "sk-proj-123456"
-```
-
-###### Honeypot LLM Honeypots
-
-Example with OpenAI GPT-4:
-
-```yaml
-apiVersion: "v1"
-protocol: "ssh"
-address: ":2222"
-description: "SSH interactive ChatGPT"
+description: "SSH interactive OpenAI  GPT-4"
 commands:
   - regex: "^(.+)$"
     plugin: "LLMHoneypot"
@@ -259,7 +238,7 @@ Example with Ollama Llama3:
 apiVersion: "v1"
 protocol: "ssh"
 address: ":2222"
-description: "SSH interactive ChatGPT"
+description: "SSH Ollama Llama3"
 commands:
   - regex: "^(.+)$"
     plugin: "LLMHoneypot"
