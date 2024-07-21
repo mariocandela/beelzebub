@@ -75,7 +75,7 @@ func TestBuildGetCompletionsFailValidationStrategyType(t *testing.T) {
 	assert.Equal(t, "no prompt for protocol selected", err.Error())
 }
 
-func TestBuildGetCompletionsSSHWithResults(t *testing.T) {
+func TestBuildGetCompletionsSSHWithResultsOpenAI(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
@@ -105,6 +105,44 @@ func TestBuildGetCompletionsSSHWithResults(t *testing.T) {
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.SSH,
 		Model:     GPT4O,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
+	openAIGPTVirtualTerminal.client = client
+
+	//When
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+
+	//Then
+	assert.Nil(t, err)
+	assert.Equal(t, "prova.txt", str)
+}
+
+func TestBuildGetCompletionsSSHWithResultsLLama(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	// Given
+	httpmock.RegisterResponder("POST", ollamaEndpoint,
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &Response{
+				Message: Message{
+					Role:    SYSTEM.String(),
+					Content: "prova.txt",
+				},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		Protocol:  tracer.SSH,
+		Model:     LLAMA3,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)

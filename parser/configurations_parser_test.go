@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"github.com/mariocandela/beelzebub/v3/plugins"
 	"os"
 	"testing"
 
@@ -184,4 +185,17 @@ func TestReadFileBytesByFilePath(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "", string(bytes))
+}
+
+func TestFromString(t *testing.T) {
+	model, err := FromString("llama3")
+	assert.Nil(t, err)
+	assert.Equal(t, plugins.LLAMA3, model)
+
+	model, err = FromString("gpt4-o")
+	assert.Nil(t, err)
+	assert.Equal(t, plugins.GPT4O, model)
+
+	model, err = FromString("beelzebub-model")
+	assert.Errorf(t, err, "model beelzebub-model not found")
 }
