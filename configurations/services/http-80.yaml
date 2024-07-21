@@ -18,41 +18,9 @@ commands:
       - "Server: Apache/2.4.53 (Debian)"
       - "X-Powered-By: PHP/7.4.29"
     statusCode: 200
-  - regex: "^(/wp-login.php|/wp-admin)$"
-    handler:
-      <html>
-        <header>
-          <title>Wordpress 6 test page</title>
-        </header>
-        <body>
-          <form action="" method="post">
-            <label for="uname"><b>Username</b></label>
-            <input type="text" placeholder="Enter Username" name="uname" required>
-
-            <label for="psw"><b>Password</b></label>
-            <input type="password" placeholder="Enter Password" name="psw" required>
-
-            <button type="submit">Login</button>
-          </form>
-        </body>
-      </html>
-    headers:
-      - "Content-Type: text/html"
-      - "Server: Apache/2.4.53 (Debian)"
-      - "X-Powered-By: PHP/7.4.29"
-    statusCode: 200
   - regex: "^.*$"
-    handler:
-      <html>
-        <header>
-          <title>404</title>
-        </header>
-        <body>
-          <h1>Not found!</h1>
-        </body>
-      </html>
-    headers:
-      - "Content-Type: text/html"
-      - "Server: Apache/2.4.53 (Debian)"
-      - "X-Powered-By: PHP/7.4.29"
-    statusCode: 404
+    plugin: "LLMHoneypot"
+    statusCode: 200
+plugin:
+  llmModel: "gpt4-o"
+  openAISecretKey: "sk-proj-123456"

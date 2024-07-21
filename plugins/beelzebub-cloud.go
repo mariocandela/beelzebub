@@ -36,7 +36,6 @@ func (beelzebubCloud *beelzebubCloud) SendEvent(event tracer.Event) (bool, error
 		SetHeader("Content-Type", "application/json").
 		SetBody(requestJson).
 		SetHeader("Authorization", beelzebubCloud.AuthToken).
-		SetResult(&gptResponse{}).
 		Post(beelzebubCloud.URI)
 
 	log.Debug(response)

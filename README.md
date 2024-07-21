@@ -104,7 +104,8 @@ $ make test.dependencies.down
 
 Beelzebub offers a wide range of features to enhance your honeypot environment:
 
-- OpenAI Generative Pre-trained Transformer act as Linux virtualization
+- Support for Ollama
+- Support for OpenAI
 - SSH Honeypot
 - HTTP Honeypot
 - TCP Honeypot
@@ -210,7 +211,9 @@ commands:
 
 #### Example SSH Honeypot
 
-###### Honeypot with GPT-3 on Port 2222
+###### Honeypot LLM Honeypots
+
+Example with OpenAI GPT-4:
 
 ```yaml
 apiVersion: "v1"
@@ -219,13 +222,54 @@ address: ":2222"
 description: "SSH interactive ChatGPT"
 commands:
   - regex: "^(.+)$"
-    plugin: "OpenAIGPTLinuxTerminal"
+    plugin: "LLMHoneypot"
 serverVersion: "OpenSSH"
 serverName: "ubuntu"
 passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
 deadlineTimeoutSeconds: 60
 plugin:
-  openAISecretKey: "Your OpenAI Secret Key"
+   llmModel: "gpt4-o"
+   openAISecretKey: "sk-proj-123456"
+```
+
+###### Honeypot LLM Honeypots
+
+Example with OpenAI GPT-4:
+
+```yaml
+apiVersion: "v1"
+protocol: "ssh"
+address: ":2222"
+description: "SSH interactive ChatGPT"
+commands:
+  - regex: "^(.+)$"
+    plugin: "LLMHoneypot"
+serverVersion: "OpenSSH"
+serverName: "ubuntu"
+passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
+deadlineTimeoutSeconds: 60
+plugin:
+   llmModel: "gpt4-o"
+   openAISecretKey: "sk-proj-123456"
+```
+
+Example with Ollama Llama3:
+
+```yaml
+apiVersion: "v1"
+protocol: "ssh"
+address: ":2222"
+description: "SSH interactive ChatGPT"
+commands:
+  - regex: "^(.+)$"
+    plugin: "LLMHoneypot"
+serverVersion: "OpenSSH"
+serverName: "ubuntu"
+passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
+deadlineTimeoutSeconds: 60
+plugin:
+   llmModel: "llama3"
+   host: "http://example.com/api/chat" #default http://localhost:11434/api/chat
 ```
 
 ###### SSH Honeypot on Port 22
