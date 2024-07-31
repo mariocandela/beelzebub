@@ -8,13 +8,14 @@
 
 ## Overview
 
-Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and utilizes virtualization techniques powered by OpenAI Generative Pre-trained Transformer.
+Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and uses AI to mimic the behavior of a high-interaction honeypot.
 
 <img src="https://beelzebub.netlify.app/go-beelzebub.png" alt="Beelzebub Logo" width="200"/>
 
 ## LLM Honeypot
 
-Learn how to integrate Beelzebub with LLM OpenAI by referring to our comprehensive guide on Medium: [Medium Article](https://medium.com/@mario.candela.personal/how-to-build-a-highly-effective-honeypot-with-beelzebub-and-chatgpt-a2f0f05b3e1)
+[![asciicast](https://asciinema.org/a/665295.svg)](https://asciinema.org/a/665295)
+
 
 ## Telegram Bot for Real-Time Attacks
 
@@ -103,7 +104,8 @@ $ make test.dependencies.down
 
 Beelzebub offers a wide range of features to enhance your honeypot environment:
 
-- OpenAI Generative Pre-trained Transformer act as Linux virtualization
+- Support for Ollama
+- Support for OpenAI
 - SSH Honeypot
 - HTTP Honeypot
 - TCP Honeypot
@@ -209,22 +211,44 @@ commands:
 
 #### Example SSH Honeypot
 
-###### Honeypot with GPT-3 on Port 2222
+###### Honeypot LLM Honeypots
+
+Example with OpenAI GPT-4:
 
 ```yaml
 apiVersion: "v1"
 protocol: "ssh"
 address: ":2222"
-description: "SSH interactive ChatGPT"
+description: "SSH interactive OpenAI  GPT-4"
 commands:
   - regex: "^(.+)$"
-    plugin: "OpenAIGPTLinuxTerminal"
+    plugin: "LLMHoneypot"
 serverVersion: "OpenSSH"
 serverName: "ubuntu"
 passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
 deadlineTimeoutSeconds: 60
 plugin:
-  openAPIChatGPTSecretKey: "Your OpenAI Secret Key"
+   llmModel: "gpt4-o"
+   openAISecretKey: "sk-proj-123456"
+```
+
+Example with Ollama Llama3:
+
+```yaml
+apiVersion: "v1"
+protocol: "ssh"
+address: ":2222"
+description: "SSH Ollama Llama3"
+commands:
+  - regex: "^(.+)$"
+    plugin: "LLMHoneypot"
+serverVersion: "OpenSSH"
+serverName: "ubuntu"
+passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
+deadlineTimeoutSeconds: 60
+plugin:
+   llmModel: "llama3"
+   host: "http://example.com/api/chat" #default http://localhost:11434/api/chat
 ```
 
 ###### SSH Honeypot on Port 22
@@ -260,8 +284,6 @@ serverName: "ubuntu"
 passwordRegex: "^(root|qwerty|Smoker666)$"
 deadlineTimeoutSeconds: 60
 ```
-
-[![asciicast](https://asciinema.org/a/604522.svg)](https://asciinema.org/a/604522)
 
 ## Roadmap
 
