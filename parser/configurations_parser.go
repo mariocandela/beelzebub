@@ -3,7 +3,6 @@ package parser
 
 import (
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/plugins"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,17 +52,6 @@ type Plugin struct {
 	OpenAISecretKey string `yaml:"openAISecretKey"`
 	Host            string `yaml:"host"`
 	LLMModel        string `yaml:"llmModel"`
-}
-
-func FromString(llmModel string) (plugins.LLMModel, error) {
-	switch llmModel {
-	case "llama3":
-		return plugins.LLAMA3, nil
-	case "gpt4-o":
-		return plugins.GPT4O, nil
-	default:
-		return -1, fmt.Errorf("model %s not found", llmModel)
-	}
 }
 
 // BeelzebubServiceConfiguration is the struct that contains the configurations of the honeypot service
