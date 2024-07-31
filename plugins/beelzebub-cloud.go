@@ -8,12 +8,20 @@ import (
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 )
 
 type beelzebubCloud struct {
 	URI       string
 	AuthToken string
 	client    *resty.Client
+}
+
+type HoneypotConfigResponseDTO struct {
+	ID            string `json:"id"`
+	Config        string `json:"config"`
+	TokenID       string `json:"tokenId"`
+	LastUpdatedOn string `json:"lastUpdatedOn"`
 }
 
 func InitBeelzebubCloud(uri, authToken string) *beelzebubCloud {
@@ -38,7 +46,7 @@ func (beelzebubCloud *beelzebubCloud) SendEvent(event tracer.Event) (bool, error
 		SetHeader("Content-Type", "application/json").
 		SetBody(requestJson).
 		SetHeader("Authorization", beelzebubCloud.AuthToken).
-		SetResult(&gptResponse{}).
+		SetResult(&tracer.Event{}).
 		Post(fmt.Sprintf("%s/events", beelzebubCloud.URI))
 
 	log.Debug(response)
@@ -58,10 +66,8 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 	response, err := beelzebubCloud.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", beelzebubCloud.AuthToken).
-		SetResult(&gptResponse{}).
+		SetResult([]HoneypotConfigResponseDTO{}).
 		Get(fmt.Sprintf("%s/honeypots", beelzebubCloud.URI))
-
-	log.Debug(response)
 
 	if err != nil {
 		return nil, err
@@ -71,11 +77,24 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 		return nil, errors.New(fmt.Sprintf("Response code: %v, error: %s", response.StatusCode(), string(response.Body())))
 	}
 
-	var honeypotsConfiguration []parser.BeelzebubServiceConfiguration
+	var honeypotsConfig []HoneypotConfigResponseDTO
 
-	if err = json.Unmarshal(response.Body(), &honeypotsConfiguration); err != nil {
+	if err = json.Unmarshal(response.Body(), &honeypotsConfig); err != nil {
 		return nil, err
 	}
 
-	return honeypotsConfiguration, nil
+	var servicesConfiguration = make([]parser.BeelzebubServiceConfiguration, 0)
+
+	for _, honeypotConfig := range honeypotsConfig {
+		var honeypotsConfig parser.BeelzebubServiceConfiguration
+
+		if err = yaml.Unmarshal([]byte(honeypotConfig.Config), &honeypotsConfig); err != nil {
+			return nil, err
+		}
+		servicesConfiguration = append(servicesConfiguration, honeypotsConfig)
+	}
+
+	log.Debug(servicesConfiguration)
+
+	return servicesConfiguration, nil
 }
