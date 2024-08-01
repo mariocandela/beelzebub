@@ -127,3 +127,104 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 	}, &result)
 	assert.Nil(t, err)
 }
+
+func TestGetHoneypotsConfigurationsWithErrorValidation(t *testing.T) {
+	//Given
+	beelzebubCloud := InitBeelzebubCloud("", "")
+
+	//When
+	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+
+	//Then
+	assert.Nil(t, result)
+	assert.Equal(t, "authToken is empty", err.Error())
+}
+
+func TestGetHoneypotsConfigurationsWithErrorAPI(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	uri := "localhost:8081"
+
+	// Given
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			return httpmock.NewStringResponse(500, ""), nil
+		},
+	)
+
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud.client = client
+
+	//When
+	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+
+	//Then
+	assert.Nil(t, result)
+	assert.Equal(t, "Response code: 500, error: ", err.Error())
+}
+
+func TestGetHoneypotsConfigurationsWithErrorUnmarshal(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	uri := "localhost:8081"
+
+	// Given
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, "error")
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud.client = client
+
+	//When
+	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+
+	//Then
+	assert.Nil(t, result)
+	assert.Equal(t, "json: cannot unmarshal string into Go value of type []plugins.HoneypotConfigResponseDTO", err.Error())
+}
+
+func TestGetHoneypotsConfigurationsWithErrorDeserializeYaml(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	uri := "localhost:8081"
+
+	// Given
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &[]HoneypotConfigResponseDTO{
+				{
+					ID:      "123456",
+					Config:  "error",
+					TokenID: "1234567",
+				},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud.client = client
+
+	//When
+	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+
+	//Then
+	assert.Nil(t, result)
+	assert.Equal(t, "yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!str `error` into parser.BeelzebubServiceConfiguration", err.Error())
+}
