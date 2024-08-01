@@ -226,5 +226,5 @@ func TestGetHoneypotsConfigurationsWithErrorDeserializeYaml(t *testing.T) {
 
 	//Then
 	assert.Nil(t, result)
-	assert.Equal(t, "yaml: unmarshal errors:\\n  line 1: cannot unmarshal !!str `error` into parser.BeelzebubServiceConfiguration", err.Error())
+	assert.Equal(t, "yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `error` into parser.BeelzebubServiceConfiguration", err.Error())
 }
