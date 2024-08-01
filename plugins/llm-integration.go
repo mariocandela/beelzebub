@@ -3,6 +3,7 @@ package plugins
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 
@@ -75,6 +76,17 @@ const (
 	LLAMA3 LLMModel = iota
 	GPT4O
 )
+
+func FromStringToLLMModel(llmModel string) (LLMModel, error) {
+	switch llmModel {
+	case "llama3":
+		return LLAMA3, nil
+	case "gpt4-o":
+		return GPT4O, nil
+	default:
+		return -1, fmt.Errorf("model %s not found", llmModel)
+	}
+}
 
 func InitLLMHoneypot(config LLMHoneypot) *LLMHoneypot {
 	// Inject the dependencies
