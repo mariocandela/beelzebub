@@ -77,7 +77,7 @@ const (
 	GPT4O
 )
 
-func FromString(llmModel string) (LLMModel, error) {
+func FromStringToLLMModel(llmModel string) (LLMModel, error) {
 	switch llmModel {
 	case "llama3":
 		return LLAMA3, nil

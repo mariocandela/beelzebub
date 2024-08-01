@@ -64,7 +64,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 							if command.Plugin == plugins.LLMPluginName {
 
-								llmModel, err := plugins.FromString(beelzebubServiceConfiguration.Plugin.LLMModel)
+								llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
 
 								if err != nil {
 									log.Errorf("Error fromString: %s", err.Error())

@@ -38,7 +38,7 @@ func (d *Director) BuildBeelzebub(beelzebubCoreConfigurations *parser.BeelzebubC
 		}
 	}
 
-	if beelzebubCoreConfigurations.Core.Tracings.BeelzebubCloud.Enabled {
+	if beelzebubCoreConfigurations.Core.BeelzebubCloud.Enabled {
 		d.builder.setTraceStrategy(d.beelzebubCloudStrategy)
 	}
 
@@ -58,7 +58,7 @@ func (d *Director) beelzebubCloudStrategy(event tracer.Event) {
 		"event":  event,
 	}).Info("New Event")
 
-	conf := d.builder.beelzebubCoreConfigurations.Core.Tracings.BeelzebubCloud
+	conf := d.builder.beelzebubCoreConfigurations.Core.BeelzebubCloud
 
 	beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken)
 

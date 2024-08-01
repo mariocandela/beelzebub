@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/mariocandela/beelzebub/v3/tracer"
@@ -22,10 +23,10 @@ func TestBuildSendEventWithResults(t *testing.T) {
 	httpmock.ActivateNonDefault(client.GetClient())
 	defer httpmock.DeactivateAndReset()
 
-	uri := "localhost:8081/events"
+	uri := "localhost:8081"
 
 	// Given
-	httpmock.RegisterResponder("POST", uri,
+	httpmock.RegisterResponder("POST", fmt.Sprintf("%s/events", uri),
 		func(req *http.Request) (*http.Response, error) {
 			resp, err := httpmock.NewJsonResponse(200, &tracer.Event{})
 			if err != nil {

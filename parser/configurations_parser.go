@@ -14,9 +14,10 @@ import (
 // BeelzebubCoreConfigurations is the struct that contains the configurations of the core
 type BeelzebubCoreConfigurations struct {
 	Core struct {
-		Logging    Logging    `yaml:"logging"`
-		Tracings   Tracings   `yaml:"tracings"` //TODO move this section before.
-		Prometheus Prometheus `yaml:"prometheus"`
+		Logging        Logging        `yaml:"logging"`
+		Tracings       Tracings       `yaml:"tracings"`
+		Prometheus     Prometheus     `yaml:"prometheus"`
+		BeelzebubCloud BeelzebubCloud `yaml:"beelzebub-cloud"`
 	}
 }
 
@@ -30,8 +31,7 @@ type Logging struct {
 
 // Tracings is the struct that contains the configurations of the tracings
 type Tracings struct {
-	RabbitMQ       `yaml:"rabbit-mq"`
-	BeelzebubCloud `yaml:"beelzebub-cloud"`
+	RabbitMQ `yaml:"rabbit-mq"`
 }
 
 type BeelzebubCloud struct {

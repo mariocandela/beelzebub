@@ -2,7 +2,6 @@ package parser
 
 import (
 	"errors"
-	"github.com/mariocandela/beelzebub/v3/plugins"
 	"os"
 	"testing"
 
@@ -21,10 +20,10 @@ core:
     rabbit-mq:
       enabled: true
       uri: "amqp://user:password@localhost/"
-    beelzebub-cloud:
-      enabled: true
-      uri: "amqp://user:password@localhost/"
-      auth-token: "iejfdjsl-aosdajosoidaj-dunfkjnfkjsdnkn"`)
+  beelzebub-cloud:
+    enabled: true
+    uri: "amqp://user:password@localhost/"
+    auth-token: "iejfdjsl-aosdajosoidaj-dunfkjnfkjsdnkn"`)
 	return configurationsCoreBytes, nil
 }
 
@@ -95,9 +94,9 @@ func TestReadConfigurationsCoreValid(t *testing.T) {
 	assert.Equal(t, coreConfigurations.Core.Logging.LogsPath, "./logs")
 	assert.Equal(t, coreConfigurations.Core.Tracings.RabbitMQ.Enabled, true)
 	assert.Equal(t, coreConfigurations.Core.Tracings.RabbitMQ.URI, "amqp://user:password@localhost/")
-	assert.Equal(t, coreConfigurations.Core.Tracings.BeelzebubCloud.Enabled, true)
-	assert.Equal(t, coreConfigurations.Core.Tracings.BeelzebubCloud.URI, "amqp://user:password@localhost/")
-	assert.Equal(t, coreConfigurations.Core.Tracings.BeelzebubCloud.AuthToken, "iejfdjsl-aosdajosoidaj-dunfkjnfkjsdnkn")
+	assert.Equal(t, coreConfigurations.Core.BeelzebubCloud.Enabled, true)
+	assert.Equal(t, coreConfigurations.Core.BeelzebubCloud.URI, "amqp://user:password@localhost/")
+	assert.Equal(t, coreConfigurations.Core.BeelzebubCloud.AuthToken, "iejfdjsl-aosdajosoidaj-dunfkjnfkjsdnkn")
 }
 
 func TestReadConfigurationsServicesFail(t *testing.T) {
@@ -185,17 +184,4 @@ func TestReadFileBytesByFilePath(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "", string(bytes))
-}
-
-func TestFromString(t *testing.T) {
-	model, err := FromString("llama3")
-	assert.Nil(t, err)
-	assert.Equal(t, plugins.LLAMA3, model)
-
-	model, err = FromString("gpt4-o")
-	assert.Nil(t, err)
-	assert.Equal(t, plugins.GPT4O, model)
-
-	model, err = FromString("beelzebub-model")
-	assert.Errorf(t, err, "model beelzebub-model not found")
 }

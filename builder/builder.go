@@ -113,8 +113,8 @@ Honeypot Framework, happy hacking!`)
 	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
 
-	if b.beelzebubCoreConfigurations.Core.Tracings.BeelzebubCloud.Enabled {
-		conf := b.beelzebubCoreConfigurations.Core.Tracings.BeelzebubCloud
+	if b.beelzebubCoreConfigurations.Core.BeelzebubCloud.Enabled {
+		conf := b.beelzebubCoreConfigurations.Core.BeelzebubCloud
 
 		beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken)
 

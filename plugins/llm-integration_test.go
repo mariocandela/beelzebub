@@ -285,3 +285,16 @@ func TestBuildExecuteModelHTTPWithoutResults(t *testing.T) {
 	//Then
 	assert.Equal(t, "no choices", err.Error())
 }
+
+func TestFromString(t *testing.T) {
+	model, err := FromStringToLLMModel("llama3")
+	assert.Nil(t, err)
+	assert.Equal(t, LLAMA3, model)
+
+	model, err = FromStringToLLMModel("gpt4-o")
+	assert.Nil(t, err)
+	assert.Equal(t, GPT4O, model)
+
+	model, err = FromStringToLLMModel("beelzebub-model")
+	assert.Errorf(t, err, "model beelzebub-model not found")
+}
