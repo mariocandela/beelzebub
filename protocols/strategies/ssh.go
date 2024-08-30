@@ -5,8 +5,8 @@ import (
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/tracer"
+	"net"
 	"regexp"
-
 	"strings"
 	"time"
 
@@ -29,10 +29,14 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 			Handler: func(sess ssh.Session) {
 				uuidSession := uuid.New()
 
+				host, port, _ := net.SplitHostPort(sess.RemoteAddr().String())
+
 				tr.TraceEvent(tracer.Event{
 					Msg:         "New SSH Session",
 					Protocol:    tracer.SSH.String(),
 					RemoteAddr:  sess.RemoteAddr().String(),
+					SourceIp:    host,
+					SourcePort:  port,
 					Status:      tracer.Start.String(),
 					ID:          uuidSession.String(),
 					Environ:     strings.Join(sess.Environ(), ","),
@@ -95,6 +99,8 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 							tr.TraceEvent(tracer.Event{
 								Msg:           "New SSH Terminal Session",
 								RemoteAddr:    sess.RemoteAddr().String(),
+								SourceIp:      host,
+								SourcePort:    port,
 								Status:        tracer.Interaction.String(),
 								Command:       commandInput,
 								CommandOutput: commandOutput,
@@ -113,6 +119,8 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 				})
 			},
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
+				host, port, _ := net.SplitHostPort(ctx.RemoteAddr().String())
+
 				tr.TraceEvent(tracer.Event{
 					Msg:         "New SSH attempt",
 					Protocol:    tracer.SSH.String(),
@@ -121,6 +129,8 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					Password:    password,
 					Client:      ctx.ClientVersion(),
 					RemoteAddr:  ctx.RemoteAddr().String(),
+					SourceIp:    host,
+					SourcePort:  port,
 					ID:          uuid.New().String(),
 					Description: beelzebubServiceConfiguration.Description,
 				})

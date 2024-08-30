@@ -6,6 +6,7 @@ import (
 	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	"io"
+	"net"
 	"net/http"
 	"regexp"
 	"strings"
@@ -91,6 +92,8 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 	if err == nil {
 		body = string(bodyBytes)
 	}
+	host, port, _ := net.SplitHostPort(request.RemoteAddr)
+
 	tr.TraceEvent(tracer.Event{
 		Msg:             "HTTP New request",
 		RequestURI:      request.RequestURI,
@@ -103,6 +106,8 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 		Headers:         mapHeaderToString(request.Header),
 		Status:          tracer.Stateless.String(),
 		RemoteAddr:      request.RemoteAddr,
+		SourceIp:        host,
+		SourcePort:      port,
 		ID:              uuid.New().String(),
 		Description:     HoneypotDescription,
 	})
