@@ -35,12 +35,16 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 						command = string(buffer[:n])
 					}
 
+					host, port, _ := net.SplitHostPort(conn.RemoteAddr().String())
+
 					tr.TraceEvent(tracer.Event{
 						Msg:         "New TCP attempt",
 						Protocol:    tracer.TCP.String(),
 						Command:     command,
 						Status:      tracer.Stateless.String(),
 						RemoteAddr:  conn.RemoteAddr().String(),
+						SourceIp:    host,
+						SourcePort:  port,
 						ID:          uuid.New().String(),
 						Description: beelzebubServiceConfiguration.Description,
 					})

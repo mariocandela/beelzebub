@@ -34,6 +34,8 @@ type Event struct {
 	HTTPMethod      string
 	RequestURI      string
 	Description     string
+	SourceIp        string
+	SourcePort      string
 }
 
 type (
