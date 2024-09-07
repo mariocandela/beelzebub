@@ -31,6 +31,68 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 				host, port, _ := net.SplitHostPort(sess.RemoteAddr().String())
 
+				if sess.RawCommand() != "" {
+					for _, command := range beelzebubServiceConfiguration.Commands {
+						matched, err := regexp.MatchString(command.Regex, sess.RawCommand())
+						if err != nil {
+							log.Errorf("Error regex: %s, %s", command.Regex, err.Error())
+							continue
+						}
+
+						if matched {
+							commandOutput := command.Handler
+
+							if command.Plugin == plugins.LLMPluginName {
+
+								llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
+
+								if err != nil {
+									log.Errorf("Error fromString: %s", err.Error())
+									commandOutput = "command not found"
+								}
+
+								llmHoneypot := plugins.LLMHoneypot{
+									Histories: make([]plugins.Message, 0),
+									OpenAIKey: beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+									Protocol:  tracer.SSH,
+									Host:      beelzebubServiceConfiguration.Plugin.Host,
+									Model:     llmModel,
+								}
+
+								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+
+								if commandOutput, err = llmHoneypotInstance.ExecuteModel(sess.RawCommand()); err != nil {
+									log.Errorf("Error ExecuteModel: %s, %s", sess.RawCommand(), err.Error())
+									commandOutput = "command not found"
+								}
+							}
+
+							sess.Write(append([]byte(commandOutput), '\n'))
+
+							tr.TraceEvent(tracer.Event{
+								Msg:           "New SSH Session",
+								Protocol:      tracer.SSH.String(),
+								RemoteAddr:    sess.RemoteAddr().String(),
+								SourceIp:      host,
+								SourcePort:    port,
+								Status:        tracer.Start.String(),
+								ID:            uuidSession.String(),
+								Environ:       strings.Join(sess.Environ(), ","),
+								User:          sess.User(),
+								Description:   beelzebubServiceConfiguration.Description,
+								Command:       sess.RawCommand(),
+								CommandOutput: commandOutput,
+							})
+							tr.TraceEvent(tracer.Event{
+								Msg:    "End SSH Session",
+								Status: tracer.End.String(),
+								ID:     uuidSession.String(),
+							})
+							return
+						}
+					}
+				}
+
 				tr.TraceEvent(tracer.Event{
 					Msg:         "New SSH Session",
 					Protocol:    tracer.SSH.String(),
@@ -42,7 +104,6 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					Environ:     strings.Join(sess.Environ(), ","),
 					User:        sess.User(),
 					Description: beelzebubServiceConfiguration.Description,
-					Command:     sess.RawCommand(),
 				})
 
 				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
