@@ -58,6 +58,7 @@ plugin:
   openAISecretKey: "qwerty"
   llmModel: "llama3"
   host: "localhost:1563"
+  prompt: "hello world"
 `)
 	return beelzebubServiceConfiguration, nil
 }
@@ -133,6 +134,7 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OpenAISecretKey, "qwerty")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMModel, "llama3")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Host, "localhost:1563")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Prompt, "hello world")
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {

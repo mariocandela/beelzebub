@@ -59,6 +59,51 @@ func TestBuildExecuteModelFailValidation(t *testing.T) {
 	assert.Equal(t, "openAIKey is empty", err.Error())
 }
 
+func TestBuildExecuteModelWithCustomPrompt(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	// Given
+	httpmock.RegisterMatcherResponder("POST", openAIGPTEndpoint,
+		httpmock.BodyContainsString("hello world"),
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &Response{
+				Choices: []Choice{
+					{
+						Message: Message{
+							Role:    SYSTEM.String(),
+							Content: "[default]\nregion = us-west-2\noutput = json",
+						},
+					},
+				},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	llmHoneypot := LLMHoneypot{
+		Histories:    make([]Message, 0),
+		OpenAIKey:    "sdjdnklfjndslkjanfk",
+		Protocol:     tracer.HTTP,
+		Model:        GPT4O,
+		CustomPrompt: "hello world",
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
+	openAIGPTVirtualTerminal.client = client
+
+	//When
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials")
+
+	//Then
+	assert.Nil(t, err)
+	assert.Equal(t, "[default]\nregion = us-west-2\noutput = json", str)
+}
+
 func TestBuildExecuteModelFailValidationStrategyType(t *testing.T) {
 
 	llmHoneypot := LLMHoneypot{
