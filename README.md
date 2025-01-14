@@ -250,6 +250,25 @@ plugin:
    llmModel: "llama3"
    host: "http://example.com/api/chat" #default http://localhost:11434/api/chat
 ```
+Example with custom prompt:
+
+```yaml
+apiVersion: "v1"
+protocol: "ssh"
+address: ":2222"
+description: "SSH interactive OpenAI  GPT-4"
+commands:
+  - regex: "^(.+)$"
+    plugin: "LLMHoneypot"
+serverVersion: "OpenSSH"
+serverName: "ubuntu"
+passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
+deadlineTimeoutSeconds: 60
+plugin:
+   llmModel: "gpt4-o"
+   openAISecretKey: "sk-proj-123456"
+   prompt: "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block."
+```
 
 ###### SSH Honeypot on Port 22
 
