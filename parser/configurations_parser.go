@@ -52,6 +52,7 @@ type Plugin struct {
 	OpenAISecretKey string `yaml:"openAISecretKey"`
 	Host            string `yaml:"host"`
 	LLMModel        string `yaml:"llmModel"`
+	Prompt          string `yaml:"prompt"`
 }
 
 // BeelzebubServiceConfiguration is the struct that contains the configurations of the honeypot service

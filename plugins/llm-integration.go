@@ -19,12 +19,13 @@ const (
 )
 
 type LLMHoneypot struct {
-	Histories []Message
-	OpenAIKey string
-	client    *resty.Client
-	Protocol  tracer.Protocol
-	Model     LLMModel
-	Host      string
+	Histories    []Message
+	OpenAIKey    string
+	client       *resty.Client
+	Protocol     tracer.Protocol
+	Model        LLMModel
+	Host         string
+	CustomPrompt string
 }
 
 type Choice struct {
@@ -211,8 +212,20 @@ func (llmHoneypot *LLMHoneypot) ollamaCaller(messages []Message) (string, error)
 
 func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 	var err error
+	var prompt []Message
 
-	prompt, err := buildPrompt(llmHoneypot.Histories, llmHoneypot.Protocol, command)
+	if llmHoneypot.CustomPrompt != "" {
+		prompt = append(prompt, Message{
+			Role:    SYSTEM.String(),
+			Content: llmHoneypot.CustomPrompt,
+		})
+		prompt = append(prompt, Message{
+			Role:    USER.String(),
+			Content: command,
+		})
+	} else {
+		prompt, err = buildPrompt(llmHoneypot.Histories, llmHoneypot.Protocol, command)
+	}
 
 	if err != nil {
 		return "", err
