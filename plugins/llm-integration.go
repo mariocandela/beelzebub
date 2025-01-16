@@ -96,14 +96,19 @@ func InitLLMHoneypot(config LLMHoneypot) *LLMHoneypot {
 	return &config
 }
 
-func buildPrompt(histories []Message, protocol tracer.Protocol, command string) ([]Message, error) {
+func (llmHoneypot *LLMHoneypot) buildPrompt(command string) ([]Message, error) {
 	var messages []Message
+	var prompt string
 
-	switch protocol {
+	switch llmHoneypot.Protocol {
 	case tracer.SSH:
+		prompt = systemPromptVirtualizeLinuxTerminal
+		if llmHoneypot.CustomPrompt != "" {
+			prompt = llmHoneypot.CustomPrompt
+		}
 		messages = append(messages, Message{
 			Role:    SYSTEM.String(),
-			Content: systemPromptVirtualizeLinuxTerminal,
+			Content: prompt,
 		})
 		messages = append(messages, Message{
 			Role:    USER.String(),
@@ -113,13 +118,17 @@ func buildPrompt(histories []Message, protocol tracer.Protocol, command string) 
 			Role:    ASSISTANT.String(),
 			Content: "/home/user",
 		})
-		for _, history := range histories {
+		for _, history := range llmHoneypot.Histories {
 			messages = append(messages, history)
 		}
 	case tracer.HTTP:
+		prompt = systemPromptVirtualizeHTTPServer
+		if llmHoneypot.CustomPrompt != "" {
+			prompt = llmHoneypot.CustomPrompt
+		}
 		messages = append(messages, Message{
 			Role:    SYSTEM.String(),
-			Content: systemPromptVirtualizeHTTPServer,
+			Content: prompt,
 		})
 		messages = append(messages, Message{
 			Role:    USER.String(),
@@ -214,18 +223,7 @@ func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 	var err error
 	var prompt []Message
 
-	if llmHoneypot.CustomPrompt != "" {
-		prompt = append(prompt, Message{
-			Role:    SYSTEM.String(),
-			Content: llmHoneypot.CustomPrompt,
-		})
-		prompt = append(prompt, Message{
-			Role:    USER.String(),
-			Content: command,
-		})
-	} else {
-		prompt, err = buildPrompt(llmHoneypot.Histories, llmHoneypot.Protocol, command)
-	}
+	prompt, err = llmHoneypot.buildPrompt(command)
 
 	if err != nil {
 		return "", err

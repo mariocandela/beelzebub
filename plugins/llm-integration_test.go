@@ -16,8 +16,13 @@ func TestBuildPromptEmptyHistory(t *testing.T) {
 	var histories []Message
 	command := "pwd"
 
+	honeypot := LLMHoneypot{
+		Histories: histories,
+		Protocol:  tracer.SSH,
+	}
+
 	//When
-	prompt, err := buildPrompt(histories, tracer.SSH, command)
+	prompt, err := honeypot.buildPrompt(command)
 
 	//Then
 	assert.Nil(t, err)
@@ -35,12 +40,43 @@ func TestBuildPromptWithHistory(t *testing.T) {
 
 	command := "pwd"
 
+	honeypot := LLMHoneypot{
+		Histories: histories,
+		Protocol:  tracer.SSH,
+	}
+
 	//When
-	prompt, err := buildPrompt(histories, tracer.SSH, command)
+	prompt, err := honeypot.buildPrompt(command)
 
 	//Then
 	assert.Nil(t, err)
 	assert.Equal(t, SystemPromptLen+1, len(prompt))
+}
+
+func TestBuildPromptWithCustomPrompt(t *testing.T) {
+	//Given
+	var histories = []Message{
+		{
+			Role:    "cat hello.txt",
+			Content: "world",
+		},
+	}
+
+	command := "pwd"
+
+	honeypot := LLMHoneypot{
+		Histories:    histories,
+		Protocol:     tracer.SSH,
+		CustomPrompt: "act as calculator",
+	}
+
+	//When
+	prompt, err := honeypot.buildPrompt(command)
+
+	//Then
+	assert.Nil(t, err)
+	assert.Equal(t, prompt[0].Content, "act as calculator")
+	assert.Equal(t, prompt[0].Role, SYSTEM.String())
 }
 
 func TestBuildExecuteModelFailValidation(t *testing.T) {
