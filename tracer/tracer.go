@@ -2,9 +2,10 @@
 package tracer
 
 import (
-	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -36,6 +37,7 @@ type Event struct {
 	Description     string
 	SourceIp        string
 	SourcePort      string
+	TLSServerName   string
 }
 
 type (
