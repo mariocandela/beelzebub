@@ -68,6 +68,8 @@ type BeelzebubServiceConfiguration struct {
 	Description            string    `yaml:"description"`
 	Banner                 string    `yaml:"banner"`
 	Plugin                 Plugin    `yaml:"plugin"`
+	TLSCertPath            string    `yaml:"tlsCertPath"`
+	TLSKeyPath             string    `yaml:"tlsKeyPath"`
 }
 
 // Command is the struct that contains the configurations of the commands

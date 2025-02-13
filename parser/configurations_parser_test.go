@@ -49,6 +49,8 @@ func mockReadfilebytesBeelzebubServiceConfiguration(filePath string) ([]byte, er
 apiVersion: "v1"
 protocol: "http"
 address: ":8080"
+tlsCertPath: "/tmp/cert.crt"
+tlsKeyPath: "/tmp/cert.key"
 commands:
   - regex: "wp-admin"
     handler: "login"
@@ -135,6 +137,8 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMModel, "llama3")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Host, "localhost:1563")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Prompt, "hello world")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSCertPath, "/tmp/cert.crt")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "/tmp/cert.key")
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {

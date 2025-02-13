@@ -2,9 +2,6 @@ package strategies
 
 import (
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/parser"
-	"github.com/mariocandela/beelzebub/v3/plugins"
-	"github.com/mariocandela/beelzebub/v3/tracer"
 	"io"
 	"net"
 	"net/http"
@@ -12,6 +9,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/plugins"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -67,13 +67,25 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 				}
 
 				setResponseHeaders(responseWriter, command.Headers, command.StatusCode)
-				fmt.Fprintf(responseWriter, responseHTTPBody)
+				fmt.Fprint(responseWriter, responseHTTPBody)
 				break
 			}
 		}
 	})
 	go func() {
-		err := http.ListenAndServe(httpStrategy.beelzebubServiceConfiguration.Address, serverMux)
+		var err error
+		// Launch a TLS supporting server if we are supplied a TLS Key and Certificate.
+		// If relative paths are supplied, they are relative to the CWD of the binary.
+		// The can be self-signed, only the client will validate this (or not).
+		if httpStrategy.beelzebubServiceConfiguration.TLSKeyPath != "" && httpStrategy.beelzebubServiceConfiguration.TLSCertPath != "" {
+			err = http.ListenAndServeTLS(
+				httpStrategy.beelzebubServiceConfiguration.Address,
+				httpStrategy.beelzebubServiceConfiguration.TLSCertPath,
+				httpStrategy.beelzebubServiceConfiguration.TLSKeyPath,
+				serverMux)
+		} else {
+			err = http.ListenAndServe(httpStrategy.beelzebubServiceConfiguration.Address, serverMux)
+		}
 		if err != nil {
 			log.Errorf("Error during init HTTP Protocol: %s", err.Error())
 			return
@@ -95,7 +107,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 	}
 	host, port, _ := net.SplitHostPort(request.RemoteAddr)
 
-	tr.TraceEvent(tracer.Event{
+	event := tracer.Event{
 		Msg:             "HTTP New request",
 		RequestURI:      request.RequestURI,
 		Protocol:        tracer.HTTP.String(),
@@ -111,7 +123,13 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 		SourcePort:      port,
 		ID:              uuid.New().String(),
 		Description:     HoneypotDescription,
-	})
+	}
+	// Capture the TLS details from the request, if provided.
+	if request.TLS != nil {
+		event.Msg = "HTTPS New Request"
+		event.TLSServerName = request.TLS.ServerName
+	}
+	tr.TraceEvent(event)
 }
 
 func mapHeaderToString(headers http.Header) string {
