@@ -379,3 +379,93 @@ func TestFromString(t *testing.T) {
 	model, err = FromStringToLLMModel("beelzebub-model")
 	assert.Errorf(t, err, "model beelzebub-model not found")
 }
+
+func TestBuildExecuteModelSSHWithoutPlaintextSection(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	// Given
+	httpmock.RegisterResponder("POST", ollamaEndpoint,
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &Response{
+				Message: Message{
+					Role:    SYSTEM.String(),
+					Content: "```plaintext\n```\n",
+				},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		Protocol:  tracer.SSH,
+		Model:     LLAMA3,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
+	openAIGPTVirtualTerminal.client = client
+
+	//When
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+
+	//Then
+	assert.Nil(t, err)
+	assert.Equal(t, "", str)
+}
+
+func TestBuildExecuteModelSSHWithoutQuotesSection(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	// Given
+	httpmock.RegisterResponder("POST", ollamaEndpoint,
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &Response{
+				Message: Message{
+					Role:    SYSTEM.String(),
+					Content: "```\n```\n",
+				},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		Protocol:  tracer.SSH,
+		Model:     LLAMA3,
+	}
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
+	openAIGPTVirtualTerminal.client = client
+
+	//When
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+
+	//Then
+	assert.Nil(t, err)
+	assert.Equal(t, "", str)
+}
+
+func TestRemoveQuotes(t *testing.T) {
+	plaintext := "```plaintext\n```"
+	bash := "```bash\n```"
+	onlyQuotes := "```\n```"
+	complexText := "```plaintext\ntop - 10:30:48 up 1 day,  4:30,  2 users,  load average: 0.15, 0.10, 0.08\nTasks: 198 total,   1 running, 197 sleeping,   0 stopped,   0 zombie\n```"
+	complexText2 := "```\ntop - 15:06:59 up 10 days,  3:17,  1 user,  load average: 0.10, 0.09, 0.08\nTasks: 285 total\n```"
+
+	assert.Equal(t, "", removeQuotes(plaintext))
+	assert.Equal(t, "", removeQuotes(bash))
+	assert.Equal(t, "", removeQuotes(onlyQuotes))
+	assert.Equal(t, "top - 10:30:48 up 1 day,  4:30,  2 users,  load average: 0.15, 0.10, 0.08\nTasks: 198 total,   1 running, 197 sleeping,   0 stopped,   0 zombie\n", removeQuotes(complexText))
+	assert.Equal(t, "top - 15:06:59 up 10 days,  3:17,  1 user,  load average: 0.10, 0.09, 0.08\nTasks: 285 total\n", removeQuotes(complexText2))
+}
