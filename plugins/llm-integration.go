@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/tracer"
-
 	log "github.com/sirupsen/logrus"
+	"regexp"
 )
 
 const (
-	systemPromptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide explanations or type commands unless explicitly instructed by the user. Your entire response/output is going to consist of a simple text with \n for new line, and you will NOT wrap it within string md markers"
+	systemPromptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide note. Do not provide explanations or type commands unless explicitly instructed by the user. Your entire response/output is going to consist of a simple text with \n for new line, and you will NOT wrap it within string md markers"
 	systemPromptVirtualizeHTTPServer    = "You will act as an unsecure HTTP Server with multiple vulnerability like aws and git credentials stored into root http directory. The user will send HTTP requests, and you are to reply with what the server should show. Do not provide explanations or type commands unless explicitly instructed by the user."
 	LLMPluginName                       = "LLMHoneypot"
 	openAIGPTEndpoint                   = "https://api.openai.com/v1/chat/completions"
@@ -185,7 +185,7 @@ func (llmHoneypot *LLMHoneypot) openAICaller(messages []Message) (string, error)
 		return "", errors.New("no choices")
 	}
 
-	return response.Result().(*Response).Choices[0].Message.Content, nil
+	return removeQuotes(response.Result().(*Response).Choices[0].Message.Content), nil
 }
 
 func (llmHoneypot *LLMHoneypot) ollamaCaller(messages []Message) (string, error) {
@@ -216,7 +216,7 @@ func (llmHoneypot *LLMHoneypot) ollamaCaller(messages []Message) (string, error)
 	}
 	log.Debug(response)
 
-	return response.Result().(*Response).Message.Content, nil
+	return removeQuotes(response.Result().(*Response).Message.Content), nil
 }
 
 func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
@@ -237,4 +237,9 @@ func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 	default:
 		return "", errors.New("no model selected")
 	}
+}
+
+func removeQuotes(content string) string {
+	regex := regexp.MustCompile("(```( *)?([a-z]*)?(\\n)?)")
+	return regex.ReplaceAllString(content, "")
 }
