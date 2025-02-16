@@ -59,6 +59,7 @@ commands:
 plugin:
   openAISecretKey: "qwerty"
   llmModel: "llama3"
+  llmProvider: "ollama"
   host: "localhost:1563"
   prompt: "hello world"
 `)
@@ -135,6 +136,7 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Headers[0], "Content-Type: text/html")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OpenAISecretKey, "qwerty")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMModel, "llama3")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMProvider, "ollama")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Host, "localhost:1563")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Prompt, "hello world")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSCertPath, "/tmp/cert.crt")

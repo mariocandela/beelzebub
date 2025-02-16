@@ -37,10 +37,10 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 
 				if command.Plugin == plugins.LLMPluginName {
 
-					llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
+					llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
 
 					if err != nil {
-						log.Errorf("Error fromString: %s", err.Error())
+						log.Errorf("Error: %s", err.Error())
 						responseHTTPBody = "404 Not Found!"
 					}
 
@@ -49,7 +49,8 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 						OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
 						Protocol:     tracer.HTTP,
 						Host:         beelzebubServiceConfiguration.Plugin.Host,
-						Model:        llmModel,
+						Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+						Provider:     llmProvider,
 						CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
 					}
 
