@@ -9,12 +9,17 @@ import (
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+	"os"
+	"strings"
+	"time"
 )
 
 type beelzebubCloud struct {
-	URI       string
-	AuthToken string
-	client    *resty.Client
+	URI                string
+	AuthToken          string
+	client             *resty.Client
+	ConfigurationsHash strings.Builder
+	PollingInterval    time.Duration
 }
 
 type HoneypotConfigResponseDTO struct {
@@ -25,11 +30,19 @@ type HoneypotConfigResponseDTO struct {
 }
 
 func InitBeelzebubCloud(uri, authToken string) *beelzebubCloud {
-	return &beelzebubCloud{
-		URI:       uri,
-		AuthToken: authToken,
-		client:    resty.New(),
+	beelzebubCloud := &beelzebubCloud{
+		URI:             uri,
+		AuthToken:       authToken,
+		client:          resty.New(),
+		PollingInterval: 15 * time.Second,
 	}
+
+	go func() {
+		if err := beelzebubCloud.verifyConfigurationsChanged(); err != nil {
+			log.Fatalf("Error verify configurations changed: %s", err.Error())
+		}
+	}()
+	return beelzebubCloud
 }
 
 func (beelzebubCloud *beelzebubCloud) SendEvent(event tracer.Event) (bool, error) {
@@ -84,7 +97,7 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 	}
 
 	var servicesConfiguration = make([]parser.BeelzebubServiceConfiguration, 0)
-
+	beelzebubCloud.ConfigurationsHash = strings.Builder{}
 	for _, honeypotConfig := range honeypotsConfig {
 		var honeypotsConfig parser.BeelzebubServiceConfiguration
 
@@ -92,9 +105,33 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 			return nil, err
 		}
 		servicesConfiguration = append(servicesConfiguration, honeypotsConfig)
+
+		if hashCode, err := honeypotsConfig.HashCode(); err != nil {
+			return nil, err
+		} else {
+			beelzebubCloud.ConfigurationsHash.WriteString(hashCode)
+		}
+
 	}
 
-	log.Debug(servicesConfiguration)
-
 	return servicesConfiguration, nil
+}
+
+var exitFunction func(code int) = os.Exit
+
+func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
+	for {
+		var lastConfigurationsHash = beelzebubCloud.ConfigurationsHash.String()
+
+		log.Debug("Checking configurations...")
+		if _, err := beelzebubCloud.GetHoneypotsConfigurations(); err != nil {
+			return err
+		}
+		if len(lastConfigurationsHash) > 0 && lastConfigurationsHash != beelzebubCloud.ConfigurationsHash.String() {
+			log.Debug("Configurations changed, exiting...")
+			exitFunction(0) // Exit to restart the container
+		}
+		time.Sleep(beelzebubCloud.PollingInterval)
+	}
+	return nil
 }

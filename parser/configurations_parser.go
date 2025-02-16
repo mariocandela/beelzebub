@@ -2,6 +2,9 @@
 package parser
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -70,6 +73,15 @@ type BeelzebubServiceConfiguration struct {
 	Plugin                 Plugin    `yaml:"plugin"`
 	TLSCertPath            string    `yaml:"tlsCertPath"`
 	TLSKeyPath             string    `yaml:"tlsKeyPath"`
+}
+
+func (bsc BeelzebubServiceConfiguration) HashCode() (string, error) {
+	data, err := json.Marshal(bsc)
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:]), nil
 }
 
 // Command is the struct that contains the configurations of the commands

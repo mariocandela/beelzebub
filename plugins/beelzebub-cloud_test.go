@@ -8,6 +8,7 @@ import (
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -125,6 +126,7 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 			},
 		},
 	}, &result)
+	assert.Equal(t, "fd4b433cf961120250a1532f8bb2f4060ad939d4dda15b96b8c90176a016a165", beelzebubCloud.ConfigurationsHash.String())
 	assert.Nil(t, err)
 }
 
@@ -227,4 +229,47 @@ func TestGetHoneypotsConfigurationsWithErrorDeserializeYaml(t *testing.T) {
 	//Then
 	assert.Nil(t, result)
 	assert.Equal(t, "yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `error` into parser.BeelzebubServiceConfiguration", err.Error())
+}
+
+func TestVerifyConfigurationsChanged(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	uri := "localhost:8081"
+
+	// Given
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &[]HoneypotConfigResponseDTO{
+				{
+					ID:      "123456",
+					Config:  "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndescription: \"SSH interactive ChatGPT\"\ncommands:\n  - regex: \"^(.+)$\"\n    plugin: \"LLMHoneypot\"\nserverVersion: \"OpenSSH\"\nserverName: \"ubuntu\"\npasswordRegex: \"^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$\"\ndeadlineTimeoutSeconds: 60\nplugin:\n  llmModel: \"gpt4-o\"\n  openAISecretKey: \"1234\"\n",
+					TokenID: "1234567",
+				},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	hashConfigurations := strings.Builder{}
+	hashConfigurations.WriteString("dsadasfdasg")
+	var exitInvoked bool = false
+
+	exitFunction = func(c int) {
+		exitInvoked = true
+	}
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud.client = client
+	beelzebubCloud.ConfigurationsHash = hashConfigurations
+
+	//When
+	err := beelzebubCloud.verifyConfigurationsChanged()
+
+	//Then
+	assert.Equal(t, true, exitInvoked)
+	assert.Nil(t, err)
 }

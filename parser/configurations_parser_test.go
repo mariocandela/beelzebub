@@ -141,6 +141,21 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "/tmp/cert.key")
 }
 
+func TestReadConfigurationsServicesGenerateHashCode(t *testing.T) {
+	configurationsParser := Init("", "")
+
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+
+	hashCode, errHashCode := beelzebubServicesConfiguration[0].HashCode()
+
+	assert.Nil(t, err)
+	assert.Nil(t, errHashCode)
+	assert.Equal(t, hashCode, "12238bd3a97a1526e0f579432700b872eaea22c422478541ace0894b75162a41")
+}
+
 func TestGelAllFilesNameByDirName(t *testing.T) {
 
 	var dir = t.TempDir()
