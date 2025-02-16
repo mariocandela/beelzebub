@@ -85,7 +85,8 @@ func TestBuildExecuteModelFailValidation(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "",
 		Protocol:  tracer.SSH,
-		Model:     GPT4O,
+		Model:     "gpt4-o",
+		Provider:  OpenAI,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -101,7 +102,7 @@ func TestBuildExecuteModelWithCustomPrompt(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	// Given
-	httpmock.RegisterMatcherResponder("POST", openAIGPTEndpoint,
+	httpmock.RegisterMatcherResponder("POST", openAIEndpoint,
 		httpmock.BodyContainsString("hello world"),
 		func(req *http.Request) (*http.Response, error) {
 			resp, err := httpmock.NewJsonResponse(200, &Response{
@@ -125,7 +126,8 @@ func TestBuildExecuteModelWithCustomPrompt(t *testing.T) {
 		Histories:    make([]Message, 0),
 		OpenAIKey:    "sdjdnklfjndslkjanfk",
 		Protocol:     tracer.HTTP,
-		Model:        GPT4O,
+		Model:        "gpt4-o",
+		Provider:     OpenAI,
 		CustomPrompt: "hello world",
 	}
 
@@ -146,7 +148,8 @@ func TestBuildExecuteModelFailValidationStrategyType(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "",
 		Protocol:  tracer.TCP,
-		Model:     GPT4O,
+		Model:     "gpt4-o",
+		Provider:  OpenAI,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -161,7 +164,8 @@ func TestBuildExecuteModelFailValidationModelType(t *testing.T) {
 	llmHoneypot := LLMHoneypot{
 		Histories: make([]Message, 0),
 		Protocol:  tracer.SSH,
-		Model:     5,
+		Model:     "llama3",
+		Provider:  5,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -179,7 +183,7 @@ func TestBuildExecuteModelSSHWithResultsOpenAI(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	// Given
-	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
+	httpmock.RegisterResponder("POST", openAIEndpoint,
 		func(req *http.Request) (*http.Response, error) {
 			resp, err := httpmock.NewJsonResponse(200, &Response{
 				Choices: []Choice{
@@ -202,7 +206,8 @@ func TestBuildExecuteModelSSHWithResultsOpenAI(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.SSH,
-		Model:     GPT4O,
+		Model:     "gpt4-o",
+		Provider:  OpenAI,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -240,7 +245,8 @@ func TestBuildExecuteModelSSHWithResultsLLama(t *testing.T) {
 	llmHoneypot := LLMHoneypot{
 		Histories: make([]Message, 0),
 		Protocol:  tracer.SSH,
-		Model:     LLAMA3,
+		Model:     "llama3",
+		Provider:  Ollama,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -260,7 +266,7 @@ func TestBuildExecuteModelSSHWithoutResults(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	// Given
-	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
+	httpmock.RegisterResponder("POST", openAIEndpoint,
 		func(req *http.Request) (*http.Response, error) {
 			resp, err := httpmock.NewJsonResponse(200, &Response{
 				Choices: []Choice{},
@@ -276,7 +282,8 @@ func TestBuildExecuteModelSSHWithoutResults(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.SSH,
-		Model:     GPT4O,
+		Model:     "gpt4-o",
+		Provider:  OpenAI,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -295,7 +302,7 @@ func TestBuildExecuteModelHTTPWithResults(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	// Given
-	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
+	httpmock.RegisterResponder("POST", openAIEndpoint,
 		func(req *http.Request) (*http.Response, error) {
 			resp, err := httpmock.NewJsonResponse(200, &Response{
 				Choices: []Choice{
@@ -318,7 +325,8 @@ func TestBuildExecuteModelHTTPWithResults(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.HTTP,
-		Model:     GPT4O,
+		Model:     "gpt4-o",
+		Provider:  OpenAI,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -338,7 +346,7 @@ func TestBuildExecuteModelHTTPWithoutResults(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	// Given
-	httpmock.RegisterResponder("POST", openAIGPTEndpoint,
+	httpmock.RegisterResponder("POST", openAIEndpoint,
 		func(req *http.Request) (*http.Response, error) {
 			resp, err := httpmock.NewJsonResponse(200, &Response{
 				Choices: []Choice{},
@@ -354,7 +362,8 @@ func TestBuildExecuteModelHTTPWithoutResults(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.HTTP,
-		Model:     GPT4O,
+		Model:     "gpt4-o",
+		Provider:  OpenAI,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -368,16 +377,16 @@ func TestBuildExecuteModelHTTPWithoutResults(t *testing.T) {
 }
 
 func TestFromString(t *testing.T) {
-	model, err := FromStringToLLMModel("llama3")
+	model, err := FromStringToLLMProvider("openai")
 	assert.Nil(t, err)
-	assert.Equal(t, LLAMA3, model)
+	assert.Equal(t, OpenAI, model)
 
-	model, err = FromStringToLLMModel("gpt4-o")
+	model, err = FromStringToLLMProvider("ollama")
 	assert.Nil(t, err)
-	assert.Equal(t, GPT4O, model)
+	assert.Equal(t, Ollama, model)
 
-	model, err = FromStringToLLMModel("beelzebub-model")
-	assert.Errorf(t, err, "model beelzebub-model not found")
+	model, err = FromStringToLLMProvider("beelzebub-model")
+	assert.Errorf(t, err, "provider beelzebub-model not found")
 }
 
 func TestBuildExecuteModelSSHWithoutPlaintextSection(t *testing.T) {
@@ -404,7 +413,7 @@ func TestBuildExecuteModelSSHWithoutPlaintextSection(t *testing.T) {
 	llmHoneypot := LLMHoneypot{
 		Histories: make([]Message, 0),
 		Protocol:  tracer.SSH,
-		Model:     LLAMA3,
+		Model:     "llama3",
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
@@ -442,7 +451,8 @@ func TestBuildExecuteModelSSHWithoutQuotesSection(t *testing.T) {
 	llmHoneypot := LLMHoneypot{
 		Histories: make([]Message, 0),
 		Protocol:  tracer.SSH,
-		Model:     LLAMA3,
+		Model:     "llama3",
+		Provider:  Ollama,
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)

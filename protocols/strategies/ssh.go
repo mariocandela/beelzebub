@@ -44,11 +44,12 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 							if command.Plugin == plugins.LLMPluginName {
 
-								llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
+								llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
 
 								if err != nil {
-									log.Errorf("Error fromString: %s", err.Error())
+									log.Errorf("Error: %s", err.Error())
 									commandOutput = "command not found"
+									llmProvider = plugins.OpenAI
 								}
 
 								llmHoneypot := plugins.LLMHoneypot{
@@ -56,7 +57,8 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
 									Protocol:     tracer.SSH,
 									Host:         beelzebubServiceConfiguration.Plugin.Host,
-									Model:        llmModel,
+									Model:        beelzebubServiceConfiguration.Plugin.LLMProvider,
+									Provider:     llmProvider,
 									CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
 								}
 
@@ -130,11 +132,11 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 							if command.Plugin == plugins.LLMPluginName {
 
-								llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
+								llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
 
 								if err != nil {
-									log.Errorf("Error fromString: %s", err.Error())
-									commandOutput = "command not found"
+									log.Errorf("Error: %s, fallback OpenAI", err.Error())
+									llmProvider = plugins.OpenAI
 								}
 
 								llmHoneypot := plugins.LLMHoneypot{
@@ -142,7 +144,8 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
 									Protocol:     tracer.SSH,
 									Host:         beelzebubServiceConfiguration.Plugin.Host,
-									Model:        llmModel,
+									Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+									Provider:     llmProvider,
 									CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
 								}
 
