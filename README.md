@@ -229,7 +229,7 @@ passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|post
 deadlineTimeoutSeconds: 60
 plugin:
    llmProvider: "openai"
-   llmModel: "gpt4-o" #Models https://platform.openai.com/docs/models
+   llmModel: "gpt-4o" #Models https://platform.openai.com/docs/models
    openAISecretKey: "sk-proj-123456"
 ```
 
@@ -268,7 +268,7 @@ passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|post
 deadlineTimeoutSeconds: 60
 plugin:
    llmProvider: "openai"
-   llmModel: "gpt4-o"
+   llmModel: "gpt-4o"
    openAISecretKey: "sk-proj-123456"
    prompt: "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block."
 ```

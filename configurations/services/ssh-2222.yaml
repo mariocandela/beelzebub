@@ -11,5 +11,5 @@ passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|post
 deadlineTimeoutSeconds: 6000
 plugin:
   llmProvider: "openai"
-  llmModel: "gpt4-o"
+  llmModel: "gpt-4o"
   openAISecretKey: "sk-proj-12345"
