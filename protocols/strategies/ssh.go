@@ -57,7 +57,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
 									Protocol:     tracer.SSH,
 									Host:         beelzebubServiceConfiguration.Plugin.Host,
-									Model:        beelzebubServiceConfiguration.Plugin.LLMProvider,
+									Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
 									Provider:     llmProvider,
 									CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
 								}
