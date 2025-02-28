@@ -117,7 +117,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 		HostHTTPRequest: request.Host,
 		UserAgent:       request.UserAgent(),
 		Cookies:         mapCookiesToString(request.Cookies()),
-		Headers:         mapHeaderToString(request.Header),
+		Headers:         request.Header,
 		Status:          tracer.Stateless.String(),
 		RemoteAddr:      request.RemoteAddr,
 		SourceIp:        host,
@@ -131,18 +131,6 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 		event.TLSServerName = request.TLS.ServerName
 	}
 	tr.TraceEvent(event)
-}
-
-func mapHeaderToString(headers http.Header) string {
-	headersString := ""
-
-	for key := range headers {
-		for _, values := range headers[key] {
-			headersString += fmt.Sprintf("[Key: %s, values: %s],", key, values)
-		}
-	}
-
-	return headersString
 }
 
 func mapCookiesToString(cookies []*http.Cookie) string {
