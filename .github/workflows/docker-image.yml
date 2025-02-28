@@ -26,6 +26,6 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: ( github.ref_type== 'tag' || github.ref == 'refs/heads/main' )
+          push: true
           tags: m4r10/beelzebub:${{  github.ref_name }}
           platforms: linux/amd64,linux/arm64
