@@ -26,5 +26,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: m4r10/beelzebub:${{  github.ref_name }}
+          tags: |
+            m4r10/beelzebub:${{  github.ref_name }}
+            m4r10/beelzebub:latest
           platforms: linux/amd64,linux/arm64
