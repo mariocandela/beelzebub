@@ -65,10 +65,14 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 
 func (suite *IntegrationTestSuite) TestInvokeHTTPHoneypot() {
 	response, err := resty.New().R().
+		SetHeader("Accept", "*/*").
 		Get(suite.httpHoneypotHost + "/index.php")
 
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusOK, response.StatusCode())
+	suite.Equal(map[string][]string{
+		"Accept": {"*/*"},
+	}, response.Header())
 	suite.Equal("mocked response", string(response.Body()))
 
 	response, err = resty.New().R().
