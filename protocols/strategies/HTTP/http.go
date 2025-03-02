@@ -53,13 +53,11 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 		}
 		// If none of the main commands matched, and we have a fallback command configured, process it here.
 		// The regexp is ignored for fallback commands, as they are catch-all for any request.
-		if !matched {
+		if !matched && httpStrategy.beelzebubServiceConfiguration.FallbackCommand.Handler != "" {
 			command := httpStrategy.beelzebubServiceConfiguration.FallbackCommand
-			if command.Handler != "" || command.Plugin != "" {
-				resp, err = buildHTTPResponse(beelzebubServiceConfiguration, command, request)
-				if err != nil {
-					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
-				}
+			resp, err = buildHTTPResponse(beelzebubServiceConfiguration, command, request)
+			if err != nil {
+				log.Errorf("error building http response: %s: %v", request.RequestURI, err)
 			}
 		}
 		setResponseHeaders(responseWriter, resp.Headers, resp.StatusCode)
@@ -103,9 +101,8 @@ func buildHTTPResponse(beelzebubServiceConfiguration parser.BeelzebubServiceConf
 	if command.Plugin == plugins.LLMPluginName {
 		llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
 		if err != nil {
+			log.Errorf("Error: %s", err.Error())
 			resp.Body = "404 Not Found!"
-			resp.StatusCode = 404
-			return resp, err
 		}
 
 		llmHoneypot := plugins.LLMHoneypot{
@@ -121,13 +118,12 @@ func buildHTTPResponse(beelzebubServiceConfiguration parser.BeelzebubServiceConf
 
 		command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
 
-		completions, err := llmHoneypotInstance.ExecuteModel(command)
-		if err != nil {
+		if completions, err := llmHoneypotInstance.ExecuteModel(command); err != nil {
+			log.Errorf("Error ExecuteModel: %s, %s", command, err.Error())
 			resp.Body = "404 Not Found!"
-			resp.StatusCode = 404
-			return resp, fmt.Errorf("error ExecuteModel: %s, %s", command, err.Error())
+		} else {
+			resp.Body = completions
 		}
-		resp.Body = completions
 	}
 	return resp, nil
 }
