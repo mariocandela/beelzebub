@@ -3,14 +3,17 @@ package builder
 import (
 	"errors"
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/parser"
-	"github.com/mariocandela/beelzebub/v3/plugins"
-	"github.com/mariocandela/beelzebub/v3/protocols"
-	"github.com/mariocandela/beelzebub/v3/protocols/strategies"
-	"github.com/mariocandela/beelzebub/v3/tracer"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/plugins"
+	"github.com/mariocandela/beelzebub/v3/protocols"
+	"github.com/mariocandela/beelzebub/v3/protocols/strategies/HTTP"
+	"github.com/mariocandela/beelzebub/v3/protocols/strategies/SSH"
+	"github.com/mariocandela/beelzebub/v3/protocols/strategies/TCP"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -106,9 +109,9 @@ Honeypot Framework, happy hacking!`)
 	}()
 
 	// Init Protocol strategies
-	secureShellStrategy := &strategies.SSHStrategy{}
-	hypertextTransferProtocolStrategy := &strategies.HTTPStrategy{}
-	transmissionControlProtocolStrategy := &strategies.TCPStrategy{}
+	secureShellStrategy := &SSH.SSHStrategy{}
+	hypertextTransferProtocolStrategy := &HTTP.HTTPStrategy{}
+	transmissionControlProtocolStrategy := &TCP.TCPStrategy{}
 
 	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
@@ -122,7 +125,7 @@ Honeypot Framework, happy hacking!`)
 			return err
 		} else {
 			if len(honeypotsConfiguration) == 0 {
-				return errors.New("No honeypots configuration found")
+				return errors.New("no honeypots configuration found")
 			}
 			b.beelzebubServicesConfiguration = honeypotsConfiguration
 		}
@@ -132,20 +135,16 @@ Honeypot Framework, happy hacking!`)
 		switch beelzebubServiceConfiguration.Protocol {
 		case "http":
 			protocolManager.SetProtocolStrategy(hypertextTransferProtocolStrategy)
-			break
 		case "ssh":
 			protocolManager.SetProtocolStrategy(secureShellStrategy)
-			break
 		case "tcp":
 			protocolManager.SetProtocolStrategy(transmissionControlProtocolStrategy)
-			break
 		default:
-			log.Fatalf("Protocol %s not managed", beelzebubServiceConfiguration.Protocol)
-			continue
+			log.Fatalf("protocol %s not managed", beelzebubServiceConfiguration.Protocol)
 		}
 
 		if err := protocolManager.InitService(beelzebubServiceConfiguration); err != nil {
-			return errors.New(fmt.Sprintf("Error during init protocol: %s, %s", beelzebubServiceConfiguration.Protocol, err.Error()))
+			return fmt.Errorf("error during init protocol: %s, %s", beelzebubServiceConfiguration.Protocol, err.Error())
 		}
 	}
 

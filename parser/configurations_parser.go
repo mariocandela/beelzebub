@@ -62,6 +62,7 @@ type BeelzebubServiceConfiguration struct {
 	Protocol               string    `yaml:"protocol"`
 	Address                string    `yaml:"address"`
 	Commands               []Command `yaml:"commands"`
+	FallbackCommand        Command   `yaml:"fallbackCommand"`
 	ServerVersion          string    `yaml:"serverVersion"`
 	ServerName             string    `yaml:"serverName"`
 	DeadlineTimeoutSeconds int       `yaml:"deadlineTimeoutSeconds"`
