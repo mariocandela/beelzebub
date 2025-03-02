@@ -20,20 +20,20 @@ import (
 type SSHStrategy struct {
 }
 
-func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
 	go func() {
 		server := &ssh.Server{
-			Addr:        beelzebubServiceConfiguration.Address,
-			MaxTimeout:  time.Duration(beelzebubServiceConfiguration.DeadlineTimeoutSeconds) * time.Second,
-			IdleTimeout: time.Duration(beelzebubServiceConfiguration.DeadlineTimeoutSeconds) * time.Second,
-			Version:     beelzebubServiceConfiguration.ServerVersion,
+			Addr:        servConf.Address,
+			MaxTimeout:  time.Duration(servConf.DeadlineTimeoutSeconds) * time.Second,
+			IdleTimeout: time.Duration(servConf.DeadlineTimeoutSeconds) * time.Second,
+			Version:     servConf.ServerVersion,
 			Handler: func(sess ssh.Session) {
 				uuidSession := uuid.New()
 
 				host, port, _ := net.SplitHostPort(sess.RemoteAddr().String())
 
 				if sess.RawCommand() != "" {
-					for _, command := range beelzebubServiceConfiguration.Commands {
+					for _, command := range servConf.Commands {
 						matched, err := regexp.MatchString(command.Regex, sess.RawCommand())
 						if err != nil {
 							log.Errorf("Error regex: %s, %s", command.Regex, err.Error())
@@ -45,7 +45,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 							if command.Plugin == plugins.LLMPluginName {
 
-								llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
+								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
 
 								if err != nil {
 									log.Errorf("Error: %s", err.Error())
@@ -55,12 +55,12 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 								llmHoneypot := plugins.LLMHoneypot{
 									Histories:    make([]plugins.Message, 0),
-									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+									OpenAIKey:    servConf.Plugin.OpenAISecretKey,
 									Protocol:     tracer.SSH,
-									Host:         beelzebubServiceConfiguration.Plugin.Host,
-									Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+									Host:         servConf.Plugin.Host,
+									Model:        servConf.Plugin.LLMModel,
 									Provider:     llmProvider,
-									CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
+									CustomPrompt: servConf.Plugin.Prompt,
 								}
 
 								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
@@ -83,7 +83,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 								ID:            uuidSession.String(),
 								Environ:       strings.Join(sess.Environ(), ","),
 								User:          sess.User(),
-								Description:   beelzebubServiceConfiguration.Description,
+								Description:   servConf.Description,
 								Command:       sess.RawCommand(),
 								CommandOutput: commandOutput,
 							})
@@ -107,10 +107,10 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					ID:          uuidSession.String(),
 					Environ:     strings.Join(sess.Environ(), ","),
 					User:        sess.User(),
-					Description: beelzebubServiceConfiguration.Description,
+					Description: servConf.Description,
 				})
 
-				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
+				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), servConf.ServerName))
 				var histories []plugins.Message
 				for {
 					commandInput, err := term.ReadLine()
@@ -121,7 +121,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					if commandInput == "exit" {
 						break
 					}
-					for _, command := range beelzebubServiceConfiguration.Commands {
+					for _, command := range servConf.Commands {
 						matched, err := regexp.MatchString(command.Regex, commandInput)
 						if err != nil {
 							log.Errorf("Error regex: %s, %s", command.Regex, err.Error())
@@ -133,7 +133,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 							if command.Plugin == plugins.LLMPluginName {
 
-								llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
+								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
 
 								if err != nil {
 									log.Errorf("Error: %s, fallback OpenAI", err.Error())
@@ -142,12 +142,12 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 								llmHoneypot := plugins.LLMHoneypot{
 									Histories:    histories,
-									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+									OpenAIKey:    servConf.Plugin.OpenAISecretKey,
 									Protocol:     tracer.SSH,
-									Host:         beelzebubServiceConfiguration.Plugin.Host,
-									Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+									Host:         servConf.Plugin.Host,
+									Model:        servConf.Plugin.LLMModel,
 									Provider:     llmProvider,
-									CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
+									CustomPrompt: servConf.Plugin.Prompt,
 								}
 
 								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
@@ -173,7 +173,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 								CommandOutput: commandOutput,
 								ID:            uuidSession.String(),
 								Protocol:      tracer.SSH.String(),
-								Description:   beelzebubServiceConfiguration.Description,
+								Description:   servConf.Description,
 							})
 							break
 						}
@@ -199,11 +199,11 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					SourceIp:    host,
 					SourcePort:  port,
 					ID:          uuid.New().String(),
-					Description: beelzebubServiceConfiguration.Description,
+					Description: servConf.Description,
 				})
-				matched, err := regexp.MatchString(beelzebubServiceConfiguration.PasswordRegex, password)
+				matched, err := regexp.MatchString(servConf.PasswordRegex, password)
 				if err != nil {
-					log.Errorf("Error regex: %s, %s", beelzebubServiceConfiguration.PasswordRegex, err.Error())
+					log.Errorf("Error regex: %s, %s", servConf.PasswordRegex, err.Error())
 					return false
 				}
 				return matched
@@ -216,9 +216,9 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 	}()
 
 	log.WithFields(log.Fields{
-		"port":     beelzebubServiceConfiguration.Address,
-		"commands": len(beelzebubServiceConfiguration.Commands),
-	}).Infof("GetInstance service %s", beelzebubServiceConfiguration.Protocol)
+		"port":     servConf.Address,
+		"commands": len(servConf.Commands),
+	}).Infof("GetInstance service %s", servConf.Protocol)
 	return nil
 }
 

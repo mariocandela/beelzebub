@@ -17,7 +17,7 @@ import (
 )
 
 type HTTPStrategy struct {
-	beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration
+	servConf parser.BeelzebubServiceConfiguration
 }
 
 type httpResponse struct {
@@ -26,38 +26,46 @@ type httpResponse struct {
 	Body       string
 }
 
-func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
-	httpStrategy.beelzebubServiceConfiguration = beelzebubServiceConfiguration
+func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+	httpStrategy.servConf = servConf
 	serverMux := http.NewServeMux()
 
 	serverMux.HandleFunc("/", func(responseWriter http.ResponseWriter, request *http.Request) {
-		traceRequest(request, tr, beelzebubServiceConfiguration.Description)
+		traceRequest(request, tr, httpStrategy.servConf.Description)
 		var matched bool
 		var resp httpResponse
 		var err error
-		for _, command := range httpStrategy.beelzebubServiceConfiguration.Commands {
+		for _, command := range httpStrategy.servConf.Commands {
 			var err error
 			matched, err = regexp.MatchString(command.Regex, request.RequestURI)
 			if err != nil {
-				log.Errorf("Error regex: %s, %s", command.Regex, err.Error())
+				log.Errorf("error parsing regex: %s, %s", command.Regex, err.Error())
+				resp.StatusCode = 500
+				resp.Body = "500 Internal Server Error"
 				continue
 			}
 
 			if matched {
-				resp, err = buildHTTPResponse(beelzebubServiceConfiguration, command, request)
+				resp, err = buildHTTPResponse(httpStrategy.servConf, command, request)
 				if err != nil {
 					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
+					resp.StatusCode = 500
+					resp.Body = "500 Internal Server Error"
 				}
 				break
 			}
 		}
 		// If none of the main commands matched, and we have a fallback command configured, process it here.
 		// The regexp is ignored for fallback commands, as they are catch-all for any request.
-		if !matched && httpStrategy.beelzebubServiceConfiguration.FallbackCommand.Handler != "" {
-			command := httpStrategy.beelzebubServiceConfiguration.FallbackCommand
-			resp, err = buildHTTPResponse(beelzebubServiceConfiguration, command, request)
-			if err != nil {
-				log.Errorf("error building http response: %s: %v", request.RequestURI, err)
+		if !matched {
+			command := httpStrategy.servConf.FallbackCommand
+			if command.Handler != "" || command.Plugin != "" {
+				resp, err = buildHTTPResponse(httpStrategy.servConf, command, request)
+				if err != nil {
+					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
+					resp.StatusCode = 500
+					resp.Body = "500 Internal Server Error"
+				}
 			}
 		}
 		setResponseHeaders(responseWriter, resp.Headers, resp.StatusCode)
@@ -69,29 +77,29 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 		// Launch a TLS supporting server if we are supplied a TLS Key and Certificate.
 		// If relative paths are supplied, they are relative to the CWD of the binary.
 		// The can be self-signed, only the client will validate this (or not).
-		if httpStrategy.beelzebubServiceConfiguration.TLSKeyPath != "" && httpStrategy.beelzebubServiceConfiguration.TLSCertPath != "" {
+		if httpStrategy.servConf.TLSKeyPath != "" && httpStrategy.servConf.TLSCertPath != "" {
 			err = http.ListenAndServeTLS(
-				httpStrategy.beelzebubServiceConfiguration.Address,
-				httpStrategy.beelzebubServiceConfiguration.TLSCertPath,
-				httpStrategy.beelzebubServiceConfiguration.TLSKeyPath,
+				httpStrategy.servConf.Address,
+				httpStrategy.servConf.TLSCertPath,
+				httpStrategy.servConf.TLSKeyPath,
 				serverMux)
 		} else {
-			err = http.ListenAndServe(httpStrategy.beelzebubServiceConfiguration.Address, serverMux)
+			err = http.ListenAndServe(httpStrategy.servConf.Address, serverMux)
 		}
 		if err != nil {
-			log.Errorf("error during init HTTP Protocol: %s", err.Error())
+			log.Errorf("error during init HTTP Protocol: %v", err)
 			return
 		}
 	}()
 
 	log.WithFields(log.Fields{
-		"port":     beelzebubServiceConfiguration.Address,
-		"commands": len(beelzebubServiceConfiguration.Commands),
-	}).Infof("Init service: %s", beelzebubServiceConfiguration.Description)
+		"port":     httpStrategy.servConf.Address,
+		"commands": len(httpStrategy.servConf.Commands),
+	}).Infof("Init service: %s", httpStrategy.servConf.Description)
 	return nil
 }
 
-func buildHTTPResponse(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, command parser.Command, request *http.Request) (httpResponse, error) {
+func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, command parser.Command, request *http.Request) (httpResponse, error) {
 	resp := httpResponse{
 		Body:       command.Handler,
 		Headers:    command.Headers,
@@ -99,31 +107,31 @@ func buildHTTPResponse(beelzebubServiceConfiguration parser.BeelzebubServiceConf
 	}
 
 	if command.Plugin == plugins.LLMPluginName {
-		llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
+		llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
 		if err != nil {
-			log.Errorf("Error: %s", err.Error())
+			log.Errorf("error: %v", err)
 			resp.Body = "404 Not Found!"
+			return resp, err
 		}
 
 		llmHoneypot := plugins.LLMHoneypot{
 			Histories:    make([]plugins.Message, 0),
-			OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+			OpenAIKey:    servConf.Plugin.OpenAISecretKey,
 			Protocol:     tracer.HTTP,
-			Host:         beelzebubServiceConfiguration.Plugin.Host,
-			Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+			Host:         servConf.Plugin.Host,
+			Model:        servConf.Plugin.LLMModel,
 			Provider:     llmProvider,
-			CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
+			CustomPrompt: servConf.Plugin.Prompt,
 		}
 		llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
-
 		command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
 
-		if completions, err := llmHoneypotInstance.ExecuteModel(command); err != nil {
-			log.Errorf("Error ExecuteModel: %s, %s", command, err.Error())
+		completions, err := llmHoneypotInstance.ExecuteModel(command)
+		if err != nil {
 			resp.Body = "404 Not Found!"
-		} else {
-			resp.Body = completions
+			return resp, fmt.Errorf("ExecuteModel error: %s, %v", command, err)
 		}
+		resp.Body = completions
 	}
 	return resp, nil
 }

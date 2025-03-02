@@ -15,8 +15,8 @@ import (
 type TCPStrategy struct {
 }
 
-func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
-	listen, err := net.Listen("tcp", beelzebubServiceConfiguration.Address)
+func (tcpStrategy *TCPStrategy) Init(servConf parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+	listen, err := net.Listen("tcp", servConf.Address)
 	if err != nil {
 		log.Errorf("Error during init TCP Protocol: %s", err.Error())
 		return err
@@ -26,8 +26,8 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 		for {
 			if conn, err := listen.Accept(); err == nil {
 				go func() {
-					conn.SetDeadline(time.Now().Add(time.Duration(beelzebubServiceConfiguration.DeadlineTimeoutSeconds) * time.Second))
-					conn.Write(fmt.Appendf([]byte{}, "%s\n", beelzebubServiceConfiguration.Banner))
+					conn.SetDeadline(time.Now().Add(time.Duration(servConf.DeadlineTimeoutSeconds) * time.Second))
+					conn.Write(fmt.Appendf([]byte{}, "%s\n", servConf.Banner))
 
 					buffer := make([]byte, 1024)
 					command := ""
@@ -47,7 +47,7 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 						SourceIp:    host,
 						SourcePort:  port,
 						ID:          uuid.New().String(),
-						Description: beelzebubServiceConfiguration.Description,
+						Description: servConf.Description,
 					})
 					conn.Close()
 				}()
@@ -56,8 +56,8 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 	}()
 
 	log.WithFields(log.Fields{
-		"port":   beelzebubServiceConfiguration.Address,
-		"banner": beelzebubServiceConfiguration.Banner,
-	}).Infof("Init service %s", beelzebubServiceConfiguration.Protocol)
+		"port":   servConf.Address,
+		"banner": servConf.Banner,
+	}).Infof("Init service %s", servConf.Protocol)
 	return nil
 }
