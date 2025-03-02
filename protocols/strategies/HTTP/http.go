@@ -1,4 +1,4 @@
-package strategies
+package HTTP
 
 import (
 	"fmt"
@@ -8,15 +8,22 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/tracer"
+
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type HTTPStrategy struct {
 	beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration
+}
+
+type httpResponse struct {
+	StatusCode int
+	Headers    []string
+	Body       string
 }
 
 func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
@@ -25,53 +32,39 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 
 	serverMux.HandleFunc("/", func(responseWriter http.ResponseWriter, request *http.Request) {
 		traceRequest(request, tr, beelzebubServiceConfiguration.Description)
+		var matched bool
+		var resp httpResponse
+		var err error
 		for _, command := range httpStrategy.beelzebubServiceConfiguration.Commands {
-			matched, err := regexp.MatchString(command.Regex, request.RequestURI)
+			var err error
+			matched, err = regexp.MatchString(command.Regex, request.RequestURI)
 			if err != nil {
 				log.Errorf("Error regex: %s, %s", command.Regex, err.Error())
 				continue
 			}
 
 			if matched {
-				responseHTTPBody := command.Handler
-
-				if command.Plugin == plugins.LLMPluginName {
-
-					llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
-
-					if err != nil {
-						log.Errorf("Error: %s", err.Error())
-						responseHTTPBody = "404 Not Found!"
-					}
-
-					llmHoneypot := plugins.LLMHoneypot{
-						Histories:    make([]plugins.Message, 0),
-						OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
-						Protocol:     tracer.HTTP,
-						Host:         beelzebubServiceConfiguration.Plugin.Host,
-						Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
-						Provider:     llmProvider,
-						CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
-					}
-
-					llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
-
-					command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
-
-					if completions, err := llmHoneypotInstance.ExecuteModel(command); err != nil {
-						log.Errorf("Error ExecuteModel: %s, %s", command, err.Error())
-						responseHTTPBody = "404 Not Found!"
-					} else {
-						responseHTTPBody = completions
-					}
-
+				resp, err = buildHTTPResponse(beelzebubServiceConfiguration, command, request)
+				if err != nil {
+					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
 				}
-
-				setResponseHeaders(responseWriter, command.Headers, command.StatusCode)
-				fmt.Fprint(responseWriter, responseHTTPBody)
 				break
 			}
 		}
+		// If none of the main commands matched, and we have a fallback command configured, process it here.
+		// The regexp is ignored for fallback commands, as they are catch-all for any request.
+		if !matched {
+			command := httpStrategy.beelzebubServiceConfiguration.FallbackCommand
+			if command.Handler != "" || command.Plugin != "" {
+				resp, err = buildHTTPResponse(beelzebubServiceConfiguration, command, request)
+				if err != nil {
+					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
+				}
+			}
+		}
+		setResponseHeaders(responseWriter, resp.Headers, resp.StatusCode)
+		fmt.Fprint(responseWriter, resp.Body)
+
 	})
 	go func() {
 		var err error
@@ -88,7 +81,7 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 			err = http.ListenAndServe(httpStrategy.beelzebubServiceConfiguration.Address, serverMux)
 		}
 		if err != nil {
-			log.Errorf("Error during init HTTP Protocol: %s", err.Error())
+			log.Errorf("error during init HTTP Protocol: %s", err.Error())
 			return
 		}
 	}()
@@ -98,6 +91,45 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 		"commands": len(beelzebubServiceConfiguration.Commands),
 	}).Infof("Init service: %s", beelzebubServiceConfiguration.Description)
 	return nil
+}
+
+func buildHTTPResponse(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, command parser.Command, request *http.Request) (httpResponse, error) {
+	resp := httpResponse{
+		Body:       command.Handler,
+		Headers:    command.Headers,
+		StatusCode: command.StatusCode,
+	}
+
+	if command.Plugin == plugins.LLMPluginName {
+		llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
+		if err != nil {
+			resp.Body = "404 Not Found!"
+			resp.StatusCode = 404
+			return resp, err
+		}
+
+		llmHoneypot := plugins.LLMHoneypot{
+			Histories:    make([]plugins.Message, 0),
+			OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+			Protocol:     tracer.HTTP,
+			Host:         beelzebubServiceConfiguration.Plugin.Host,
+			Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+			Provider:     llmProvider,
+			CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
+		}
+		llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+
+		command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
+
+		completions, err := llmHoneypotInstance.ExecuteModel(command)
+		if err != nil {
+			resp.Body = "404 Not Found!"
+			resp.StatusCode = 404
+			return resp, fmt.Errorf("error ExecuteModel: %s, %s", command, err.Error())
+		}
+		resp.Body = completions
+	}
+	return resp, nil
 }
 
 func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription string) {

@@ -1,11 +1,12 @@
-package strategies
+package TCP
 
 import (
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/parser"
-	"github.com/mariocandela/beelzebub/v3/tracer"
 	"net"
 	"time"
+
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -26,7 +27,7 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 			if conn, err := listen.Accept(); err == nil {
 				go func() {
 					conn.SetDeadline(time.Now().Add(time.Duration(beelzebubServiceConfiguration.DeadlineTimeoutSeconds) * time.Second))
-					conn.Write([]byte(fmt.Sprintf("%s\n", beelzebubServiceConfiguration.Banner)))
+					conn.Write(fmt.Appendf([]byte{}, "%s\n", beelzebubServiceConfiguration.Banner))
 
 					buffer := make([]byte, 1024)
 					command := ""

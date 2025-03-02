@@ -1,19 +1,20 @@
-package strategies
+package SSH
 
 import (
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/parser"
-	"github.com/mariocandela/beelzebub/v3/plugins"
-	"github.com/mariocandela/beelzebub/v3/tracer"
 	"net"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/plugins"
+	"github.com/mariocandela/beelzebub/v3/tracer"
+
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh/terminal"
+	terminal "golang.org/x/term"
 )
 
 type SSHStrategy struct {
