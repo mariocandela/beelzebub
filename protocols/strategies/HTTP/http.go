@@ -16,9 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type HTTPStrategy struct {
-	servConf parser.BeelzebubServiceConfiguration
-}
+type HTTPStrategy struct{}
 
 type httpResponse struct {
 	StatusCode int
@@ -27,15 +25,14 @@ type httpResponse struct {
 }
 
 func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
-	httpStrategy.servConf = servConf
 	serverMux := http.NewServeMux()
 
 	serverMux.HandleFunc("/", func(responseWriter http.ResponseWriter, request *http.Request) {
-		traceRequest(request, tr, httpStrategy.servConf.Description)
+		traceRequest(request, tr, servConf.Description)
 		var matched bool
 		var resp httpResponse
 		var err error
-		for _, command := range httpStrategy.servConf.Commands {
+		for _, command := range servConf.Commands {
 			var err error
 			matched, err = regexp.MatchString(command.Regex, request.RequestURI)
 			if err != nil {
@@ -46,7 +43,7 @@ func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfigurat
 			}
 
 			if matched {
-				resp, err = buildHTTPResponse(httpStrategy.servConf, command, request)
+				resp, err = buildHTTPResponse(servConf, command, request)
 				if err != nil {
 					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
 					resp.StatusCode = 500
@@ -58,9 +55,9 @@ func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfigurat
 		// If none of the main commands matched, and we have a fallback command configured, process it here.
 		// The regexp is ignored for fallback commands, as they are catch-all for any request.
 		if !matched {
-			command := httpStrategy.servConf.FallbackCommand
+			command := servConf.FallbackCommand
 			if command.Handler != "" || command.Plugin != "" {
-				resp, err = buildHTTPResponse(httpStrategy.servConf, command, request)
+				resp, err = buildHTTPResponse(servConf, command, request)
 				if err != nil {
 					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
 					resp.StatusCode = 500
@@ -77,14 +74,10 @@ func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfigurat
 		// Launch a TLS supporting server if we are supplied a TLS Key and Certificate.
 		// If relative paths are supplied, they are relative to the CWD of the binary.
 		// The can be self-signed, only the client will validate this (or not).
-		if httpStrategy.servConf.TLSKeyPath != "" && httpStrategy.servConf.TLSCertPath != "" {
-			err = http.ListenAndServeTLS(
-				httpStrategy.servConf.Address,
-				httpStrategy.servConf.TLSCertPath,
-				httpStrategy.servConf.TLSKeyPath,
-				serverMux)
+		if servConf.TLSKeyPath != "" && servConf.TLSCertPath != "" {
+			err = http.ListenAndServeTLS(servConf.Address, servConf.TLSCertPath, servConf.TLSKeyPath, serverMux)
 		} else {
-			err = http.ListenAndServe(httpStrategy.servConf.Address, serverMux)
+			err = http.ListenAndServe(servConf.Address, serverMux)
 		}
 		if err != nil {
 			log.Errorf("error during init HTTP Protocol: %v", err)
@@ -93,9 +86,9 @@ func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfigurat
 	}()
 
 	log.WithFields(log.Fields{
-		"port":     httpStrategy.servConf.Address,
-		"commands": len(httpStrategy.servConf.Commands),
-	}).Infof("Init service: %s", httpStrategy.servConf.Description)
+		"port":     servConf.Address,
+		"commands": len(servConf.Commands),
+	}).Infof("Init service: %s", servConf.Description)
 	return nil
 }
 
