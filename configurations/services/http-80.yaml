@@ -22,5 +22,5 @@ commands:
     plugin: "LLMHoneypot"
     statusCode: 200
 plugin:
-  llmModel: "gpt4-o"
+  llmModel: "gpt-4o"
   openAISecretKey: "sk-proj-123456"
