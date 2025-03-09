@@ -56,6 +56,9 @@ commands:
     handler: "login"
     headers:
       - "Content-Type: text/html"
+fallbackCommand:
+  handler: "404 Not Found!"
+  statusCode: 404
 plugin:
   openAISecretKey: "qwerty"
   llmModel: "llama3"
@@ -134,6 +137,8 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Handler, "login")
 	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands[0].Headers), 1)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Headers[0], "Content-Type: text/html")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.Handler, "404 Not Found!")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.StatusCode, 404)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OpenAISecretKey, "qwerty")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMModel, "llama3")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMProvider, "ollama")
@@ -176,7 +181,8 @@ func TestGelAllFilesNameByDirNameError(t *testing.T) {
 	files, err := gelAllFilesNameByDirName("nosuchfile")
 
 	assert.Nil(t, files)
-	assert.Equal(t, "open nosuchfile: no such file or directory", err.Error())
+	// Windows and Linux return slightly different error strings, but share a common prefix, so check for that.
+	assert.Contains(t, err.Error(), "open nosuchfile: ")
 }
 
 func TestReadFileBytesByFilePath(t *testing.T) {
