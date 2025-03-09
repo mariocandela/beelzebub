@@ -14,14 +14,23 @@ import (
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+<<<<<<< HEAD:protocols/strategies/SSH/ssh.go
+	terminal "golang.org/x/term"
+=======
 	"golang.org/x/term"
+>>>>>>> 933f02911b51e202fe46e7b7a6489df7ecdc62d9:protocols/strategies/ssh.go
 )
 
 type SSHStrategy struct {
 	Sessions map[string][]plugins.Message
 }
 
+<<<<<<< HEAD:protocols/strategies/SSH/ssh.go
 func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+=======
+func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+	sshStrategy.Sessions = make(map[string][]plugins.Message)
+>>>>>>> 933f02911b51e202fe46e7b7a6489df7ecdc62d9:protocols/strategies/ssh.go
 	go func() {
 		server := &ssh.Server{
 			Addr:        servConf.Address,
@@ -56,13 +65,20 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									llmProvider = plugins.OpenAI
 								}
 
-								var histories []plugins.Message
+								histories := make([]plugins.Message, 0)
+
 								if sshStrategy.Sessions[sessionKey] != nil {
 									histories = sshStrategy.Sessions[sessionKey]
 								}
+
 								llmHoneypot := plugins.LLMHoneypot{
-									Histories:    histories,
+<<<<<<< HEAD:protocols/strategies/SSH/ssh.go
+									Histories:    make([]plugins.Message, 0),
 									OpenAIKey:    servConf.Plugin.OpenAISecretKey,
+=======
+									Histories:    histories,
+									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+>>>>>>> 933f02911b51e202fe46e7b7a6489df7ecdc62d9:protocols/strategies/ssh.go
 									Protocol:     tracer.SSH,
 									Host:         servConf.Plugin.Host,
 									Model:        servConf.Plugin.LLMModel,
@@ -121,7 +137,11 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 					Description: servConf.Description,
 				})
 
-				terminal := term.NewTerminal(sess, buildPrompt(sess.User(), servConf.ServerName))
+<<<<<<< HEAD:protocols/strategies/SSH/ssh.go
+				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), servConf.ServerName))
+=======
+				terminal := term.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
+>>>>>>> 933f02911b51e202fe46e7b7a6489df7ecdc62d9:protocols/strategies/ssh.go
 				var histories []plugins.Message
 				if sshStrategy.Sessions[sessionKey] != nil {
 					histories = sshStrategy.Sessions[sessionKey]
