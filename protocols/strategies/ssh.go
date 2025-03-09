@@ -13,7 +13,7 @@ import (
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 type SSHStrategy struct {
@@ -109,7 +109,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					Description: beelzebubServiceConfiguration.Description,
 				})
 
-				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
+				term := term.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
 				var histories []plugins.Message
 				for {
 					commandInput, err := term.ReadLine()
