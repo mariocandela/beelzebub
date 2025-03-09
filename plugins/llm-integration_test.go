@@ -6,6 +6,7 @@ import (
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -85,7 +86,7 @@ func TestBuildExecuteModelFailValidation(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "",
 		Protocol:  tracer.SSH,
-		Model:     "gpt4-o",
+		Model:     "gpt-4o",
 		Provider:  OpenAI,
 	}
 
@@ -94,6 +95,24 @@ func TestBuildExecuteModelFailValidation(t *testing.T) {
 	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
 
 	assert.Equal(t, "openAIKey is empty", err.Error())
+}
+
+func TestBuildExecuteModelOpenAISecretKeyFromEnv(t *testing.T) {
+
+	llmHoneypot := LLMHoneypot{
+		Histories: make([]Message, 0),
+		OpenAIKey: "",
+		Protocol:  tracer.SSH,
+		Model:     "gpt-4o",
+		Provider:  OpenAI,
+	}
+
+	os.Setenv("OPEN_AI_SECRET_KEY", "sdjdnklfjndslkjanfk")
+
+	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
+
+	assert.Equal(t, "sdjdnklfjndslkjanfk", openAIGPTVirtualTerminal.OpenAIKey)
+
 }
 
 func TestBuildExecuteModelWithCustomPrompt(t *testing.T) {
@@ -126,7 +145,7 @@ func TestBuildExecuteModelWithCustomPrompt(t *testing.T) {
 		Histories:    make([]Message, 0),
 		OpenAIKey:    "sdjdnklfjndslkjanfk",
 		Protocol:     tracer.HTTP,
-		Model:        "gpt4-o",
+		Model:        "gpt-4o",
 		Provider:     OpenAI,
 		CustomPrompt: "hello world",
 	}
@@ -148,7 +167,7 @@ func TestBuildExecuteModelFailValidationStrategyType(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "",
 		Protocol:  tracer.TCP,
-		Model:     "gpt4-o",
+		Model:     "gpt-4o",
 		Provider:  OpenAI,
 	}
 
@@ -206,7 +225,7 @@ func TestBuildExecuteModelSSHWithResultsOpenAI(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.SSH,
-		Model:     "gpt4-o",
+		Model:     "gpt-4o",
 		Provider:  OpenAI,
 	}
 
@@ -282,7 +301,7 @@ func TestBuildExecuteModelSSHWithoutResults(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.SSH,
-		Model:     "gpt4-o",
+		Model:     "gpt-4o",
 		Provider:  OpenAI,
 	}
 
@@ -325,7 +344,7 @@ func TestBuildExecuteModelHTTPWithResults(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.HTTP,
-		Model:     "gpt4-o",
+		Model:     "gpt-4o",
 		Provider:  OpenAI,
 	}
 
@@ -362,7 +381,7 @@ func TestBuildExecuteModelHTTPWithoutResults(t *testing.T) {
 		Histories: make([]Message, 0),
 		OpenAIKey: "sdjdnklfjndslkjanfk",
 		Protocol:  tracer.HTTP,
-		Model:     "gpt4-o",
+		Model:     "gpt-4o",
 		Provider:  OpenAI,
 	}
 

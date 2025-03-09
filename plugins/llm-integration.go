@@ -7,6 +7,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -94,6 +95,10 @@ func FromStringToLLMProvider(llmProvider string) (LLMProvider, error) {
 func InitLLMHoneypot(config LLMHoneypot) *LLMHoneypot {
 	// Inject the dependencies
 	config.client = resty.New()
+
+	if os.Getenv("OPEN_AI_SECRET_KEY") != "" {
+		config.OpenAIKey = os.Getenv("OPEN_AI_SECRET_KEY")
+	}
 
 	return &config
 }
