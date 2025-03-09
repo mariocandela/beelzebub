@@ -22,6 +22,9 @@ type SSHStrategy struct {
 }
 
 func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+	if sshStrategy.Sessions == nil {
+		sshStrategy.Sessions = make(map[string][]plugins.Message)
+	}
 	go func() {
 		server := &ssh.Server{
 			Addr:        servConf.Address,
