@@ -15,5 +15,6 @@ services:
       - "2112:2112" #Prometheus Open Metrics
     environment:
       RABBITMQ_URI: ${RABBITMQ_URI}
+      OPEN_AI_SECRET_KEY: ${OPEN_AI_SECRET_KEY}
     volumes:
       - "./configurations:/configurations"
