@@ -17,9 +17,11 @@ import (
 )
 
 type SSHStrategy struct {
+	Sessions map[string][]plugins.Message
 }
 
 func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+	sshStrategy.Sessions = make(map[string][]plugins.Message)
 	go func() {
 		server := &ssh.Server{
 			Addr:        beelzebubServiceConfiguration.Address,
@@ -30,7 +32,9 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 				uuidSession := uuid.New()
 
 				host, port, _ := net.SplitHostPort(sess.RemoteAddr().String())
+				sessionKey := host + sess.User()
 
+				// Inline SSH command
 				if sess.RawCommand() != "" {
 					for _, command := range beelzebubServiceConfiguration.Commands {
 						matched, err := regexp.MatchString(command.Regex, sess.RawCommand())
@@ -52,8 +56,14 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 									llmProvider = plugins.OpenAI
 								}
 
+								histories := make([]plugins.Message, 0)
+
+								if sshStrategy.Sessions[sessionKey] != nil {
+									histories = sshStrategy.Sessions[sessionKey]
+								}
+
 								llmHoneypot := plugins.LLMHoneypot{
-									Histories:    make([]plugins.Message, 0),
+									Histories:    histories,
 									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
 									Protocol:     tracer.SSH,
 									Host:         beelzebubServiceConfiguration.Plugin.Host,
@@ -86,6 +96,10 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 								Command:       sess.RawCommand(),
 								CommandOutput: commandOutput,
 							})
+							var histories []plugins.Message
+							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()})
+							histories = append(histories, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
+							sshStrategy.Sessions[sessionKey] = histories
 							tr.TraceEvent(tracer.Event{
 								Msg:    "End SSH Session",
 								Status: tracer.End.String(),
@@ -109,10 +123,14 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					Description: beelzebubServiceConfiguration.Description,
 				})
 
-				term := term.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
+				terminal := term.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
 				var histories []plugins.Message
+				if sshStrategy.Sessions[sessionKey] != nil {
+					histories = sshStrategy.Sessions[sessionKey]
+				}
+
 				for {
-					commandInput, err := term.ReadLine()
+					commandInput, err := terminal.ReadLine()
 					if err != nil {
 						break
 					}
@@ -160,7 +178,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: commandInput})
 							histories = append(histories, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
 
-							term.Write(append([]byte(commandOutput), '\n'))
+							terminal.Write(append([]byte(commandOutput), '\n'))
 
 							tr.TraceEvent(tracer.Event{
 								Msg:           "New SSH Terminal Session",
@@ -178,6 +196,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 						}
 					}
 				}
+				sshStrategy.Sessions[sessionKey] = histories
 				tr.TraceEvent(tracer.Event{
 					Msg:    "End SSH Session",
 					Status: tracer.End.String(),
