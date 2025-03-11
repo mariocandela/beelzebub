@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mariocandela/beelzebub/v3/historystore"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/tracer"
@@ -18,12 +19,12 @@ import (
 )
 
 type SSHStrategy struct {
-	Sessions map[string][]plugins.Message
+	Sessions *historystore.HistoryStore
 }
 
 func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
 	if sshStrategy.Sessions == nil {
-		sshStrategy.Sessions = make(map[string][]plugins.Message)
+		sshStrategy.Sessions = historystore.NewHistoryStore()
 	}
 	go func() {
 		server := &ssh.Server{
@@ -35,33 +36,30 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 				uuidSession := uuid.New()
 
 				host, port, _ := net.SplitHostPort(sess.RemoteAddr().String())
-				sessionKey := host + sess.User()
+				sessionKey := "SSH" + host + sess.User()
 
 				// Inline SSH command
 				if sess.RawCommand() != "" {
 					for _, command := range servConf.Commands {
 						matched, err := regexp.MatchString(command.Regex, sess.RawCommand())
 						if err != nil {
-							log.Errorf("Error regex: %s, %s", command.Regex, err.Error())
+							log.Errorf("error regex: %s, %s", command.Regex, err.Error())
 							continue
 						}
 
 						if matched {
 							commandOutput := command.Handler
-
 							if command.Plugin == plugins.LLMPluginName {
-
 								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
-
 								if err != nil {
-									log.Errorf("Error: %s", err.Error())
+									log.Errorf("error: %s", err.Error())
 									commandOutput = "command not found"
 									llmProvider = plugins.OpenAI
 								}
 
 								var histories []plugins.Message
-								if sshStrategy.Sessions[sessionKey] != nil {
-									histories = sshStrategy.Sessions[sessionKey]
+								if sshStrategy.Sessions.HasKey(sessionKey) {
+									histories = sshStrategy.Sessions.Query(sessionKey)
 								}
 								llmHoneypot := plugins.LLMHoneypot{
 									Histories:    histories,
@@ -72,11 +70,9 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									Provider:     llmProvider,
 									CustomPrompt: servConf.Plugin.Prompt,
 								}
-
 								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
-
 								if commandOutput, err = llmHoneypotInstance.ExecuteModel(sess.RawCommand()); err != nil {
-									log.Errorf("Error ExecuteModel: %s, %s", sess.RawCommand(), err.Error())
+									log.Errorf("error ExecuteModel: %s, %s", sess.RawCommand(), err.Error())
 									commandOutput = "command not found"
 								}
 							}
@@ -84,7 +80,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 							sess.Write(append([]byte(commandOutput), '\n'))
 
 							tr.TraceEvent(tracer.Event{
-								Msg:           "New SSH Session",
+								Msg:           "New SSH Raw Command Session",
 								Protocol:      tracer.SSH.String(),
 								RemoteAddr:    sess.RemoteAddr().String(),
 								SourceIp:      host,
@@ -97,12 +93,16 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								Command:       sess.RawCommand(),
 								CommandOutput: commandOutput,
 							})
+
 							var histories []plugins.Message
+							if sshStrategy.Sessions.HasKey(sessionKey) {
+								histories = sshStrategy.Sessions.Query(sessionKey)
+							}
 							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()})
 							histories = append(histories, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
-							sshStrategy.Sessions[sessionKey] = histories
+							sshStrategy.Sessions.Append(sessionKey, histories...)
 							tr.TraceEvent(tracer.Event{
-								Msg:    "End SSH Session",
+								Msg:    "End SSH Raw Command Session",
 								Status: tracer.End.String(),
 								ID:     uuidSession.String(),
 							})
@@ -112,7 +112,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 				}
 
 				tr.TraceEvent(tracer.Event{
-					Msg:         "New SSH Session",
+					Msg:         "New SSH Terminal Session",
 					Protocol:    tracer.SSH.String(),
 					RemoteAddr:  sess.RemoteAddr().String(),
 					SourceIp:    host,
@@ -126,8 +126,8 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 
 				terminal := term.NewTerminal(sess, buildPrompt(sess.User(), servConf.ServerName))
 				var histories []plugins.Message
-				if sshStrategy.Sessions[sessionKey] != nil {
-					histories = sshStrategy.Sessions[sessionKey]
+				if sshStrategy.Sessions.HasKey(sessionKey) {
+					histories = sshStrategy.Sessions.Query(sessionKey)
 				}
 
 				for {
@@ -135,29 +135,24 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 					if err != nil {
 						break
 					}
-
 					if commandInput == "exit" {
 						break
 					}
 					for _, command := range servConf.Commands {
 						matched, err := regexp.MatchString(command.Regex, commandInput)
 						if err != nil {
-							log.Errorf("Error regex: %s, %s", command.Regex, err.Error())
+							log.Errorf("error regex: %s, %s", command.Regex, err.Error())
 							continue
 						}
 
 						if matched {
 							commandOutput := command.Handler
-
 							if command.Plugin == plugins.LLMPluginName {
-
 								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
-
 								if err != nil {
-									log.Errorf("Error: %s, fallback OpenAI", err.Error())
+									log.Errorf("error: %s, fallback OpenAI", err.Error())
 									llmProvider = plugins.OpenAI
 								}
-
 								llmHoneypot := plugins.LLMHoneypot{
 									Histories:    histories,
 									OpenAIKey:    servConf.Plugin.OpenAISecretKey,
@@ -167,11 +162,9 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									Provider:     llmProvider,
 									CustomPrompt: servConf.Plugin.Prompt,
 								}
-
 								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
-
 								if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput); err != nil {
-									log.Errorf("Error ExecuteModel: %s, %s", commandInput, err.Error())
+									log.Errorf("error ExecuteModel: %s, %s", commandInput, err.Error())
 									commandOutput = "command not found"
 								}
 							}
@@ -197,7 +190,10 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 						}
 					}
 				}
-				sshStrategy.Sessions[sessionKey] = histories
+
+				// Add all history events for the terminal session to the store.
+				// This is done at the end of the session to avoid excess lock operations.
+				sshStrategy.Sessions.Append(sessionKey, histories...)
 				tr.TraceEvent(tracer.Event{
 					Msg:    "End SSH Session",
 					Status: tracer.End.String(),
@@ -208,7 +204,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 				host, port, _ := net.SplitHostPort(ctx.RemoteAddr().String())
 
 				tr.TraceEvent(tracer.Event{
-					Msg:         "New SSH attempt",
+					Msg:         "New SSH Login Attempt",
 					Protocol:    tracer.SSH.String(),
 					Status:      tracer.Stateless.String(),
 					User:        ctx.User(),
@@ -222,7 +218,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 				})
 				matched, err := regexp.MatchString(servConf.PasswordRegex, password)
 				if err != nil {
-					log.Errorf("Error regex: %s, %s", servConf.PasswordRegex, err.Error())
+					log.Errorf("error regex: %s, %s", servConf.PasswordRegex, err.Error())
 					return false
 				}
 				return matched
@@ -230,7 +226,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 		}
 		err := server.ListenAndServe()
 		if err != nil {
-			log.Errorf("Error during init SSH Protocol: %s", err.Error())
+			log.Errorf("error during init SSH Protocol: %s", err.Error())
 		}
 	}()
 
