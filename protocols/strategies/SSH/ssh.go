@@ -92,6 +92,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								Description:   servConf.Description,
 								Command:       sess.RawCommand(),
 								CommandOutput: commandOutput,
+								Handler:       command.Name,
 							})
 
 							var histories []plugins.Message
@@ -185,6 +186,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								ID:            uuidSession.String(),
 								Protocol:      tracer.SSH.String(),
 								Description:   servConf.Description,
+								Handler:       command.Name,
 							})
 							break
 						}

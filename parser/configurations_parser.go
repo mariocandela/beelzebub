@@ -81,6 +81,7 @@ type Command struct {
 	Headers    []string `yaml:"headers"`
 	StatusCode int      `yaml:"statusCode"`
 	Plugin     string   `yaml:"plugin"`
+	Name       string   `yaml:"name"`
 }
 
 type configurationsParser struct {

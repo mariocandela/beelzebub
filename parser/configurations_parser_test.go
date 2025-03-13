@@ -56,6 +56,11 @@ commands:
     handler: "login"
     headers:
       - "Content-Type: text/html"
+  - name: "wp-admin"
+    regex: "wp-admin"
+    handler: "login"
+    headers:
+      - "Content-Type: text/html"
 fallbackCommand:
   handler: "404 Not Found!"
   statusCode: 404
@@ -131,12 +136,13 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Protocol, "http")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.ApiVersion, "v1")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Address, ":8080")
-	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 1)
-	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 1)
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 2)
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 2)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Regex, "wp-admin")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Handler, "login")
 	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands[0].Headers), 1)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Headers[0], "Content-Type: text/html")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[1].Name, "wp-admin")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.Handler, "404 Not Found!")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.StatusCode, 404)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OpenAISecretKey, "qwerty")
