@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -76,12 +77,13 @@ type BeelzebubServiceConfiguration struct {
 
 // Command is the struct that contains the configurations of the commands
 type Command struct {
-	Regex      string   `yaml:"regex"`
-	Handler    string   `yaml:"handler"`
-	Headers    []string `yaml:"headers"`
-	StatusCode int      `yaml:"statusCode"`
-	Plugin     string   `yaml:"plugin"`
-	Name       string   `yaml:"name"`
+	RegexStr   string         `yaml:"regex"`
+	Regex      *regexp.Regexp `yaml:"-"` // This field is parsed, not stored in the config itself.
+	Handler    string         `yaml:"handler"`
+	Headers    []string       `yaml:"headers"`
+	StatusCode int            `yaml:"statusCode"`
+	Plugin     string         `yaml:"plugin"`
+	Name       string         `yaml:"name"`
 }
 
 type configurationsParser struct {
@@ -141,10 +143,26 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 			return nil, fmt.Errorf("in file %s: %v", filePath, err)
 		}
 		log.Debug(beelzebubServiceConfiguration)
+		if err := beelzebubServiceConfiguration.compileCommandRegex(); err != nil {
+			return nil, fmt.Errorf("in file %s: invalid regex: %v", filePath, err)
+		}
 		servicesConfiguration = append(servicesConfiguration, *beelzebubServiceConfiguration)
 	}
 
 	return servicesConfiguration, nil
+}
+
+func (c *BeelzebubServiceConfiguration) compileCommandRegex() error {
+	for i, command := range c.Commands {
+		if command.RegexStr != "" {
+			rex, err := regexp.Compile(command.RegexStr)
+			if err != nil {
+				return err
+			}
+			c.Commands[i].Regex = rex
+		}
+	}
+	return nil
 }
 
 func gelAllFilesNameByDirName(dirName string) ([]string, error) {

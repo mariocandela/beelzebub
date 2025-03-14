@@ -5,7 +5,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/mariocandela/beelzebub/v3/parser"
@@ -33,14 +32,7 @@ func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfigurat
 		var err error
 		for _, command := range servConf.Commands {
 			var err error
-			matched, err = regexp.MatchString(command.Regex, request.RequestURI)
-			if err != nil {
-				log.Errorf("error parsing regex: %s, %s", command.Regex, err.Error())
-				resp.StatusCode = 500
-				resp.Body = "500 Internal Server Error"
-				continue
-			}
-
+			matched = command.Regex.MatchString(request.RequestURI)
 			if matched {
 				resp, err = buildHTTPResponse(servConf, tr, command, request)
 				if err != nil {

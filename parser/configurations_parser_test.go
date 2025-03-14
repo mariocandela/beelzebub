@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -138,7 +139,8 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Address, ":8080")
 	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 2)
 	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 2)
-	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Regex, "wp-admin")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].RegexStr, "wp-admin")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Regex.String(), "wp-admin")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Handler, "login")
 	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands[0].Headers), 1)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Headers[0], "Content-Type: text/html")
@@ -204,4 +206,80 @@ func TestReadFileBytesByFilePath(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "", string(bytes))
+}
+
+func TestCompileCommandRegex(t *testing.T) {
+	tests := []struct {
+		name          string
+		config        BeelzebubServiceConfiguration
+		expectedError bool
+	}{
+		{
+			name: "Valid Regex",
+			config: BeelzebubServiceConfiguration{
+				Commands: []Command{
+					{RegexStr: "^/api/v1/.*$"},
+					{RegexStr: "wp-admin"},
+				},
+			},
+			expectedError: false,
+		},
+		{
+			name: "Empty Regex",
+			config: BeelzebubServiceConfiguration{
+				Commands: []Command{
+					{RegexStr: ""},
+					{RegexStr: ""},
+				},
+			},
+			expectedError: false,
+		},
+		{
+			name: "Invalid Regex",
+			config: BeelzebubServiceConfiguration{
+				Commands: []Command{
+					{RegexStr: "["},
+				},
+			},
+			expectedError: true,
+		},
+		{
+			name: "Mixed valid and Invalid Regex",
+			config: BeelzebubServiceConfiguration{
+				Commands: []Command{
+					{RegexStr: "^/api/v1/.*$"},
+					{RegexStr: "["},
+					{RegexStr: "test"},
+				},
+			},
+			expectedError: true,
+		},
+		{
+			name:          "No commands",
+			config:        BeelzebubServiceConfiguration{},
+			expectedError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.compileCommandRegex()
+
+			if tt.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				for _, command := range tt.config.Commands {
+					if command.RegexStr != "" {
+						assert.NotNil(t, command.Regex)
+						_, err := regexp.Compile(command.RegexStr)
+						assert.NoError(t, err)
+
+					} else {
+						assert.Nil(t, command.Regex)
+					}
+				}
+			}
+		})
+	}
 }

@@ -2,13 +2,14 @@ package plugins
 
 import (
 	"fmt"
+	"net/http"
+	"testing"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
 )
 
 func TestBuildSendEventFailValidation(t *testing.T) {
@@ -111,8 +112,8 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 			Description: "SSH interactive ChatGPT",
 			Commands: []parser.Command{
 				{
-					Regex:  "^(.+)$",
-					Plugin: "LLMHoneypot",
+					RegexStr: "^(.+)$",
+					Plugin:   "LLMHoneypot",
 				},
 			},
 			ServerVersion:          "OpenSSH",

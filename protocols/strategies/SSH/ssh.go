@@ -41,13 +41,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 				// Inline SSH command
 				if sess.RawCommand() != "" {
 					for _, command := range servConf.Commands {
-						matched, err := regexp.MatchString(command.Regex, sess.RawCommand())
-						if err != nil {
-							log.Errorf("error regex: %s, %s", command.Regex, err.Error())
-							continue
-						}
-
-						if matched {
+						if command.Regex.MatchString(sess.RawCommand()) {
 							commandOutput := command.Handler
 							if command.Plugin == plugins.LLMPluginName {
 								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
@@ -140,13 +134,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 						break
 					}
 					for _, command := range servConf.Commands {
-						matched, err := regexp.MatchString(command.Regex, commandInput)
-						if err != nil {
-							log.Errorf("error regex: %s, %s", command.Regex, err.Error())
-							continue
-						}
-
-						if matched {
+						if command.Regex.MatchString(commandInput) {
 							commandOutput := command.Handler
 							if command.Plugin == plugins.LLMPluginName {
 								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
