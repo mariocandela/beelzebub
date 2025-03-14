@@ -5,7 +5,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/mariocandela/beelzebub/v3/parser"
@@ -28,22 +27,14 @@ func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfigurat
 	serverMux := http.NewServeMux()
 
 	serverMux.HandleFunc("/", func(responseWriter http.ResponseWriter, request *http.Request) {
-		traceRequest(request, tr, servConf.Description)
 		var matched bool
 		var resp httpResponse
 		var err error
 		for _, command := range servConf.Commands {
 			var err error
-			matched, err = regexp.MatchString(command.Regex, request.RequestURI)
-			if err != nil {
-				log.Errorf("error parsing regex: %s, %s", command.Regex, err.Error())
-				resp.StatusCode = 500
-				resp.Body = "500 Internal Server Error"
-				continue
-			}
-
+			matched = command.Regex.MatchString(request.RequestURI)
 			if matched {
-				resp, err = buildHTTPResponse(servConf, command, request)
+				resp, err = buildHTTPResponse(servConf, tr, command, request)
 				if err != nil {
 					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
 					resp.StatusCode = 500
@@ -57,7 +48,7 @@ func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfigurat
 		if !matched {
 			command := servConf.FallbackCommand
 			if command.Handler != "" || command.Plugin != "" {
-				resp, err = buildHTTPResponse(servConf, command, request)
+				resp, err = buildHTTPResponse(servConf, tr, command, request)
 				if err != nil {
 					log.Errorf("error building http response: %s: %v", request.RequestURI, err)
 					resp.StatusCode = 500
@@ -92,12 +83,13 @@ func (httpStrategy HTTPStrategy) Init(servConf parser.BeelzebubServiceConfigurat
 	return nil
 }
 
-func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, command parser.Command, request *http.Request) (httpResponse, error) {
+func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.Tracer, command parser.Command, request *http.Request) (httpResponse, error) {
 	resp := httpResponse{
 		Body:       command.Handler,
 		Headers:    command.Headers,
 		StatusCode: command.StatusCode,
 	}
+	traceRequest(request, tr, command, servConf.Description)
 
 	if command.Plugin == plugins.LLMPluginName {
 		llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
@@ -129,7 +121,7 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, command pa
 	return resp, nil
 }
 
-func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription string) {
+func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Command, HoneypotDescription string) {
 	bodyBytes, err := io.ReadAll(request.Body)
 	body := ""
 	if err == nil {
@@ -153,6 +145,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 		SourcePort:      port,
 		ID:              uuid.New().String(),
 		Description:     HoneypotDescription,
+		Handler:         command.Name,
 	}
 	// Capture the TLS details from the request, if provided.
 	if request.TLS != nil {
