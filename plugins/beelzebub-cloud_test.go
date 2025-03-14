@@ -3,6 +3,7 @@ package plugins
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"testing"
 
 	"github.com/go-resty/resty/v2"
@@ -113,6 +114,7 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 			Commands: []parser.Command{
 				{
 					RegexStr: "^(.+)$",
+					Regex:    regexp.MustCompile("^(.+)$"),
 					Plugin:   "LLMHoneypot",
 				},
 			},

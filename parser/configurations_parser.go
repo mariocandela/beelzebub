@@ -143,7 +143,7 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 			return nil, fmt.Errorf("in file %s: %v", filePath, err)
 		}
 		log.Debug(beelzebubServiceConfiguration)
-		if err := beelzebubServiceConfiguration.compileCommandRegex(); err != nil {
+		if err := beelzebubServiceConfiguration.CompileCommandRegex(); err != nil {
 			return nil, fmt.Errorf("in file %s: invalid regex: %v", filePath, err)
 		}
 		servicesConfiguration = append(servicesConfiguration, *beelzebubServiceConfiguration)
@@ -152,7 +152,8 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 	return servicesConfiguration, nil
 }
 
-func (c *BeelzebubServiceConfiguration) compileCommandRegex() error {
+// CompileCommandRegex is the method that compiles the regular expression for each configured Command.
+func (c *BeelzebubServiceConfiguration) CompileCommandRegex() error {
 	for i, command := range c.Commands {
 		if command.RegexStr != "" {
 			rex, err := regexp.Compile(command.RegexStr)
