@@ -1,6 +1,8 @@
 module github.com/mariocandela/beelzebub/v3
 
-go 1.20
+go 1.23.0
+
+toolchain go1.23.6
 
 require (
 	github.com/gliderlabs/ssh v0.3.8

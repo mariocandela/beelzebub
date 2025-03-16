@@ -2,7 +2,7 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "future" ]
   pull_request:
     branches: [ "main" ]
   schedule:
@@ -29,7 +29,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.20.0
+        go-version: 1.24.1
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
