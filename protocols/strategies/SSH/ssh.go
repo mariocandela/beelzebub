@@ -26,6 +26,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 	if sshStrategy.Sessions == nil {
 		sshStrategy.Sessions = historystore.NewHistoryStore()
 	}
+	go sshStrategy.Sessions.HistoryCleaner()
 	go func() {
 		server := &ssh.Server{
 			Addr:        servConf.Address,
