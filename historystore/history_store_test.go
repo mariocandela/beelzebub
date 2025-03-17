@@ -54,7 +54,7 @@ func TestHistoryCleaner(t *testing.T) {
 
 	// Make key older than MaxHistoryAge
 	e := hs.sessions["testKey"]
-	e.StartTime = time.Now().Add(-MaxHistoryAge * 2)
+	e.LastSeen = time.Now().Add(-MaxHistoryAge * 2)
 	hs.sessions["testKey"] = e
 
 	CleanerInterval = 5 * time.Second // Override for the test.

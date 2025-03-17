@@ -21,8 +21,8 @@ type HistoryStore struct {
 
 // HistoryEvent is a container for storing messages
 type HistoryEvent struct {
-	StartTime time.Time
-	Messages  []plugins.Message
+	LastSeen time.Time
+	Messages []plugins.Message
 }
 
 // NewHistoryStore returns a prepared HistoryStore
@@ -60,7 +60,7 @@ func (hs *HistoryStore) Append(key string, message ...plugins.Message) {
 	if !ok {
 		e = HistoryEvent{}
 	}
-	e.StartTime = time.Now()
+	e.LastSeen = time.Now()
 	e.Messages = append(e.Messages, message...)
 	hs.sessions[key] = e
 }
@@ -73,7 +73,7 @@ func (hs *HistoryStore) HistoryCleaner() {
 		for range cleanerTicker.C {
 			hs.Lock()
 			for k, v := range hs.sessions {
-				if time.Since(v.StartTime) > MaxHistoryAge {
+				if time.Since(v.LastSeen) > MaxHistoryAge {
 					log.Infof("removing key %q from history store", k)
 					delete(hs.sessions, k)
 				}
