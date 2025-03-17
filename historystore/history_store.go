@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/mariocandela/beelzebub/v3/plugins"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -74,7 +73,6 @@ func (hs *HistoryStore) HistoryCleaner() {
 			hs.Lock()
 			for k, v := range hs.sessions {
 				if time.Since(v.LastSeen) > MaxHistoryAge {
-					log.Infof("removing key %q from history store", k)
 					delete(hs.sessions, k)
 				}
 			}
