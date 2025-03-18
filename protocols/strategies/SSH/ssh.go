@@ -41,6 +41,10 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 
 				// Inline SSH command
 				if sess.RawCommand() != "" {
+					var histories []plugins.Message
+					if sshStrategy.Sessions.HasKey(sessionKey) {
+						histories = sshStrategy.Sessions.Query(sessionKey)
+					}
 					for _, command := range servConf.Commands {
 						if command.Regex.MatchString(sess.RawCommand()) {
 							commandOutput := command.Handler
@@ -50,11 +54,6 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									log.Errorf("error: %s", err.Error())
 									commandOutput = "command not found"
 									llmProvider = plugins.OpenAI
-								}
-
-								var histories []plugins.Message
-								if sshStrategy.Sessions.HasKey(sessionKey) {
-									histories = sshStrategy.Sessions.Query(sessionKey)
 								}
 								llmHoneypot := plugins.LLMHoneypot{
 									Histories:    histories,
@@ -71,11 +70,16 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									commandOutput = "command not found"
 								}
 							}
+							var newEntries []plugins.Message
+							newEntries = append(newEntries, plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()})
+							newEntries = append(newEntries, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
+							// Append the new entries to the store.
+							sshStrategy.Sessions.Append(sessionKey, newEntries...)
 
 							sess.Write(append([]byte(commandOutput), '\n'))
 
 							tr.TraceEvent(tracer.Event{
-								Msg:           "New SSH Raw Command Session",
+								Msg:           "SSH Raw Command",
 								Protocol:      tracer.SSH.String(),
 								RemoteAddr:    sess.RemoteAddr().String(),
 								SourceIp:      host,
@@ -88,19 +92,6 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								Command:       sess.RawCommand(),
 								CommandOutput: commandOutput,
 								Handler:       command.Name,
-							})
-
-							var histories []plugins.Message
-							if sshStrategy.Sessions.HasKey(sessionKey) {
-								histories = sshStrategy.Sessions.Query(sessionKey)
-							}
-							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()})
-							histories = append(histories, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
-							sshStrategy.Sessions.Append(sessionKey, histories...)
-							tr.TraceEvent(tracer.Event{
-								Msg:    "End SSH Raw Command Session",
-								Status: tracer.End.String(),
-								ID:     uuidSession.String(),
 							})
 							return
 						}
@@ -158,14 +149,17 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									commandOutput = "command not found"
 								}
 							}
-
-							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: commandInput})
-							histories = append(histories, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
+							var newEntries []plugins.Message
+							newEntries = append(newEntries, plugins.Message{Role: plugins.USER.String(), Content: commandInput})
+							newEntries = append(newEntries, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
+							// Stash the new entries to the store, and update the history for this running session.
+							sshStrategy.Sessions.Append(sessionKey, newEntries...)
+							histories = append(histories, newEntries...)
 
 							terminal.Write(append([]byte(commandOutput), '\n'))
 
 							tr.TraceEvent(tracer.Event{
-								Msg:           "New SSH Terminal Session",
+								Msg:           "SSH Terminal Session Interaction",
 								RemoteAddr:    sess.RemoteAddr().String(),
 								SourceIp:      host,
 								SourcePort:    port,
@@ -177,18 +171,16 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								Description:   servConf.Description,
 								Handler:       command.Name,
 							})
-							break
+							break // Inner range over commands.
 						}
 					}
 				}
 
-				// Add all history events for the terminal session to the store.
-				// This is done at the end of the session to avoid excess lock operations.
-				sshStrategy.Sessions.Append(sessionKey, histories...)
 				tr.TraceEvent(tracer.Event{
-					Msg:    "End SSH Session",
-					Status: tracer.End.String(),
-					ID:     uuidSession.String(),
+					Msg:      "End SSH Session",
+					Status:   tracer.End.String(),
+					ID:       uuidSession.String(),
+					Protocol: tracer.SSH.String(),
 				})
 			},
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
