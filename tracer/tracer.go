@@ -5,10 +5,9 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
 )
 
 // Workers is the number of workers that will
@@ -38,6 +37,7 @@ type Event struct {
 	SourceIp        string
 	SourcePort      string
 	TLSServerName   string
+	Handler         string
 }
 
 type (

@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"runtime/debug"
+
 	"github.com/mariocandela/beelzebub/v3/builder"
 	"github.com/mariocandela/beelzebub/v3/parser"
 
@@ -13,11 +15,19 @@ func main() {
 		quit                            = make(chan struct{})
 		configurationsCorePath          string
 		configurationsServicesDirectory string
+		memLimitMiB                     int
 	)
 
 	flag.StringVar(&configurationsCorePath, "confCore", "./configurations/beelzebub.yaml", "Provide the path of configurations core")
 	flag.StringVar(&configurationsServicesDirectory, "confServices", "./configurations/services/", "Directory config services")
+	flag.IntVar(&memLimitMiB, "memLimitMiB", 100, "Process Memory in MiB (default 100, set to -1 to use system default)")
 	flag.Parse()
+
+	if memLimitMiB > 0 {
+		// SetMemoryLimit takes an int64 value for the number of bytes.
+		// bytes value = MiB value * 1024 * 1024
+		debug.SetMemoryLimit(int64(memLimitMiB * 1024 * 1024))
+	}
 
 	parser := parser.Init(configurationsCorePath, configurationsServicesDirectory)
 

@@ -26,6 +26,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 	if sshStrategy.Sessions == nil {
 		sshStrategy.Sessions = historystore.NewHistoryStore()
 	}
+	go sshStrategy.Sessions.HistoryCleaner()
 	go func() {
 		server := &ssh.Server{
 			Addr:        servConf.Address,
@@ -40,14 +41,12 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 
 				// Inline SSH command
 				if sess.RawCommand() != "" {
+					var histories []plugins.Message
+					if sshStrategy.Sessions.HasKey(sessionKey) {
+						histories = sshStrategy.Sessions.Query(sessionKey)
+					}
 					for _, command := range servConf.Commands {
-						matched, err := regexp.MatchString(command.Regex, sess.RawCommand())
-						if err != nil {
-							log.Errorf("error regex: %s, %s", command.Regex, err.Error())
-							continue
-						}
-
-						if matched {
+						if command.Regex.MatchString(sess.RawCommand()) {
 							commandOutput := command.Handler
 							if command.Plugin == plugins.LLMPluginName {
 								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
@@ -55,11 +54,6 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									log.Errorf("error: %s", err.Error())
 									commandOutput = "command not found"
 									llmProvider = plugins.OpenAI
-								}
-
-								var histories []plugins.Message
-								if sshStrategy.Sessions.HasKey(sessionKey) {
-									histories = sshStrategy.Sessions.Query(sessionKey)
 								}
 								llmHoneypot := plugins.LLMHoneypot{
 									Histories:    histories,
@@ -76,11 +70,16 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									commandOutput = "command not found"
 								}
 							}
+							var newEntries []plugins.Message
+							newEntries = append(newEntries, plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()})
+							newEntries = append(newEntries, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
+							// Append the new entries to the store.
+							sshStrategy.Sessions.Append(sessionKey, newEntries...)
 
 							sess.Write(append([]byte(commandOutput), '\n'))
 
 							tr.TraceEvent(tracer.Event{
-								Msg:           "New SSH Raw Command Session",
+								Msg:           "SSH Raw Command",
 								Protocol:      tracer.SSH.String(),
 								RemoteAddr:    sess.RemoteAddr().String(),
 								SourceIp:      host,
@@ -92,19 +91,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								Description:   servConf.Description,
 								Command:       sess.RawCommand(),
 								CommandOutput: commandOutput,
-							})
-
-							var histories []plugins.Message
-							if sshStrategy.Sessions.HasKey(sessionKey) {
-								histories = sshStrategy.Sessions.Query(sessionKey)
-							}
-							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()})
-							histories = append(histories, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
-							sshStrategy.Sessions.Append(sessionKey, histories...)
-							tr.TraceEvent(tracer.Event{
-								Msg:    "End SSH Raw Command Session",
-								Status: tracer.End.String(),
-								ID:     uuidSession.String(),
+								Handler:       command.Name,
 							})
 							return
 						}
@@ -139,13 +126,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 						break
 					}
 					for _, command := range servConf.Commands {
-						matched, err := regexp.MatchString(command.Regex, commandInput)
-						if err != nil {
-							log.Errorf("error regex: %s, %s", command.Regex, err.Error())
-							continue
-						}
-
-						if matched {
+						if command.Regex.MatchString(commandInput) {
 							commandOutput := command.Handler
 							if command.Plugin == plugins.LLMPluginName {
 								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
@@ -168,14 +149,17 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									commandOutput = "command not found"
 								}
 							}
-
-							histories = append(histories, plugins.Message{Role: plugins.USER.String(), Content: commandInput})
-							histories = append(histories, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
+							var newEntries []plugins.Message
+							newEntries = append(newEntries, plugins.Message{Role: plugins.USER.String(), Content: commandInput})
+							newEntries = append(newEntries, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
+							// Stash the new entries to the store, and update the history for this running session.
+							sshStrategy.Sessions.Append(sessionKey, newEntries...)
+							histories = append(histories, newEntries...)
 
 							terminal.Write(append([]byte(commandOutput), '\n'))
 
 							tr.TraceEvent(tracer.Event{
-								Msg:           "New SSH Terminal Session",
+								Msg:           "SSH Terminal Session Interaction",
 								RemoteAddr:    sess.RemoteAddr().String(),
 								SourceIp:      host,
 								SourcePort:    port,
@@ -185,19 +169,18 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								ID:            uuidSession.String(),
 								Protocol:      tracer.SSH.String(),
 								Description:   servConf.Description,
+								Handler:       command.Name,
 							})
-							break
+							break // Inner range over commands.
 						}
 					}
 				}
 
-				// Add all history events for the terminal session to the store.
-				// This is done at the end of the session to avoid excess lock operations.
-				sshStrategy.Sessions.Append(sessionKey, histories...)
 				tr.TraceEvent(tracer.Event{
-					Msg:    "End SSH Session",
-					Status: tracer.End.String(),
-					ID:     uuidSession.String(),
+					Msg:      "End SSH Session",
+					Status:   tracer.End.String(),
+					ID:       uuidSession.String(),
+					Protocol: tracer.SSH.String(),
 				})
 			},
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
