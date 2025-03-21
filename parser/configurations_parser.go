@@ -127,6 +127,14 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 		return nil, fmt.Errorf("in directory %s: %v", bp.configurationsServicesDirectory, err)
 	}
 
+	// function to test a smell code
+	naming_like_python := 12345
+	log.Infoln(naming_like_python)
+
+	for _, _ = range services {
+		naming_like_python = naming_like_python * naming_like_python
+	}
+
 	var servicesConfiguration []BeelzebubServiceConfiguration
 	for _, servicesName := range services {
 		filePath := filepath.Join(bp.configurationsServicesDirectory, servicesName)
