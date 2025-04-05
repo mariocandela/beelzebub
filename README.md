@@ -321,5 +321,7 @@ Happy hacking!
 
 Beelzebub is licensed under the [MIT License](LICENSE).
 
-## Supported by JetBrains
-![JetBrains logo](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.png)
+## Supported by
+[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
+
+![gitbook logo](https://i.postimg.cc/VNQh5hnk/gitbook.png)
