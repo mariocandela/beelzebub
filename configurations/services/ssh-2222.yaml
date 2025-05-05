@@ -7,7 +7,9 @@ commands:
     plugin: "LLMHoneypot"
 serverVersion: "OpenSSH"
 serverName: "ubuntu"
-passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
+passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456|1234)$"
 deadlineTimeoutSeconds: 6000
 plugin:
-  llmModel: "llama3"
+  llmProvider: "openai"
+  llmModel: "gpt-4o"
+  openAISecretKey: "sk-proj-12345"

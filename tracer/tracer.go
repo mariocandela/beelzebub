@@ -27,7 +27,7 @@ type Event struct {
 	User            string
 	Password        string
 	Client          string
-	Headers         string
+	Headers         map[string][]string
 	Cookies         string
 	UserAgent       string
 	HostHTTPRequest string

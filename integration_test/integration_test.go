@@ -67,8 +67,11 @@ func (suite *IntegrationTestSuite) TestInvokeHTTPHoneypot() {
 	response, err := resty.New().R().
 		Get(suite.httpHoneypotHost + "/index.php")
 
+	response.Header().Del("Date")
+
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusOK, response.StatusCode())
+	suite.Equal(http.Header{"Content-Length": []string{"15"}, "Content-Type": []string{"text/html"}, "Server": []string{"Apache/2.4.53 (Debian)"}, "X-Powered-By": []string{"PHP/7.4.29"}}, response.Header())
 	suite.Equal("mocked response", string(response.Body()))
 
 	response, err = resty.New().R().

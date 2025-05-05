@@ -3,17 +3,16 @@ version: "3.9"
 services:
   beelzebub:
     build: .
-    #network_mode: host # Not work on Mac OS
     container_name: beelzebub
     restart: always
-    ports: # Remove me, if you use configuration network_mode: host
+    ports:
       - "22:22"
       - "2222:2222"
       - "8080:8080"
       - "8081:8081"
       - "80:80"
       - "3306:3306"
-      - "2112:2112" # Prometheus openmetrics
+      - "2112:2112" #Prometheus Open Metrics
     environment:
       RABBITMQ_URI: ${RABBITMQ_URI}
     volumes:

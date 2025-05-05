@@ -55,6 +55,7 @@ type Plugin struct {
 	OpenAISecretKey string `yaml:"openAISecretKey"`
 	Host            string `yaml:"host"`
 	LLMModel        string `yaml:"llmModel"`
+	LLMProvider     string `yaml:"llmProvider"`
 	Prompt          string `yaml:"prompt"`
 }
 
