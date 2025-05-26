@@ -10,10 +10,11 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestBuildSendEventFailValidation(t *testing.T) {
-	beelzebubCloud := InitBeelzebubCloud("", "")
+	beelzebubCloud := InitBeelzebubCloud("", "", false)
 
 	_, err := beelzebubCloud.SendEvent(tracer.Event{})
 
@@ -38,7 +39,7 @@ func TestBuildSendEventWithResults(t *testing.T) {
 		},
 	)
 
-	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
 
 	//When
@@ -63,7 +64,7 @@ func TestBuildSendEventErro(t *testing.T) {
 		},
 	)
 
-	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
 
 	//When
@@ -97,7 +98,7 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 		},
 	)
 
-	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
 
 	//When
@@ -126,13 +127,13 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 			},
 		},
 	}, &result)
-	assert.Equal(t, "fd4b433cf961120250a1532f8bb2f4060ad939d4dda15b96b8c90176a016a165", beelzebubCloud.ConfigurationsHash.String())
+	assert.Equal(t, "5a76814e57a6c6ab48da4380f6fec988efc8dc6e51a64d78491d974430b773ce", beelzebubCloud.ConfigurationsHash.String())
 	assert.Nil(t, err)
 }
 
 func TestGetHoneypotsConfigurationsWithErrorValidation(t *testing.T) {
 	//Given
-	beelzebubCloud := InitBeelzebubCloud("", "")
+	beelzebubCloud := InitBeelzebubCloud("", "", false)
 
 	//When
 	result, err := beelzebubCloud.GetHoneypotsConfigurations()
@@ -156,7 +157,7 @@ func TestGetHoneypotsConfigurationsWithErrorAPI(t *testing.T) {
 		},
 	)
 
-	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
 
 	//When
@@ -185,7 +186,7 @@ func TestGetHoneypotsConfigurationsWithErrorUnmarshal(t *testing.T) {
 		},
 	)
 
-	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
 
 	//When
@@ -220,7 +221,7 @@ func TestGetHoneypotsConfigurationsWithErrorDeserializeYaml(t *testing.T) {
 		},
 	)
 
-	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
 
 	//When
@@ -256,20 +257,97 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 	)
 
 	hashConfigurations := strings.Builder{}
-	hashConfigurations.WriteString("dsadasfdasg")
+	hashConfigurations.WriteString("sdafsdgfhggfdfdgdsgdfgsdfg")
 	var exitInvoked bool = false
 
+	exitCalled := make(chan bool)
+
+	// Override exitFunction to set the flag AND exit the infinite loop with panic/recover
 	exitFunction = func(c int) {
 		exitInvoked = true
+		exitCalled <- true
+		panic("Exit function called")
 	}
-	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk")
+
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
 	beelzebubCloud.ConfigurationsHash = hashConfigurations
 
-	//When
-	err := beelzebubCloud.verifyConfigurationsChanged()
+	// Run verifyConfigurationsChanged in a goroutine with panic recovery
+	go func() {
+		defer func() {
+			// Recover from the panic
+			recover()
+		}()
+		err := beelzebubCloud.verifyConfigurationsChanged()
+		t.Errorf("verifyConfigurationsChanged returned unexpectedly with error: %v", err)
+	}()
 
-	//Then
+	// Wait for exitFunction to be called or timeout
+	select {
+	case <-exitCalled:
+		// exitFunction was called, test should pass
+	case <-time.After(5 * time.Second):
+		t.Fatal("Test timed out waiting for exitFunction to be called")
+	}
+
+	// Then
 	assert.Equal(t, true, exitInvoked)
+}
+
+func TestMapToEventDTO(t *testing.T) {
+	event := tracer.Event{
+		DateTime:        "2025-05-01T16:18:13Z",
+		RemoteAddr:      "1.1.1.1:12345",
+		Protocol:        "SSH",
+		Command:         "cd /tmp",
+		CommandOutput:   "",
+		Status:          "Interaction",
+		Msg:             "New SSH Terminal Session",
+		ID:              "4f104892-738f-47ac-950f-6afce1b742c7",
+		Environ:         "qwerty",
+		User:            "root",
+		Password:        "root",
+		Client:          "ssh",
+		Headers:         map[string][]string{"Host": {"beelzebub-honeypot.com"}},
+		Cookies:         "qwerty",
+		UserAgent:       "qwerty",
+		HostHTTPRequest: "beelzebub-honeypot.com",
+		Body:            "qwerty",
+		HTTPMethod:      "GET",
+		RequestURI:      "/qwerty",
+		Description:     "qwerty",
+		SourceIp:        "1.1.1.1",
+		SourcePort:      "12345",
+		TLSServerName:   "beelzebub-honeypot.com",
+	}
+	beelzebubCloud := InitBeelzebubCloud("localhost:8081", "sdjdnklfjndslkjanfk", false)
+	eventDTO, err := beelzebubCloud.mapToEventDTO(event)
 	assert.Nil(t, err)
+
+	assert.Equal(t, EventDTO{
+		DateTime:        "2025-05-01T16:18:13Z",
+		RemoteAddr:      "1.1.1.1:12345",
+		Protocol:        "SSH",
+		Command:         "cd /tmp",
+		CommandOutput:   "",
+		Status:          "Interaction",
+		Msg:             "New SSH Terminal Session",
+		ID:              "4f104892-738f-47ac-950f-6afce1b742c7",
+		Environ:         "qwerty",
+		User:            "root",
+		Password:        "root",
+		Client:          "ssh",
+		Headers:         "{\"Host\":[\"beelzebub-honeypot.com\"]}",
+		Cookies:         "qwerty",
+		UserAgent:       "qwerty",
+		HostHTTPRequest: "beelzebub-honeypot.com",
+		Body:            "qwerty",
+		HTTPMethod:      "GET",
+		RequestURI:      "/qwerty",
+		Description:     "qwerty",
+		SourceIp:        "1.1.1.1",
+		SourcePort:      "12345",
+		TLSServerName:   "beelzebub-honeypot.com",
+	}, eventDTO)
 }

@@ -14,6 +14,32 @@ import (
 	"time"
 )
 
+type EventDTO struct {
+	DateTime        string
+	RemoteAddr      string
+	Protocol        string
+	Command         string
+	CommandOutput   string
+	Status          string
+	Msg             string
+	ID              string
+	Environ         string
+	User            string
+	Password        string
+	Client          string
+	Headers         string
+	Cookies         string
+	UserAgent       string
+	HostHTTPRequest string
+	Body            string
+	HTTPMethod      string
+	RequestURI      string
+	Description     string
+	SourceIp        string
+	SourcePort      string
+	TLSServerName   string
+}
+
 type beelzebubCloud struct {
 	URI                string
 	AuthToken          string
@@ -29,24 +55,30 @@ type HoneypotConfigResponseDTO struct {
 	LastUpdatedOn string `json:"lastUpdatedOn"`
 }
 
-func InitBeelzebubCloud(uri, authToken string) *beelzebubCloud {
+func InitBeelzebubCloud(uri, authToken string, enableVerifyConfigurationsChanged bool) *beelzebubCloud {
 	beelzebubCloud := &beelzebubCloud{
 		URI:             uri,
 		AuthToken:       authToken,
 		client:          resty.New(),
 		PollingInterval: 15 * time.Second,
 	}
-
-	go func() {
-		if err := beelzebubCloud.verifyConfigurationsChanged(); err != nil {
-			log.Fatalf("Error verify configurations changed: %s", err.Error())
-		}
-	}()
+	if enableVerifyConfigurationsChanged {
+		go func() {
+			if err := beelzebubCloud.verifyConfigurationsChanged(); err != nil {
+				log.Fatalf("Error verify configurations changed: %s", err.Error())
+			}
+		}()
+	}
 	return beelzebubCloud
 }
 
 func (beelzebubCloud *beelzebubCloud) SendEvent(event tracer.Event) (bool, error) {
-	requestJson, err := json.Marshal(event)
+	eventDTO, err := beelzebubCloud.mapToEventDTO(event)
+	if err != nil {
+		return false, err
+	}
+
+	requestJson, err := json.Marshal(eventDTO)
 	if err != nil {
 		return false, err
 	}
@@ -128,10 +160,47 @@ func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
 			return err
 		}
 		if len(lastConfigurationsHash) > 0 && lastConfigurationsHash != beelzebubCloud.ConfigurationsHash.String() {
-			log.Debug("Configurations changed, exiting...")
-			exitFunction(0) // Exit to restart the container
+			log.Debug("Configurations changed.")
+			exitFunction(0)
 		}
 		time.Sleep(beelzebubCloud.PollingInterval)
 	}
 	return nil
+}
+
+func (beelzebubCloud *beelzebubCloud) mapToEventDTO(event tracer.Event) (EventDTO, error) {
+	eventDTO := EventDTO{
+		DateTime:        event.DateTime,
+		RemoteAddr:      event.RemoteAddr,
+		Protocol:        event.Protocol,
+		Command:         event.Command,
+		CommandOutput:   event.CommandOutput,
+		Status:          event.Status,
+		Msg:             event.Msg,
+		ID:              event.ID,
+		Environ:         event.Environ,
+		User:            event.User,
+		Password:        event.Password,
+		Client:          event.Client,
+		Cookies:         event.Cookies,
+		UserAgent:       event.UserAgent,
+		HostHTTPRequest: event.HostHTTPRequest,
+		Body:            event.Body,
+		HTTPMethod:      event.HTTPMethod,
+		RequestURI:      event.RequestURI,
+		Description:     event.Description,
+		SourceIp:        event.SourceIp,
+		SourcePort:      event.SourcePort,
+		TLSServerName:   event.TLSServerName,
+	}
+
+	if len(event.Headers) > 0 {
+		headersJSON, err := json.Marshal(event.Headers)
+		if err != nil {
+			return EventDTO{}, fmt.Errorf("failed to marshal headers: %w", err)
+		}
+		eventDTO.Headers = string(headersJSON)
+	}
+
+	return eventDTO, nil
 }

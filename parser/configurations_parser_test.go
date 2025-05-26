@@ -155,7 +155,7 @@ func TestReadConfigurationsServicesGenerateHashCode(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Nil(t, errHashCode)
-	assert.Equal(t, hashCode, "12238bd3a97a1526e0f579432700b872eaea22c422478541ace0894b75162a41")
+	assert.Equal(t, hashCode, "6e3d58fb5ce8dd221ce89976a37c77a8e1ccab2ac24ac1f28ecf8516a9e5b2f9")
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {

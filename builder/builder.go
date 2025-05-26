@@ -116,7 +116,7 @@ Honeypot Framework, happy hacking!`)
 	if b.beelzebubCoreConfigurations.Core.BeelzebubCloud.Enabled {
 		conf := b.beelzebubCoreConfigurations.Core.BeelzebubCloud
 
-		beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken)
+		beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken, true)
 
 		if honeypotsConfiguration, err := beelzebubCloud.GetHoneypotsConfigurations(); err != nil {
 			return err
