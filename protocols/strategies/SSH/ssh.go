@@ -88,7 +88,6 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 							}
 							// Append the new entries to the store.
 							outMsg := plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput}
-							sshStrategy.Sessions.Append(sessionKey, inMsg, outMsg)
 							sshStrategy.Sessions.AppendConverstion(sessionKey, historystore.Conversation{Input: inMsg, Output: outMsg})
 
 							sess.Write(append([]byte(commandOutput), '\n'))
@@ -182,7 +181,6 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 							}
 							outMsg := plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput}
 							// Stash the new entries to the HistoryStore, and update the local history used for this running session.
-							sshStrategy.Sessions.Append(sessionKey, inMsg, outMsg)
 							sshStrategy.Sessions.AppendConverstion(sessionKey, historystore.Conversation{Input: inMsg, Output: outMsg})
 							histories = append(histories, inMsg, outMsg)
 

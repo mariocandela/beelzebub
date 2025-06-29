@@ -54,6 +54,7 @@ func (hs *HistoryStore) Query(key string) []plugins.Message {
 
 // Append will add the slice of Mesages to the entry for the key.
 // If the map has not yet been initalised, then a new map is created.
+// DEPRECATED: Use AppendConversation() instead.
 func (hs *HistoryStore) Append(key string, message ...plugins.Message) {
 	hs.Lock()
 	defer hs.Unlock()
@@ -73,6 +74,7 @@ func (hs *HistoryStore) Append(key string, message ...plugins.Message) {
 // AppendConverstion will update the entries to the stored messages and conversation cache.
 // If the map has not yet been initalised, then a new map is created.
 // Conversations are unique messages (each unique input is stored, otherwise discarded.)
+// The messages are added to the full Message store even if they are not unique (avoiding the need to call Append as well).
 func (hs *HistoryStore) AppendConverstion(key string, conversation Conversation) {
 	hs.Lock()
 	defer hs.Unlock()
@@ -84,6 +86,7 @@ func (hs *HistoryStore) AppendConverstion(key string, conversation Conversation)
 		e = HistoryEvent{}
 	}
 	e.LastSeen = time.Now()
+	e.Messages = append(e.Messages, conversation.Input, conversation.Output)
 
 	for _, c := range e.Conversations {
 		if c.Input.Content == conversation.Input.Content {
@@ -93,7 +96,6 @@ func (hs *HistoryStore) AppendConverstion(key string, conversation Conversation)
 		}
 	}
 
-	e.Messages = append(e.Messages, conversation.Input, conversation.Output)
 	e.Conversations = append(e.Conversations, conversation)
 	hs.sessions[key] = e
 }
