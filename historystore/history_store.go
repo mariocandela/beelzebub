@@ -20,8 +20,14 @@ type HistoryStore struct {
 
 // HistoryEvent is a container for storing messages
 type HistoryEvent struct {
-	LastSeen time.Time
-	Messages []plugins.Message
+	LastSeen      time.Time
+	Messages      []plugins.Message
+	Conversations []Conversation
+}
+
+// Conversation is a matching set of input and output messages.
+type Conversation struct {
+	Input, Output plugins.Message
 }
 
 // NewHistoryStore returns a prepared HistoryStore
@@ -62,6 +68,47 @@ func (hs *HistoryStore) Append(key string, message ...plugins.Message) {
 	e.LastSeen = time.Now()
 	e.Messages = append(e.Messages, message...)
 	hs.sessions[key] = e
+}
+
+// AppendConverstion will update the entries to the stored messages and conversation cache.
+// If the map has not yet been initalised, then a new map is created.
+// Conversations are unique messages (each unique input is stored, otherwise discarded.)
+func (hs *HistoryStore) AppendConverstion(key string, conversation Conversation) {
+	hs.Lock()
+	defer hs.Unlock()
+	if hs.sessions == nil {
+		hs.sessions = make(map[string]HistoryEvent)
+	}
+	e, ok := hs.sessions[key]
+	if !ok {
+		e = HistoryEvent{}
+	}
+	e.LastSeen = time.Now()
+
+	for _, c := range e.Conversations {
+		if c.Input.Content == conversation.Input.Content {
+			// Already seen input, Update last seen and return.
+			hs.sessions[key] = e
+			return
+		}
+	}
+
+	e.Messages = append(e.Messages, conversation.Input, conversation.Output)
+	e.Conversations = append(e.Conversations, conversation)
+	hs.sessions[key] = e
+}
+
+// QueryConversations searches the cached conversations to see if the provided input has already been seen.
+// Returns nil if not found.
+func (hs *HistoryStore) QueryConversations(key string, input plugins.Message) *Conversation {
+	hs.RLock()
+	defer hs.RUnlock()
+	for _, c := range hs.sessions[key].Conversations {
+		if c.Input.Content == input.Content {
+			return &c
+		}
+	}
+	return nil
 }
 
 // HistoryCleaner is a function that will periodically remove records from the HistoryStore

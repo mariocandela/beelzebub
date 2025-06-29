@@ -18,6 +18,10 @@ import (
 	"golang.org/x/term"
 )
 
+// If REPLAYFROMCACHE is true, then cached responses from previous LLM results will be used.
+// TODO(bryannolen): Add this to Service Configuration (or maybe per command?)
+const REPLAYFROMCACHE = true
+
 type SSHStrategy struct {
 	Sessions *historystore.HistoryStore
 }
@@ -42,42 +46,56 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 				// Inline SSH command
 				if sess.RawCommand() != "" {
 					var histories []plugins.Message
+					inMsg := plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()}
+					commandOutput := "command not found"
+					haveCachedAnswer := false
 					if sshStrategy.Sessions.HasKey(sessionKey) {
 						histories = sshStrategy.Sessions.Query(sessionKey)
+						if REPLAYFROMCACHE {
+							cacheReply := sshStrategy.Sessions.QueryConversations(sessionKey, inMsg)
+							if cacheReply != nil {
+								commandOutput = cacheReply.Output.Content
+								haveCachedAnswer = true
+							}
+						}
 					}
+
 					for _, command := range servConf.Commands {
 						if command.Regex.MatchString(sess.RawCommand()) {
-							commandOutput := command.Handler
-							if command.Plugin == plugins.LLMPluginName {
-								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
-								if err != nil {
-									log.Errorf("error: %s", err.Error())
-									commandOutput = "command not found"
-									llmProvider = plugins.OpenAI
-								}
-								llmHoneypot := plugins.LLMHoneypot{
-									Histories:    histories,
-									OpenAIKey:    servConf.Plugin.OpenAISecretKey,
-									Protocol:     tracer.SSH,
-									Host:         servConf.Plugin.Host,
-									Model:        servConf.Plugin.LLMModel,
-									Provider:     llmProvider,
-									CustomPrompt: servConf.Plugin.Prompt,
-								}
-								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
-								if commandOutput, err = llmHoneypotInstance.ExecuteModel(sess.RawCommand()); err != nil {
-									log.Errorf("error ExecuteModel: %s, %s", sess.RawCommand(), err.Error())
-									commandOutput = "command not found"
+							if !haveCachedAnswer {
+								commandOutput = command.Handler
+								if command.Plugin == plugins.LLMPluginName {
+									llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
+									if err != nil {
+										log.Errorf("error: %s, fallback OpenAI", err.Error())
+										llmProvider = plugins.OpenAI
+									}
+									llmHoneypot := plugins.LLMHoneypot{
+										Histories:    histories,
+										OpenAIKey:    servConf.Plugin.OpenAISecretKey,
+										Protocol:     tracer.SSH,
+										Host:         servConf.Plugin.Host,
+										Model:        servConf.Plugin.LLMModel,
+										Provider:     llmProvider,
+										CustomPrompt: servConf.Plugin.Prompt,
+									}
+									llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+									if commandOutput, err = llmHoneypotInstance.ExecuteModel(sess.RawCommand()); err != nil {
+										log.Errorf("error ExecuteModel: %s, %s", sess.RawCommand(), err.Error())
+										commandOutput = "command not found"
+									}
 								}
 							}
-							var newEntries []plugins.Message
-							newEntries = append(newEntries, plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()})
-							newEntries = append(newEntries, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
 							// Append the new entries to the store.
-							sshStrategy.Sessions.Append(sessionKey, newEntries...)
+							outMsg := plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput}
+							sshStrategy.Sessions.Append(sessionKey, inMsg, outMsg)
+							sshStrategy.Sessions.AppendConverstion(sessionKey, historystore.Conversation{Input: inMsg, Output: outMsg})
 
 							sess.Write(append([]byte(commandOutput), '\n'))
-
+							handlerName := command.Name
+							if haveCachedAnswer {
+								handlerName = handlerName + " cached"
+							}
 							tr.TraceEvent(tracer.Event{
 								Msg:           "SSH Raw Command",
 								Protocol:      tracer.SSH.String(),
@@ -91,12 +109,12 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								Description:   servConf.Description,
 								Command:       sess.RawCommand(),
 								CommandOutput: commandOutput,
-								Handler:       command.Name,
+								Handler:       handlerName,
 							})
 							return
 						}
 					}
-				}
+				} // end raw command handler.
 
 				tr.TraceEvent(tracer.Event{
 					Msg:         "New SSH Terminal Session",
@@ -114,49 +132,66 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 				terminal := term.NewTerminal(sess, buildPrompt(sess.User(), servConf.ServerName))
 				var histories []plugins.Message
 				if sshStrategy.Sessions.HasKey(sessionKey) {
+					// Load from the main HistoryStore only once at the start of the interactive session.
 					histories = sshStrategy.Sessions.Query(sessionKey)
 				}
 
 				for {
 					commandInput, err := terminal.ReadLine()
+					inMsg := plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()}
+					commandOutput := "command not found"
 					if err != nil {
 						break
 					}
 					if commandInput == "exit" {
 						break
 					}
+					haveCachedAnswer := false
+					if REPLAYFROMCACHE {
+						cacheReply := sshStrategy.Sessions.QueryConversations(sessionKey, inMsg)
+						if cacheReply != nil {
+							commandOutput = cacheReply.Output.Content
+							haveCachedAnswer = true
+						}
+					}
 					for _, command := range servConf.Commands {
 						if command.Regex.MatchString(commandInput) {
-							commandOutput := command.Handler
-							if command.Plugin == plugins.LLMPluginName {
-								llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
-								if err != nil {
-									log.Errorf("error: %s, fallback OpenAI", err.Error())
-									llmProvider = plugins.OpenAI
-								}
-								llmHoneypot := plugins.LLMHoneypot{
-									Histories:    histories,
-									OpenAIKey:    servConf.Plugin.OpenAISecretKey,
-									Protocol:     tracer.SSH,
-									Host:         servConf.Plugin.Host,
-									Model:        servConf.Plugin.LLMModel,
-									Provider:     llmProvider,
-									CustomPrompt: servConf.Plugin.Prompt,
-								}
-								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
-								if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput); err != nil {
-									log.Errorf("error ExecuteModel: %s, %s", commandInput, err.Error())
-									commandOutput = "command not found"
+							if !haveCachedAnswer {
+								commandOutput = command.Handler
+								if command.Plugin == plugins.LLMPluginName {
+									llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
+									if err != nil {
+										log.Errorf("error: %s, fallback OpenAI", err.Error())
+										llmProvider = plugins.OpenAI
+									}
+									llmHoneypot := plugins.LLMHoneypot{
+										Histories:    histories,
+										OpenAIKey:    servConf.Plugin.OpenAISecretKey,
+										Protocol:     tracer.SSH,
+										Host:         servConf.Plugin.Host,
+										Model:        servConf.Plugin.LLMModel,
+										Provider:     llmProvider,
+										CustomPrompt: servConf.Plugin.Prompt,
+									}
+									llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+									if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput); err != nil {
+										log.Errorf("error ExecuteModel: %s, %s", commandInput, err.Error())
+										commandOutput = "command not found"
+									}
 								}
 							}
-							var newEntries []plugins.Message
-							newEntries = append(newEntries, plugins.Message{Role: plugins.USER.String(), Content: commandInput})
-							newEntries = append(newEntries, plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput})
-							// Stash the new entries to the store, and update the history for this running session.
-							sshStrategy.Sessions.Append(sessionKey, newEntries...)
-							histories = append(histories, newEntries...)
+							outMsg := plugins.Message{Role: plugins.ASSISTANT.String(), Content: commandOutput}
+							// Stash the new entries to the HistoryStore, and update the local history used for this running session.
+							sshStrategy.Sessions.Append(sessionKey, inMsg, outMsg)
+							sshStrategy.Sessions.AppendConverstion(sessionKey, historystore.Conversation{Input: inMsg, Output: outMsg})
+							histories = append(histories, inMsg, outMsg)
 
 							terminal.Write(append([]byte(commandOutput), '\n'))
+
+							handlerName := command.Name
+							if haveCachedAnswer {
+								handlerName = handlerName + " cached"
+							}
 
 							tr.TraceEvent(tracer.Event{
 								Msg:           "SSH Terminal Session Interaction",
@@ -169,7 +204,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								ID:            uuidSession.String(),
 								Protocol:      tracer.SSH.String(),
 								Description:   servConf.Description,
-								Handler:       command.Name,
+								Handler:       handlerName,
 							})
 							break // Inner range over commands.
 						}
