@@ -138,7 +138,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 
 				for {
 					commandInput, err := terminal.ReadLine()
-					inMsg := plugins.Message{Role: plugins.USER.String(), Content: sess.RawCommand()}
+					inMsg := plugins.Message{Role: plugins.USER.String(), Content: commandInput}
 					commandOutput := "command not found"
 					if err != nil {
 						break
