@@ -138,7 +138,8 @@ func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Comman
 		HostHTTPRequest: request.Host,
 		UserAgent:       request.UserAgent(),
 		Cookies:         mapCookiesToString(request.Cookies()),
-		Headers:         request.Header,
+		Headers:         mapHeaderToString(request.Header),
+		HeadersMap:      request.Header,
 		Status:          tracer.Stateless.String(),
 		RemoteAddr:      request.RemoteAddr,
 		SourceIp:        host,
@@ -153,6 +154,18 @@ func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Comman
 		event.TLSServerName = request.TLS.ServerName
 	}
 	tr.TraceEvent(event)
+}
+
+func mapHeaderToString(headers http.Header) string {
+	headersString := ""
+
+	for key := range headers {
+		for _, values := range headers[key] {
+			headersString += fmt.Sprintf("[Key: %s, values: %s],", key, values)
+		}
+	}
+
+	return headersString
 }
 
 func mapCookiesToString(cookies []*http.Cookie) string {

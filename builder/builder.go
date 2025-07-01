@@ -3,6 +3,7 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"github.com/mariocandela/beelzebub/v3/protocols/strategies/MCP"
 	"io"
 	"net/http"
 	"os"
@@ -112,6 +113,7 @@ Honeypot Framework, happy hacking!`)
 	secureShellStrategy := &SSH.SSHStrategy{}
 	hypertextTransferProtocolStrategy := &HTTP.HTTPStrategy{}
 	transmissionControlProtocolStrategy := &TCP.TCPStrategy{}
+	modelContextProtocolStrategy := &MCP.MCPStrategy{}
 
 	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
@@ -139,6 +141,8 @@ Honeypot Framework, happy hacking!`)
 			protocolManager.SetProtocolStrategy(secureShellStrategy)
 		case "tcp":
 			protocolManager.SetProtocolStrategy(transmissionControlProtocolStrategy)
+		case "mcp":
+			protocolManager.SetProtocolStrategy(modelContextProtocolStrategy)
 		default:
 			log.Fatalf("protocol %s not managed", beelzebubServiceConfiguration.Protocol)
 		}

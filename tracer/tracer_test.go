@@ -106,6 +106,7 @@ func TestUpdatePrometheusCounters(t *testing.T) {
 		eventsSSHTotal:  mockCounter{},
 		eventsTCPTotal:  mockCounter{},
 		eventsHTTPTotal: mockCounter{},
+		eventsMCPTotal:  mockCounter{},
 	}
 
 	tracer.updatePrometheusCounters(SSH.String())
@@ -116,4 +117,7 @@ func TestUpdatePrometheusCounters(t *testing.T) {
 
 	tracer.updatePrometheusCounters(TCP.String())
 	assert.Equal(t, 6, counter)
+
+	tracer.updatePrometheusCounters(MCP.String())
+	assert.Equal(t, 8, counter)
 }

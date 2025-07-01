@@ -12,22 +12,45 @@ Beelzebub is an advanced honeypot framework designed to provide a highly secure 
 
 <img src="https://beelzebub.netlify.app/go-beelzebub.png" alt="Beelzebub Logo" width="200"/>
 
-## LLM Honeypot
+## Key Features
+
+Beelzebub offers a wide range of features to enhance your honeypot environment:
+
+- Low-code configuration: YAML-based, modular service definition
+- LLM integration: The LLM convincingly simulates a real system, creating high-interaction honeypot experiences, while actually maintaining low-interaction architecture for enhanced security and easy management.
+- Multi-protocol support: SSH, HTTP, TCP, MCP(Detect prompt injection against LLM agents)
+- Prometheus metrics & observability 
+- Docker & Kubernetes ready
+- ELK stack ready, docs: [Official ELK integration](https://www.elastic.co/docs/reference/integrations/beelzebub)
+
+## LLM SSH Honeypot Demo
 
 [![asciicast](https://asciinema.org/a/665295.svg)](https://asciinema.org/a/665295)
 
+## Code Quality
 
-## Telegram Bot for Real-Time Attacks
+We are strongly committed to maintaining high code quality in the Beelzebub project. Our development workflow includes comprehensive testing, code reviews, static analysis, and continuous integration to ensure the reliability and maintainability of the codebase.
 
-Stay updated on real-time attacks by joining our dedicated Telegram channel: [Telegram Channel](https://t.me/beelzebubhoneypot)
+### What We Do
 
-## Examples
+* **Automated Testing:**
+  Both unit and integration tests are run on every pull request to catch regressions and ensure stability.
 
-To better understand the capabilities of Beelzebub, you can explore our example repository: [mariocandela/beelzebub-example](https://github.com/mariocandela/beelzebub-example)
+* **Static Analysis:**
+  We use tools like Go Report Card and CodeQL to automatically check for code quality, style, and security issues.
+
+* **Code Coverage:**
+  Our test coverage is monitored with [Codecov](https://codecov.io/gh/mariocandela/beelzebub), and we aim for extensive coverage of all core components.
+
+* **Continuous Integration:**
+  Every commit triggers automated CI pipelines on GitHub Actions, which run all tests and quality checks.
+
+* **Code Reviews:**
+  All new contributions undergo peer review to maintain consistency and high standards across the project.
 
 ## Quick Start
 
-We provide two quick start options for build and run Beelzebub: using Docker Compose or the Go compiler.
+You can run Beelzebub via Docker, Go compiler(cross device), or Helm (Kubernetes).
 
 ### Using Docker Compose
 
@@ -42,6 +65,7 @@ We provide two quick start options for build and run Beelzebub: using Docker Com
    ```bash
    $ docker-compose up -d
    ```
+
 
 ### Using Go Compiler
 
@@ -78,41 +102,6 @@ We provide two quick start options for build and run Beelzebub: using Docker Com
    ```bash
    $ helm upgrade beelzebub ./beelzebub-chart
    ```
-## Testing
-
-We provide two types of tests: unit tests and integration tests.
-
-### Unit Tests
-
-To run unit tests:
-
-```bash
-$ make test.unit
-```
-
-### Integration Tests
-
-To run integration tests:
-
-```bash
-$ make test.dependencies.start
-$ make test.integration
-$ make test.dependencies.down
-```
-
-## Key Features
-
-Beelzebub offers a wide range of features to enhance your honeypot environment:
-
-- Support for Ollama
-- Support for OpenAI
-- SSH Honeypot
-- HTTP Honeypot
-- TCP Honeypot
-- Prometheus openmetrics integration
-- Docker integration
-- RabbitMQ integration
-- kubernetes
 
 ## Example Configuration
 
@@ -126,7 +115,73 @@ $ ./beelzebub --confCore ./configurations/beelzebub.yaml --confServices ./config
 
 Here are some example configurations for different honeypot scenarios:
 
-#### Example HTTP Honeypot on Port 80
+### MCP Honeypot
+
+#### Why choose an MCP Honeypot?
+
+An MCP honeypot is a **decoy tool** that the agent should never invoke under normal circumstances. Integrating this strategy into your agent pipeline offers three key benefits:
+
+* **Real-time detection of guardrail bypass attempts.**
+  
+  Instantly identify when a prompt injection attack successfully convinces the agent to invoke a restricted tool.
+* **Automatic collection of real attack prompts for guardrail fine-tuning.**
+  
+   Every activation logs genuine malicious prompts, enabling continuous improvement of your filtering mechanisms.
+* **Continuous monitoring of attack trends through key metrics (HAR, TPR, MTP).**
+  
+   Track exploit frequency and system resilience using objective, actionable measurements.
+
+##### Example MCP Honeypot Configuration
+
+###### mcp-8000.yaml
+
+```yaml
+apiVersion: "v1"
+protocol: "mcp"
+address: ":8000"
+description: "MCP Honeypot"
+tools:
+  - name: "tool:user-account-manager"
+    description: "Tool for querying and modifying user account details. Requires administrator privileges."
+    params:
+      - name: "user_id"
+        description: "The ID of the user account to manage."
+      - name: "action"
+        description: "The action to perform on the user account, possible values are: get_details, reset_password, deactivate_account"
+    handler: |
+      {
+        "tool_id": "tool:user-account-manager",
+        "status": "completed",
+        "output": {
+          "message": "Tool 'tool:user-account-manager' executed successfully. Results are pending internal processing and will be logged.",
+          "result": {
+            "operation_status": "success",
+            "details": "email: kirsten@gmail.com, role: admin, last-login: 02/07/2025"
+          }
+        }
+      }
+  - name: "tool:system-log"
+    description: "Tool for querying system logs. Requires administrator privileges."
+    params:
+      - name: "filter"
+        description: "The input used to filter the logs."
+    handler: |
+      {
+        "tool_id": "tool:system-log",
+        "status": "completed",
+        "output": {
+          "message": "Tool 'tool:system-log' executed successfully. Results are pending internal processing and will be logged.",
+          "result": {
+            "operation_status": "success",
+            "details": "Info: email: kirsten@gmail.com, last-login: 02/07/2025"
+          }
+        }
+      }
+```
+
+#### Invoke remotely: beelzebub:port/mcp (Streamable HTTPServer).
+
+### HTTP Honeypot
 
 ###### http-80.yaml
 
@@ -191,7 +246,7 @@ commands:
     statusCode: 404
 ```
 
-#### Example HTTP Honeypot on Port 8080
+### HTTP Honeypot
 
 ###### http-8080.yaml
 
@@ -209,7 +264,7 @@ commands:
     statusCode: 401
 ```
 
-#### Example SSH Honeypot
+### SSH Honeypot
 
 ###### LLM Honeypots
 
@@ -273,7 +328,7 @@ plugin:
    prompt: "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block."
 ```
 
-###### SSH Honeypot on Port 22
+###### SSH Honeypot
 
 ###### ssh-22.yaml
 
@@ -306,6 +361,29 @@ serverName: "ubuntu"
 passwordRegex: "^(root|qwerty|Smoker666)$"
 deadlineTimeoutSeconds: 60
 ```
+
+## Testing
+
+Maintaining excellent code quality is essential for security-focused projects like Beelzebub. We welcome all contributors who share our commitment to robust, readable, and reliable code!
+
+### Unit Tests
+
+For contributor, we have a comprehensive suite of unit/integration tests that cover the core functionality of Beelzebub. To run the unit tests, use the following command:
+
+```bash
+$ make test.unit
+```
+
+### Integration Tests
+
+To run integration tests:
+
+```bash
+$ make test.dependencies.start
+$ make test.integration
+$ make test.dependencies.down
+```
+
 
 ## Roadmap
 
