@@ -24,9 +24,8 @@ Beelzebub offers a wide range of features to enhance your honeypot environment:
 - Docker & Kubernetes ready
 - ELK stack ready, docs: [Official ELK integration](https://www.elastic.co/docs/reference/integrations/beelzebub)
 
-## LLM SSH Honeypot Demo
-
-[![asciicast](https://asciinema.org/a/665295.svg)](https://asciinema.org/a/665295)
+## LLM Honeypot Demo
+![demo-beelzebub](https://github.com/user-attachments/assets/4dbb9a67-6c12-49c5-82ac-9b3e340406ca)
 
 ## Code Quality
 
@@ -131,6 +130,8 @@ An MCP honeypot is a **decoy tool** that the agent should never invoke under nor
 * **Continuous monitoring of attack trends through key metrics (HAR, TPR, MTP).**
   
    Track exploit frequency and system resilience using objective, actionable measurements.
+
+![video-mcp-diagram](https://github.com/user-attachments/assets/e04fd19e-9537-427e-9131-9bee31d8ebad)
 
 ##### Example MCP Honeypot Configuration
 
