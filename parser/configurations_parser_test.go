@@ -52,6 +52,15 @@ protocol: "http"
 address: ":8080"
 tlsCertPath: "/tmp/cert.crt"
 tlsKeyPath: "/tmp/cert.key"
+tools:
+  - name: "tool:user-account-manager"
+    description: "Tool for querying and modifying user account details. Requires administrator privileges."
+    params:
+      - name: "user_id"
+        description: "The ID of the user account to manage."
+      - name: "action"
+        description: "The action to perform on the user account, possible values are: get_details, reset_password, deactivate_account"
+    handler: "reset_password ok"
 commands:
   - regex: "wp-admin"
     handler: "login"
@@ -155,6 +164,14 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSCertPath, "/tmp/cert.crt")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "/tmp/cert.key")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.EnableCacheReplay, false)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "/tmp/cert.key")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Tools), 1)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Name, "tool:user-account-manager")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Description, "Tool for querying and modifying user account details. Requires administrator privileges.")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Tools[0].Params), 2)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Params[0].Name, "user_id")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Params[0].Description, "The ID of the user account to manage.")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Handler, "reset_password ok")
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {

@@ -63,6 +63,7 @@ type BeelzebubServiceConfiguration struct {
 	Protocol               string    `yaml:"protocol"`
 	Address                string    `yaml:"address"`
 	Commands               []Command `yaml:"commands"`
+	Tools                  []Tool    `yaml:"tools"`
 	FallbackCommand        Command   `yaml:"fallbackCommand"`
 	ServerVersion          string    `yaml:"serverVersion"`
 	ServerName             string    `yaml:"serverName"`
@@ -85,6 +86,20 @@ type Command struct {
 	StatusCode int            `yaml:"statusCode"`
 	Plugin     string         `yaml:"plugin"`
 	Name       string         `yaml:"name"`
+}
+
+// Tool is the struct that contains the configurations of the MCP Honeypot
+type Tool struct {
+	Name        string  `yaml:"name"`
+	Description string  `yaml:"description"`
+	Params      []Param `yaml:"params"`
+	Handler     string  `yaml:"handler"`
+}
+
+// Param is the struct that contains the configurations of the parameters of the tools
+type Param struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
 }
 
 type configurationsParser struct {
