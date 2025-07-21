@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Workers is the number of workers that will
 const Workers = 5
 
 type Event struct {
@@ -26,7 +25,8 @@ type Event struct {
 	User            string
 	Password        string
 	Client          string
-	Headers         map[string][]string
+	Headers         string
+	HeadersMap      map[string][]string
 	Cookies         string
 	UserAgent       string
 	HostHTTPRequest string
@@ -49,10 +49,11 @@ const (
 	HTTP Protocol = iota
 	SSH
 	TCP
+	MCP
 )
 
 func (protocol Protocol) String() string {
-	return [...]string{"HTTP", "SSH", "TCP"}[protocol]
+	return [...]string{"HTTP", "SSH", "TCP", "MCP"}[protocol]
 }
 
 const (
@@ -79,6 +80,7 @@ type tracer struct {
 	eventsSSHTotal  prometheus.Counter
 	eventsTCPTotal  prometheus.Counter
 	eventsHTTPTotal prometheus.Counter
+	eventsMCPTotal  prometheus.Counter
 }
 
 var lock = &sync.Mutex{}
@@ -112,6 +114,11 @@ func GetInstance(defaultStrategy Strategy) *tracer {
 					Namespace: "beelzebub",
 					Name:      "http_events_total",
 					Help:      "The total number of HTTP events",
+				}),
+				eventsMCPTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "mcp_events_total",
+					Help:      "The total number of MCP events",
 				}),
 			}
 
@@ -149,6 +156,8 @@ func (tracer *tracer) updatePrometheusCounters(protocol string) {
 		tracer.eventsSSHTotal.Inc()
 	case TCP.String():
 		tracer.eventsTCPTotal.Inc()
+	case MCP.String():
+		tracer.eventsMCPTotal.Inc()
 	}
 	tracer.eventsTotal.Inc()
 }
