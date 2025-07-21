@@ -154,6 +154,7 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Prompt, "hello world")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSCertPath, "/tmp/cert.crt")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "/tmp/cert.key")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.EnableCacheReplay, false)
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {

@@ -18,10 +18,6 @@ import (
 	"golang.org/x/term"
 )
 
-// If REPLAYFROMCACHE is true, then cached responses from previous LLM results will be used.
-// TODO(bryannolen): Add this to Service Configuration (or maybe per command?)
-const REPLAYFROMCACHE = true
-
 type SSHStrategy struct {
 	Sessions *historystore.HistoryStore
 }
@@ -51,7 +47,8 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 					haveCachedAnswer := false
 					if sshStrategy.Sessions.HasKey(sessionKey) {
 						histories = sshStrategy.Sessions.Query(sessionKey)
-						if REPLAYFROMCACHE {
+						// If servConf.EnableCacheReplay is true, then cached responses from previous LLM results will be used.
+						if servConf.EnableCacheReplay {
 							cacheReply := sshStrategy.Sessions.QueryConversations(sessionKey, inMsg)
 							if cacheReply != nil {
 								commandOutput = cacheReply.Output.Content
@@ -146,7 +143,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 						break
 					}
 					haveCachedAnswer := false
-					if REPLAYFROMCACHE {
+					if servConf.EnableCacheReplay {
 						cacheReply := sshStrategy.Sessions.QueryConversations(sessionKey, inMsg)
 						if cacheReply != nil {
 							commandOutput = cacheReply.Output.Content
