@@ -71,11 +71,11 @@ func (hs *HistoryStore) Append(key string, message ...plugins.Message) {
 	hs.sessions[key] = e
 }
 
-// AppendConverstion will update the entries to the stored messages and conversation cache.
+// AppendConversation will update the entries to the stored messages and conversation cache.
 // If the map has not yet been initalised, then a new map is created.
 // Conversations are unique messages (each unique input is stored, otherwise discarded.)
 // The messages are added to the full Message store even if they are not unique (avoiding the need to call Append as well).
-func (hs *HistoryStore) AppendConverstion(key string, conversation Conversation) {
+func (hs *HistoryStore) AppendConversation(key string, conversation Conversation) {
 	hs.Lock()
 	defer hs.Unlock()
 	if hs.sessions == nil {

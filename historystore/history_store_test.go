@@ -39,33 +39,33 @@ func TestAppend(t *testing.T) {
 	assert.Equal(t, []plugins.Message{message1, message2}, hs.sessions["testKey"].Messages)
 }
 
-func TestAppendConverstion(t *testing.T) {
+func TestAppendConversation(t *testing.T) {
 	hs := NewHistoryStore()
 	messageIn := plugins.Message{Role: "user", Content: "Hello"}
 	messageOut := plugins.Message{Role: "assistant", Content: "Hi"}
-	hs.AppendConverstion("testKey", Conversation{Input: messageIn, Output: messageOut})
+	hs.AppendConversation("testKey", Conversation{Input: messageIn, Output: messageOut})
 	assert.Equal(t, []plugins.Message{messageIn, messageOut}, hs.sessions["testKey"].Messages)
 }
 
-func TestAppendConverstionDuplicates(t *testing.T) {
+func TestAppendConversationDuplicates(t *testing.T) {
 	hs := NewHistoryStore()
 	messageIn := plugins.Message{Role: "user", Content: "Hello"}
 	messageOut := plugins.Message{Role: "assistant", Content: "Hi"}
 	conv := Conversation{Input: messageIn, Output: messageOut}
-	hs.AppendConverstion("testKey", conv)
+	hs.AppendConversation("testKey", conv)
 	assert.Equal(t, []plugins.Message{messageIn, messageOut}, hs.sessions["testKey"].Messages)
-	hs.AppendConverstion("testKey", conv)
+	hs.AppendConversation("testKey", conv)
 	// Both messages should be in the full Messages store twice, and only once in the Conversations store.
 	assert.Equal(t, []plugins.Message{messageIn, messageOut, messageIn, messageOut}, hs.sessions["testKey"].Messages)
 	assert.Equal(t, []Conversation{conv}, hs.sessions["testKey"].Conversations)
 }
 
-func TestAppendConverstionNilSessions(t *testing.T) {
+func TestAppendConversationNilSessions(t *testing.T) {
 	hs := &HistoryStore{}
 	messageIn := plugins.Message{Role: "user", Content: "Hello"}
 	messageOut := plugins.Message{Role: "assistant", Content: "Hi"}
 	conv := Conversation{Input: messageIn, Output: messageOut}
-	hs.AppendConverstion("testKey", conv)
+	hs.AppendConversation("testKey", conv)
 	assert.NotNil(t, hs.sessions)
 	assert.Equal(t, []plugins.Message{messageIn, messageOut}, hs.sessions["testKey"].Messages)
 }
