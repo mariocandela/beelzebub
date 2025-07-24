@@ -11,8 +11,7 @@
 
 Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and uses AI to mimic the behavior of a high-interaction honeypot.
 
-<img width="1235" height="652" alt="github beelzebub" src="https://github.com/user-attachments/assets/d6f9b774-c28b-4fa5-95dd-50433db8979b" />
-
+![github beelzebub - inception program](https://github.com/user-attachments/assets/e180d602-6de9-4c48-92ad-eb0ef3c5322d)
 ## Key Features
 
 Beelzebub offers a wide range of features to enhance your honeypot environment:
@@ -400,6 +399,9 @@ Happy hacking!
 ## License
 
 Beelzebub is licensed under the [MIT License](LICENSE).
+
+## Beelzebub is a member of NVIDIA Inception
+![nvidia-inception-program-badge-rgb-for-screen](https://github.com/user-attachments/assets/62c6cdf8-3999-42ce-aea6-6c9045bc1d4c)
 
 ## Supported by
 [![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
