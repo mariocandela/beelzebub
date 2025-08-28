@@ -37,10 +37,12 @@ spec:
               mountPath: /configurations/beelzebub.yaml
               subPath: beelzebub.yaml
               readOnly: true
-            - name: config-services-volume
-              mountPath: /configurations/services/service.yaml
-              subPath: service.yaml
+            {{- range $index, $value := .Values.beelzebubServiceConfigs }}
+            - name: config-services-volume-{{ trimSuffix ".yaml" $value.name }}
+              mountPath: /configurations/services/{{ $value.name }}
+              subPath: {{ $value.name }}
               readOnly: true
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -60,9 +62,11 @@ spec:
         - name: config-core-volume
           configMap:
             name: beelzebub-configuration
-        - name: config-services-volume
+        {{- range $index, $value := .Values.beelzebubServiceConfigs }}
+        - name: config-services-volume-{{ trimSuffix ".yaml" $value.name }}
           configMap:
-            name: beelzebub-services
+            name: beelzebub-services-cm-{{ trimSuffix ".yaml" $value.name }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
