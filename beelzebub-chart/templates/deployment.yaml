@@ -37,8 +37,10 @@ spec:
               mountPath: /configurations/beelzebub.yaml
               subPath: beelzebub.yaml
               readOnly: true
-            {{- range $index, $value := .Values.beelzebubServiceConfigs }}
-            - name: config-services-volume-{{ trimSuffix ".yaml" $value.name }}
+            {{- range $value := .Values.beelzebubServiceConfigs }}
+            {{- $trimmed := trimSuffix ".yaml" $value.name }}
+            {{- $safeName := regexReplaceAll "[^a-z0-9-]" (lower $trimmed) "-" | trimAll "-" | trunc 63 }}
+            - name: config-services-volume-{{ $safeName }}
               mountPath: /configurations/services/{{ $value.name }}
               subPath: {{ $value.name }}
               readOnly: true
@@ -64,10 +66,12 @@ spec:
         - name: config-core-volume
           configMap:
             name: beelzebub-configuration
-        {{- range $index, $value := .Values.beelzebubServiceConfigs }}
-        - name: config-services-volume-{{ trimSuffix ".yaml" $value.name }}
+        {{- range $value := .Values.beelzebubServiceConfigs }}
+        {{- $trimmed := trimSuffix ".yaml" $value.name }}
+        {{- $safeName := regexReplaceAll "[^a-z0-9-]" (lower $trimmed) "-" | trimAll "-" | trunc 63 }}
+        - name: config-services-volume-{{ $safeName }}
           configMap:
-            name: beelzebub-services-cm-{{ trimSuffix ".yaml" $value.name }}
+            name: beelzebub-services-cm-{{ $safeName }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

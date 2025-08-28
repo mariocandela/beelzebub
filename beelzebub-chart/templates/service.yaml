@@ -8,10 +8,10 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     {{- range $value := .Values.beelzebubServiceConfigs }}
-    - port: {{ .Values.service.port }}
+    - port: {{ trimPrefix ":" $value.config.address }}
       targetPort: {{ trimPrefix ":" $value.config.address }}
       protocol: TCP
       name: {{ trimSuffix ".yaml" $value.name }}
-    {{- end }}  
+    {{- end }}
   selector:
     {{- include "beelzebub-chart.selectorLabels" . | nindent 4 }}
