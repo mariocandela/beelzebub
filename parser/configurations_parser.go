@@ -74,6 +74,7 @@ type BeelzebubServiceConfiguration struct {
 	Plugin                 Plugin    `yaml:"plugin"`
 	TLSCertPath            string    `yaml:"tlsCertPath"`
 	TLSKeyPath             string    `yaml:"tlsKeyPath"`
+	EnableCacheReplay      bool      `yaml:"enableCacheReplay"`
 }
 
 // Command is the struct that contains the configurations of the commands
