@@ -45,9 +45,11 @@ spec:
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
+            {{- range $value := .Values.beelzebubServiceConfigs }}
+            - name: {{ trimSuffix ".yaml" $value.name }}
+              containerPort: {{ trimPrefix ":" $value.config.address | default $.Values.service.port }}
               protocol: TCP
+            {{- end }}  
           # livenessProbe:
           #   httpGet:
           #     path: /
