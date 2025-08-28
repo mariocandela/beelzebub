@@ -1,9 +1,10 @@
+{{- range $value := .Values.beelzebubServiceConfigs }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: "beelzebub-services"
-  labels:
-    {{- include "beelzebub-chart.labels" . | nindent 4 }}
+  name: beelzebub-services-cm-{{ trimSuffix ".yaml" $value.name }}
 data:
-  service.yaml:
-    {{- toYaml .Values.beelsebubServiceConfigs | nindent 12 }}
+  {{ $value.name }}: 
+    {{- toYaml $value.config | nindent 4 }}
+{{- end }}
