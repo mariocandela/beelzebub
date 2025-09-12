@@ -1,20 +1,28 @@
 package integration
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
+	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/builder"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
-	"net"
-	"net/http"
-	"os"
-	"testing"
-
-	"github.com/go-resty/resty/v2"
 	"github.com/melbahja/goph"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/ssh"
+	"math/big"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
 )
 
 type IntegrationTestSuite struct {
@@ -25,10 +33,80 @@ type IntegrationTestSuite struct {
 	tcpHoneypotHost  string
 	sshHoneypotHost  string
 	rabbitMQURI      string
+
+	tlsCertPath string
+	tlsKeyPath  string
+	tlsCleanup  func()
 }
 
 func TestIntegrationTestSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
+}
+
+func generateTLSCertInCertsDir(t *testing.T) (certPath, keyPath string, cleanup func()) {
+	t.Helper()
+
+	certsDir := filepath.Join(".", "certs")
+	if err := os.MkdirAll(certsDir, 0755); err != nil {
+		t.Fatalf("failed to create certs directory: %v", err)
+	}
+
+	certPath = filepath.Join(certsDir, "tls.crt")
+	keyPath = filepath.Join(certsDir, "tls.key")
+
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("failed to generate rsa key: %v", err)
+	}
+
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(time.Now().UnixNano()),
+		Subject:               pkix.Name{Organization: []string{"IntegrationTest"}},
+		NotBefore:             time.Now().Add(-1 * time.Minute),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:              []string{"localhost"},
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &priv.PublicKey, priv)
+	if err != nil {
+		t.Fatalf("failed to create certificate: %v", err)
+	}
+
+	certFile, err := os.Create(certPath)
+	if err != nil {
+		t.Fatalf("failed to create cert file: %v", err)
+	}
+	if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		_ = certFile.Close()
+		t.Fatalf("failed to encode cert PEM: %v", err)
+	}
+	if err := certFile.Close(); err != nil {
+		t.Fatalf("failed to close cert file: %v", err)
+	}
+
+	keyFile, err := os.Create(keyPath)
+	if err != nil {
+		t.Fatalf("failed to create key file: %v", err)
+	}
+	if err := pem.Encode(keyFile, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)}); err != nil {
+		_ = keyFile.Close()
+		t.Fatalf("failed to encode key PEM: %v", err)
+	}
+	if err := keyFile.Close(); err != nil {
+		t.Fatalf("failed to close key file: %v", err)
+	}
+
+	cleanup = func() {
+		_ = os.Remove(certPath)
+		_ = os.Remove(keyPath)
+	}
+
+	return certPath, keyPath, cleanup
 }
 
 func (suite *IntegrationTestSuite) SetupSuite() {
@@ -40,6 +118,8 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.tcpHoneypotHost = "localhost:3306"
 	suite.sshHoneypotHost = "localhost"
 	suite.prometheusHost = "http://localhost:2112/metrics"
+
+	suite.tlsCertPath, suite.tlsKeyPath, suite.tlsCleanup = generateTLSCertInCertsDir(suite.T())
 
 	beelzebubConfigPath := "./configurations/beelzebub.yaml"
 	servicesConfigDirectory := "./configurations/services/"
@@ -80,6 +160,39 @@ func (suite *IntegrationTestSuite) TestInvokeHTTPHoneypot() {
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusBadRequest, response.StatusCode())
 	suite.Equal("mocked response", string(response.Body()))
+}
+
+func (suite *IntegrationTestSuite) TestInvokeTLSHoneypot() {
+	client := resty.New()
+	client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+
+	// Test endpoint /secure-index.php con risposta 200
+	response, err := client.R().
+		Get("https://localhost:8443/secure-index.php")
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusOK, response.StatusCode())
+	suite.Equal("mocked secure response", string(response.Body()))
+	suite.Equal(http.Header{
+		"Content-Type": []string{"text/html"},
+		"Server":       []string{"Apache/2.4.53 (Debian Secure)"},
+		"X-Powered-By": []string{"PHP/7.4.29 Secure"},
+	}, response.Header())
+
+	// Test endpoint /secure-wp-admin con risposta 400
+	response, err = client.R().
+		Get("https://localhost:8443/secure-wp-admin")
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusBadRequest, response.StatusCode())
+	suite.Equal("mocked secure response", string(response.Body()))
+
+	// Test percorso generico che risponde con 404
+	response, err = client.R().
+		Get("https://localhost:8443/unknown-path")
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusNotFound, response.StatusCode())
+	suite.Equal("Secure not found!", string(response.Body()))
+
+	//TODO: Verify trace contains TLSServerName
 }
 
 func (suite *IntegrationTestSuite) TestInvokeTCPHoneypot() {
