@@ -136,8 +136,12 @@ func GetInstance(defaultStrategy Strategy) *tracer {
 	return singleton
 }
 
-func (tracer *tracer) setStrategy(strategy Strategy) {
+func (tracer *tracer) SetStrategy(strategy Strategy) {
 	tracer.strategy = strategy
+}
+
+func (tracer *tracer) GetStrategy() Strategy {
+	return tracer.strategy
 }
 
 func (tracer *tracer) TraceEvent(event Event) {

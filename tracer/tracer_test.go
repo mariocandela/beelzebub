@@ -56,7 +56,7 @@ func TestSetStrategy(t *testing.T) {
 
 	tracer := GetInstance(mockStrategy)
 
-	tracer.setStrategy(mockStrategy)
+	tracer.SetStrategy(mockStrategy)
 
 	wg.Add(1)
 	tracer.TraceEvent(Event{
