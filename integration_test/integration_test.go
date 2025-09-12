@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -163,36 +165,67 @@ func (suite *IntegrationTestSuite) TestInvokeHTTPHoneypot() {
 }
 
 func (suite *IntegrationTestSuite) TestInvokeTLSHoneypot() {
+	type eventCollector struct {
+		mu     sync.Mutex
+		events []tracer.Event
+	}
+	var collector eventCollector
+
+	// Store original tracer singleton strategy
+	tr := tracer.GetInstance(nil)
+	originalStrategy := tr.GetStrategy()
+
+	wrapperStrategy := func(event tracer.Event) {
+		// Wrap original tracer strategy to not lose functionalities
+		if originalStrategy != nil {
+			originalStrategy(event)
+		}
+
+		// fetch last event, it will be used to check for TLSServerName
+		collector.mu.Lock()
+		collector.events = append(collector.events, event)
+		collector.mu.Unlock()
+	}
+
+	// update strategy with wrapper, set original strategy at function exit
+	tr.SetStrategy(wrapperStrategy)
+	defer tr.SetStrategy(originalStrategy)
+
 	client := resty.New()
 	client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 
-	// Test endpoint /secure-index.php con risposta 200
-	response, err := client.R().
-		Get("https://localhost:8443/secure-index.php")
+	response, err := client.R().Get("https://localhost:8443/secure-index.php")
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusOK, response.StatusCode())
 	suite.Equal("mocked secure response", string(response.Body()))
-	suite.Equal(http.Header{
-		"Content-Type": []string{"text/html"},
-		"Server":       []string{"Apache/2.4.53 (Debian Secure)"},
-		"X-Powered-By": []string{"PHP/7.4.29 Secure"},
-	}, response.Header())
+	headers := response.Header()
+	suite.Equal("text/html", strings.TrimSpace(headers.Get("Content-Type")))
+	suite.Equal("Apache/2.4.53 (Debian Secure)", strings.TrimSpace(headers.Get("Server")))
+	suite.Equal("PHP/7.4.29 Secure", strings.TrimSpace(headers.Get("X-Powered-By")))
 
-	// Test endpoint /secure-wp-admin con risposta 400
-	response, err = client.R().
-		Get("https://localhost:8443/secure-wp-admin")
+	response, err = client.R().Get("https://localhost:8443/secure-wp-admin")
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusBadRequest, response.StatusCode())
 	suite.Equal("mocked secure response", string(response.Body()))
 
-	// Test percorso generico che risponde con 404
-	response, err = client.R().
-		Get("https://localhost:8443/unknown-path")
+	response, err = client.R().Get("https://localhost:8443/unknown-path")
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusNotFound, response.StatusCode())
 	suite.Equal("Secure not found!", string(response.Body()))
 
-	//TODO: Verify trace contains TLSServerName
+	// throttle cpu to wait event processing
+	time.Sleep(100 * time.Millisecond)
+
+	collector.mu.Lock()
+	defer collector.mu.Unlock()
+	found := false
+	for _, ev := range collector.events {
+		if ev.TLSServerName == "localhost" {
+			found = true
+			break
+		}
+	}
+	suite.True(found, "Expected to find event with TLSServerName 'localhost'")
 }
 
 func (suite *IntegrationTestSuite) TestInvokeTCPHoneypot() {
