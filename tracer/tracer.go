@@ -81,6 +81,8 @@ type tracer struct {
 	eventsTCPTotal  prometheus.Counter
 	eventsHTTPTotal prometheus.Counter
 	eventsMCPTotal  prometheus.Counter
+
+	strategyMutex sync.RWMutex
 }
 
 var lock = &sync.Mutex{}
@@ -137,10 +139,14 @@ func GetInstance(defaultStrategy Strategy) *tracer {
 }
 
 func (tracer *tracer) SetStrategy(strategy Strategy) {
+	tracer.strategyMutex.Lock()
+	defer tracer.strategyMutex.Unlock()
 	tracer.strategy = strategy
 }
 
 func (tracer *tracer) GetStrategy() Strategy {
+	tracer.strategyMutex.RLock()
+	defer tracer.strategyMutex.RUnlock()
 	return tracer.strategy
 }
 
