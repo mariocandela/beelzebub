@@ -1,20 +1,30 @@
 package integration
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
+	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/builder"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
-	"net"
-	"net/http"
-	"os"
-	"testing"
-
-	"github.com/go-resty/resty/v2"
 	"github.com/melbahja/goph"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/ssh"
+	"math/big"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
 )
 
 type IntegrationTestSuite struct {
@@ -25,10 +35,80 @@ type IntegrationTestSuite struct {
 	tcpHoneypotHost  string
 	sshHoneypotHost  string
 	rabbitMQURI      string
+
+	tlsCertPath string
+	tlsKeyPath  string
+	tlsCleanup  func()
 }
 
 func TestIntegrationTestSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
+}
+
+func generateTLSCertInCertsDir(t *testing.T) (certPath, keyPath string, cleanup func()) {
+	t.Helper()
+
+	certsDir := filepath.Join(".", "certs")
+	if err := os.MkdirAll(certsDir, 0755); err != nil {
+		t.Fatalf("failed to create certs directory: %v", err)
+	}
+
+	certPath = filepath.Join(certsDir, "tls.crt")
+	keyPath = filepath.Join(certsDir, "tls.key")
+
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("failed to generate rsa key: %v", err)
+	}
+
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(time.Now().UnixNano()),
+		Subject:               pkix.Name{Organization: []string{"IntegrationTest"}},
+		NotBefore:             time.Now().Add(-1 * time.Minute),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:              []string{"localhost"},
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &priv.PublicKey, priv)
+	if err != nil {
+		t.Fatalf("failed to create certificate: %v", err)
+	}
+
+	certFile, err := os.Create(certPath)
+	if err != nil {
+		t.Fatalf("failed to create cert file: %v", err)
+	}
+	if err := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		_ = certFile.Close()
+		t.Fatalf("failed to encode cert PEM: %v", err)
+	}
+	if err := certFile.Close(); err != nil {
+		t.Fatalf("failed to close cert file: %v", err)
+	}
+
+	keyFile, err := os.Create(keyPath)
+	if err != nil {
+		t.Fatalf("failed to create key file: %v", err)
+	}
+	if err := pem.Encode(keyFile, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)}); err != nil {
+		_ = keyFile.Close()
+		t.Fatalf("failed to encode key PEM: %v", err)
+	}
+	if err := keyFile.Close(); err != nil {
+		t.Fatalf("failed to close key file: %v", err)
+	}
+
+	cleanup = func() {
+		_ = os.Remove(certPath)
+		_ = os.Remove(keyPath)
+	}
+
+	return certPath, keyPath, cleanup
 }
 
 func (suite *IntegrationTestSuite) SetupSuite() {
@@ -40,6 +120,8 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.tcpHoneypotHost = "localhost:3306"
 	suite.sshHoneypotHost = "localhost"
 	suite.prometheusHost = "http://localhost:2112/metrics"
+
+	suite.tlsCertPath, suite.tlsKeyPath, suite.tlsCleanup = generateTLSCertInCertsDir(suite.T())
 
 	beelzebubConfigPath := "./configurations/beelzebub.yaml"
 	servicesConfigDirectory := "./configurations/services/"
@@ -80,6 +162,70 @@ func (suite *IntegrationTestSuite) TestInvokeHTTPHoneypot() {
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusBadRequest, response.StatusCode())
 	suite.Equal("mocked response", string(response.Body()))
+}
+
+func (suite *IntegrationTestSuite) TestInvokeTLSHoneypot() {
+	type eventCollector struct {
+		mu     sync.Mutex
+		events []tracer.Event
+	}
+	var collector eventCollector
+
+	// Store original tracer singleton strategy
+	tr := tracer.GetInstance(nil)
+	originalStrategy := tr.GetStrategy()
+
+	wrapperStrategy := func(event tracer.Event) {
+		// Wrap original tracer strategy to not lose functionalities
+		if originalStrategy != nil {
+			originalStrategy(event)
+		}
+
+		// fetch last event, it will be used to check for TLSServerName
+		collector.mu.Lock()
+		collector.events = append(collector.events, event)
+		collector.mu.Unlock()
+	}
+
+	// update strategy with wrapper, set original strategy at function exit
+	tr.SetStrategy(wrapperStrategy)
+	defer tr.SetStrategy(originalStrategy)
+
+	client := resty.New()
+	client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+
+	response, err := client.R().Get("https://localhost:8443/secure-index.php")
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusOK, response.StatusCode())
+	suite.Equal("mocked secure response", string(response.Body()))
+	headers := response.Header()
+	suite.Equal("text/html", strings.TrimSpace(headers.Get("Content-Type")))
+	suite.Equal("Apache/2.4.53 (Debian Secure)", strings.TrimSpace(headers.Get("Server")))
+	suite.Equal("PHP/7.4.29 Secure", strings.TrimSpace(headers.Get("X-Powered-By")))
+
+	response, err = client.R().Get("https://localhost:8443/secure-wp-admin")
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusBadRequest, response.StatusCode())
+	suite.Equal("mocked secure response", string(response.Body()))
+
+	response, err = client.R().Get("https://localhost:8443/unknown-path")
+	suite.Require().NoError(err)
+	suite.Equal(http.StatusNotFound, response.StatusCode())
+	suite.Equal("Secure not found!", string(response.Body()))
+
+	// throttle cpu to wait event processing
+	time.Sleep(100 * time.Millisecond)
+
+	collector.mu.Lock()
+	defer collector.mu.Unlock()
+	found := false
+	for _, ev := range collector.events {
+		if ev.TLSServerName == "localhost" {
+			found = true
+			break
+		}
+	}
+	suite.True(found, "Expected to find event with TLSServerName 'localhost'")
 }
 
 func (suite *IntegrationTestSuite) TestInvokeTCPHoneypot() {
