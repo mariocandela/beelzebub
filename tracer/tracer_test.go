@@ -121,3 +121,36 @@ func TestUpdatePrometheusCounters(t *testing.T) {
 	tracer.updatePrometheusCounters(MCP.String())
 	assert.Equal(t, 8, counter)
 }
+
+func TestGetStrategy(t *testing.T) {
+	mockStrategy := func(event Event) {}
+
+	tracer := GetInstance(mockStrategy)
+
+	retrievedStrategy := tracer.GetStrategy()
+	assert.NotNil(t, retrievedStrategy)
+}
+
+func TestSetGetStrategyConcurrency(t *testing.T) {
+	tracer := GetInstance(func(event Event) {})
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 10; i++ {
+		wg.Add(2)
+
+		go func(id int) {
+			defer wg.Done()
+			mockStrategy := func(event Event) {}
+			tracer.SetStrategy(mockStrategy)
+		}(i)
+
+		go func(id int) {
+			defer wg.Done()
+			strategy := tracer.GetStrategy()
+			assert.NotNil(t, strategy)
+		}(i)
+	}
+
+	wg.Wait()
+}
