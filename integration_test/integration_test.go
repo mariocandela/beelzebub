@@ -307,6 +307,9 @@ func (suite *IntegrationTestSuite) TestPrometheus() {
 	suite.Equal(http.StatusOK, response.StatusCode())
 }
 
-func (suite *IntegrationTestSuite) TestShutdownBeelzebub() {
+func (suite *IntegrationTestSuite) TearDownSuite() {
 	suite.Require().NoError(suite.beelzebubBuilder.Close())
+	if suite.tlsCleanup != nil {
+		suite.tlsCleanup()
+	}
 }
