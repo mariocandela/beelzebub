@@ -4,3 +4,5 @@ logs
 .vscode
 .history
 coverage*.out
+integration_test/certs/tls.crt
+integration_test/certs/tls.key
