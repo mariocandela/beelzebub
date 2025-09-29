@@ -1,0 +1,28 @@
+apiVersion: "v1"
+protocol: "http"
+address: ":8443"
+tlsCertPath: "certs/tls.crt"
+tlsKeyPath: "certs/tls.key"
+description: "Secure Wordpress 6.0 HTTPS Honeypot"
+commands:
+  - regex: "^/secure-index.php$"
+    handler: "mocked secure response"
+    headers:
+      - "Content-Type: text/html"
+      - "Server: Apache/2.4.53 (Debian Secure)"
+      - "X-Powered-By: PHP/7.4.29 Secure"
+    statusCode: 200
+  - regex: "^(/secure-wp-login.php|/secure-wp-admin)$"
+    handler: "mocked secure response"
+    headers:
+      - "Content-Type: text/html"
+      - "Server: Apache/2.4.53 (Debian Secure)"
+      - "X-Powered-By: PHP/7.4.29 Secure"
+    statusCode: 400
+  - regex: ".*"
+    handler: "Secure not found!"
+    headers:
+      - "Content-Type: text/html"
+      - "Server: Apache/2.4.53 (Debian Secure)"
+      - "X-Powered-By: PHP/7.4.29 Secure"
+    statusCode: 404

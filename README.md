@@ -399,7 +399,7 @@ Happy hacking!
 
 ## License
 
-Beelzebub is licensed under the [MIT License](LICENSE).
+Beelzebub is licensed under the [GNU GPL v3 License](LICENSE).
 
 ## Beelzebub is a member of NVIDIA Inception
 ![nvidia-inception-program-badge-rgb-for-screen](https://github.com/user-attachments/assets/62c6cdf8-3999-42ce-aea6-6c9045bc1d4c)
