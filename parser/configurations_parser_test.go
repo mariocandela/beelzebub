@@ -84,8 +84,6 @@ plugin:
   inputValidationPrompt: "hello world"
   outputValidationEnabled: true
   outputValidationPrompt: "hello world"
-  failedInputVailidationMessage: "failed input validation"
-  failedOutputVailidationMessage: "failed output validation"
 `)
 	return beelzebubServiceConfiguration, nil
 }
@@ -199,8 +197,6 @@ func TestReadConfigurationsPluginGuardrailsValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationPrompt, "hello world")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationEnabled, true)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationPrompt, "hello world")
-	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.FailedInputVailidationMessage, "failed input validation")
-	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.FailedOutputVailidationMessage, "failed output validation")
 }
 
 func TestReadConfigurationsDefaultValues(t *testing.T) {
@@ -231,8 +227,6 @@ func TestReadConfigurationsDefaultValues(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationPrompt, "")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationEnabled, false)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationPrompt, "")
-	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.FailedInputVailidationMessage, "")
-	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.FailedOutputVailidationMessage, "")
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {
