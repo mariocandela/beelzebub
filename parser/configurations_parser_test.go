@@ -80,7 +80,18 @@ plugin:
   llmProvider: "ollama"
   host: "localhost:1563"
   prompt: "hello world"
+  inputValidationEnabled: true
+  inputValidationPrompt: "hello world"
+  outputValidationEnabled: true
+  outputValidationPrompt: "hello world"
+  failedInputVailidationMessage: "failed input validation"
+  failedOutputVailidationMessage: "failed output validation"
 `)
+	return beelzebubServiceConfiguration, nil
+}
+
+func mockReadfilebytesBeelzebubServiceConfigurationDefaultValues(filePath string) ([]byte, error) {
+	beelzebubServiceConfiguration := []byte(``)
 	return beelzebubServiceConfiguration, nil
 }
 
@@ -171,6 +182,57 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Params[0].Name, "user_id")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Params[0].Description, "The ID of the user account to manage.")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Handler, "reset_password ok")
+}
+
+func TestReadConfigurationsPluginGuardrailsValid(t *testing.T) {
+	configurationsParser := Init("", "")
+
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	firstBeelzebubServiceConfiguration := beelzebubServicesConfiguration[0]
+
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationEnabled, true)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationPrompt, "hello world")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationEnabled, true)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationPrompt, "hello world")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.FailedInputVailidationMessage, "failed input validation")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.FailedOutputVailidationMessage, "failed output validation")
+}
+
+func TestReadConfigurationsDefaultValues(t *testing.T) {
+
+	configurationsParser := Init("", "")
+
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfigurationDefaultValues
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	firstBeelzebubServiceConfiguration := beelzebubServicesConfiguration[0]
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Protocol, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.ApiVersion, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Address, "")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 0)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.Handler, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.StatusCode, 0)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OpenAISecretKey, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMModel, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMProvider, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Host, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Prompt, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSCertPath, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Tools), 0)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationEnabled, false)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationPrompt, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationEnabled, false)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationPrompt, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.FailedInputVailidationMessage, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.FailedOutputVailidationMessage, "")
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {

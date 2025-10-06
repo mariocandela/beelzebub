@@ -55,6 +55,10 @@ type Plugin struct {
 	LLMModel        string `yaml:"llmModel"`
 	LLMProvider     string `yaml:"llmProvider"`
 	Prompt          string `yaml:"prompt"`
+	InputValidationEnabled bool `yaml:"inputValidationEnabled"`
+	InputValidationPrompt string `yaml:"inputValidationPrompt"`
+	OutputValidationEnabled bool `yaml:"outputValidationEnabled"`
+	OutputValidationPrompt string `yaml:"outputValidationPrompt"`
 }
 
 // BeelzebubServiceConfiguration is the struct that contains the configurations of the honeypot service

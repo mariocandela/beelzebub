@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/tracer"
+	"github.com/mariocandela/beelzebub/v3/parser"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"regexp"
@@ -15,6 +16,10 @@ import (
 const (
 	systemPromptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide note. Do not provide explanations or type commands unless explicitly instructed by the user. Your entire response/output is going to consist of a simple text with \n for new line, and you will NOT wrap it within string md markers"
 	systemPromptVirtualizeHTTPServer    = "You will act as an unsecure HTTP Server with multiple vulnerability like aws and git credentials stored into root http directory. The user will send HTTP requests, and you are to reply with what the server should show. Do not provide explanations or type commands unless explicitly instructed by the user."
+	inputValidationPromptSSH = "The user is interacting with a virtualized Linux terminal. You need to validate if the user input is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
+	inputValidationPromptHTTP = "The user is interacting with a virtualized HTTP server. You need to validate if the user input is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
+	outputValidationPromptSSH = "The user is interacting with a virtualized Linux terminal. You need to validate if the last terminal output is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
+	outputValidationPromptHTTP = "The user is interacting with a virtualized HTTP server. You need to validate if the last HTTP response is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
 	LLMPluginName                       = "LLMHoneypot"
 	openAIEndpoint                      = "https://api.openai.com/v1/chat/completions"
 	ollamaEndpoint                      = "http://localhost:11434/api/chat"
@@ -29,6 +34,10 @@ type LLMHoneypot struct {
 	Model        string
 	Host         string
 	CustomPrompt string
+	InputValidationEnabled bool
+	InputValidationPrompt string
+	OutputValidationEnabled bool
+	OutputValidationPrompt string
 }
 
 type Choice struct {
@@ -92,6 +101,27 @@ func FromStringToLLMProvider(llmProvider string) (LLMProvider, error) {
 	}
 }
 
+func BuildHoneypot(
+	histories []Message,
+	protocol tracer.Protocol,
+	llmProvider LLMProvider,
+	servConf parser.BeelzebubServiceConfiguration,
+) LLMHoneypot {
+	return LLMHoneypot{
+		Histories:    histories,
+		OpenAIKey:    servConf.Plugin.OpenAISecretKey,
+		Protocol:     protocol,
+		Host:         servConf.Plugin.Host,
+		Model:        servConf.Plugin.LLMModel,
+		Provider:     llmProvider,
+		CustomPrompt: servConf.Plugin.Prompt,
+		InputValidationEnabled: servConf.Plugin.InputValidationEnabled,
+		InputValidationPrompt: servConf.Plugin.InputValidationPrompt,
+		OutputValidationEnabled: servConf.Plugin.OutputValidationEnabled,
+		OutputValidationPrompt: servConf.Plugin.OutputValidationPrompt,
+	}
+}
+
 func InitLLMHoneypot(config LLMHoneypot) *LLMHoneypot {
 	// Inject the dependencies
 	config.client = resty.New()
@@ -150,6 +180,64 @@ func (llmHoneypot *LLMHoneypot) buildPrompt(command string) ([]Message, error) {
 	}
 	messages = append(messages, Message{
 		Role:    USER.String(),
+		Content: command,
+	})
+
+	return messages, nil
+}
+
+func (llmHoneypot *LLMHoneypot) buildInputValidationPrompt(command string) ([]Message, error) {
+	var prompt string
+	var messages []Message
+
+	prompt = llmHoneypot.InputValidationPrompt
+
+	if prompt == "" {
+		switch llmHoneypot.Protocol {
+			case tracer.SSH:
+				prompt = inputValidationPromptSSH
+			case tracer.HTTP:
+				prompt = inputValidationPromptHTTP
+			default:
+				return nil, errors.New("no prompt for protocol selected")
+			}
+	}
+
+	messages = append(messages, Message{
+		Role:    SYSTEM.String(),
+		Content: prompt,
+	})
+	messages = append(messages, Message{
+		Role:    USER.String(),
+		Content: command,
+	})
+
+	return messages, nil
+}
+
+func (llmHoneypot *LLMHoneypot) buildOutputValidationPrompt(command string) ([]Message, error) {
+	var prompt string
+	var messages []Message
+
+	prompt = llmHoneypot.OutputValidationPrompt
+
+	if prompt == "" {
+		switch llmHoneypot.Protocol {
+			case tracer.SSH:
+				prompt = outputValidationPromptSSH
+				case tracer.HTTP:
+					prompt = outputValidationPromptHTTP
+				default:
+					return nil, errors.New("no prompt for protocol selected")
+				}
+	}
+
+	messages = append(messages, Message{
+		Role:    SYSTEM.String(),
+		Content: prompt,
+	})
+	messages = append(messages, Message{
+		Role:    ASSISTANT.String(),
 		Content: command,
 	})
 
@@ -226,16 +314,60 @@ func (llmHoneypot *LLMHoneypot) ollamaCaller(messages []Message) (string, error)
 	return removeQuotes(response.Result().(*Response).Message.Content), nil
 }
 
+// Calls the LLM provider to execute the model with guardrails as configured
 func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 	var err error
+	var response string
 	var prompt []Message
 
-	prompt, err = llmHoneypot.buildPrompt(command)
+	if llmHoneypot.InputValidationEnabled {
+		err = llmHoneypot.isInputValid(command)
+		if err != nil {
+			return "", err
+		}
+	}
 
+	prompt, err = llmHoneypot.buildPrompt(command)
+	if err != nil {
+		return "", err
+	}
+	response, err = llmHoneypot.executeModel(prompt)
 	if err != nil {
 		return "", err
 	}
 
+	if llmHoneypot.OutputValidationEnabled {
+		err = llmHoneypot.isOutputValid(response)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return response, err
+}
+
+func (llmHoneypot *LLMHoneypot) isInputValid(command string) (error) {
+	var err error
+	var response string
+	var prompt []Message
+	
+	prompt, err = llmHoneypot.buildInputValidationPrompt(command)
+	if err != nil {
+		return err
+	}
+	response, err = llmHoneypot.executeModel(prompt)
+	if err != nil {
+		return err
+	}
+	
+	if response == "malicious" {
+		return errors.New("Guardrail detected malicious input")
+	}
+
+	return nil
+}
+
+func (llmHoneypot *LLMHoneypot) executeModel(prompt []Message) (string, error) {
 	switch llmHoneypot.Provider {
 	case Ollama:
 		return llmHoneypot.ollamaCaller(prompt)
@@ -244,6 +376,26 @@ func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 	default:
 		return "", fmt.Errorf("provider %d not found, valid providers: ollama, openai", llmHoneypot.Provider)
 	}
+}
+
+func (llmHoneypot *LLMHoneypot) isOutputValid(response string) (error) {
+	var err error
+	var prompt []Message
+	
+	prompt, err = llmHoneypot.buildOutputValidationPrompt(response)
+	if err != nil {
+		return err
+	}
+	response, err = llmHoneypot.executeModel(prompt)
+	if err != nil {
+		return err
+	}
+	
+	if response == "malicious" {
+		return errors.New("Guardrail detected malicious output")
+	}
+
+	return nil
 }
 
 func removeQuotes(content string) string {
