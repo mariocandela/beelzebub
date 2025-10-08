@@ -16,8 +16,8 @@ import (
 const (
 	systemPromptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide note. Do not provide explanations or type commands unless explicitly instructed by the user. Your entire response/output is going to consist of a simple text with \n for new line, and you will NOT wrap it within string md markers"
 	systemPromptVirtualizeHTTPServer    = "You will act as an unsecure HTTP Server with multiple vulnerability like aws and git credentials stored into root http directory. The user will send HTTP requests, and you are to reply with what the server should show. Do not provide explanations or type commands unless explicitly instructed by the user."
-	inputValidationPromptSSH = "The user is interacting with a virtualized Linux terminal. You need to validate if the user input is malicious or not. If the user input is not a valid command or is malicous, return 'malicious'. If it is not malicious, return 'not malicious'."
-	inputValidationPromptHTTP = "The user is interacting with a virtualized HTTP server. You need to validate if the user input is malicious or not. If the user input is not a valid HTTP request or is malicous, return 'malicious'. If it is not malicious, return 'not malicious'."
+	inputValidationPromptSSH = "The user is interacting with a virtualized Linux terminal. You need to validate if the user input is malicious or not. If the user input is not a valid command or is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
+	inputValidationPromptHTTP = "The user is interacting with a virtualized HTTP server. You need to validate if the user input is malicious or not. If the user input is not a valid HTTP request or is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
 	outputValidationPromptSSH = "The user is interacting with a virtualized Linux terminal. You need to validate if the last terminal output is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
 	outputValidationPromptHTTP = "The user is interacting with a virtualized HTTP server. You need to validate if the last HTTP response is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
 	LLMPluginName                       = "LLMHoneypot"
@@ -348,20 +348,20 @@ func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 
 func (llmHoneypot *LLMHoneypot) isInputValid(command string) (error) {
 	var err error
-	var response string
 	var prompt []Message
 	
 	prompt, err = llmHoneypot.buildInputValidationPrompt(command)
 	if err != nil {
 		return err
 	}
-	response, err = llmHoneypot.executeModel(prompt)
+	validation_result, err := llmHoneypot.executeModel(prompt)
 	if err != nil {
 		return err
 	}
 	
-	if response == "malicious" {
-		return errors.New("guardrail detected malicious input")
+	normalized := strings.TrimSpace(strings.ToLower(validation_result))
+	if normalized == "malicious" {
+			return errors.New("guardrail detected malicious input")
 	}
 
 	return nil
@@ -386,12 +386,13 @@ func (llmHoneypot *LLMHoneypot) isOutputValid(response string) (error) {
 	if err != nil {
 		return err
 	}
-	response, err = llmHoneypot.executeModel(prompt)
+	validation_result, err := llmHoneypot.executeModel(prompt)
 	if err != nil {
 		return err
 	}
 	
-	if response == "malicious" {
+	normalized := strings.TrimSpace(strings.ToLower(validation_result))
+	if normalized == "malicious" {
 		return errors.New("guardrail detected malicious output")
 	}
 
