@@ -4,10 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 	"os"
 	"regexp"
 	"strings"
@@ -25,6 +29,8 @@ const (
 	ollamaEndpoint                      = "http://localhost:11434/api/chat"
 )
 
+var ErrRateLimited = errors.New("rate limited")
+
 type LLMHoneypot struct {
 	Histories               []Message
 	OpenAIKey               string
@@ -38,6 +44,11 @@ type LLMHoneypot struct {
 	InputValidationPrompt   string
 	OutputValidationEnabled bool
 	OutputValidationPrompt  string
+	RateLimitEnabled        bool
+	RateLimitRequests       int
+	RateLimitWindowSeconds  int
+	rateLimiters            map[string]*rate.Limiter
+	rateLimiterMutex        sync.RWMutex
 }
 
 type Choice struct {
@@ -119,6 +130,9 @@ func BuildHoneypot(
 		InputValidationPrompt:   servConf.Plugin.InputValidationPrompt,
 		OutputValidationEnabled: servConf.Plugin.OutputValidationEnabled,
 		OutputValidationPrompt:  servConf.Plugin.OutputValidationPrompt,
+		RateLimitEnabled:        servConf.Plugin.RateLimitEnabled,
+		RateLimitRequests:       servConf.Plugin.RateLimitRequests,
+		RateLimitWindowSeconds:  servConf.Plugin.RateLimitWindowSeconds,
 	}
 }
 
@@ -129,6 +143,9 @@ func InitLLMHoneypot(config LLMHoneypot) *LLMHoneypot {
 	if os.Getenv("OPEN_AI_SECRET_KEY") != "" {
 		config.OpenAIKey = os.Getenv("OPEN_AI_SECRET_KEY")
 	}
+
+	// Initialize rate limiting
+	config.rateLimiters = make(map[string]*rate.Limiter)
 
 	return &config
 }
@@ -314,8 +331,68 @@ func (llmHoneypot *LLMHoneypot) ollamaCaller(messages []Message) (string, error)
 	return removeQuotes(response.Result().(*Response).Message.Content), nil
 }
 
-// Calls the LLM provider to execute the model with guardrails as configured
-func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
+// getRateLimiter returns a rate limiter for the given client IP.
+// Creates a new limiter if one doesn't exist for this IP.
+// Uses double-check locking pattern for optimal performance.
+func (llmHoneypot *LLMHoneypot) getRateLimiter(clientIP string) *rate.Limiter {
+	// Fast path: read lock
+	llmHoneypot.rateLimiterMutex.RLock()
+	limiter, exists := llmHoneypot.rateLimiters[clientIP]
+	llmHoneypot.rateLimiterMutex.RUnlock()
+	if exists {
+		return limiter
+	}
+
+	// Slow path: create under write lock (double-check)
+	llmHoneypot.rateLimiterMutex.Lock()
+	defer llmHoneypot.rateLimiterMutex.Unlock()
+	if limiter, exists = llmHoneypot.rateLimiters[clientIP]; !exists {
+		// tokens per second = requests / windowSeconds; burst = requests
+		limit := rate.Limit(float64(llmHoneypot.RateLimitRequests) / float64(llmHoneypot.RateLimitWindowSeconds))
+		limiter = rate.NewLimiter(limit, llmHoneypot.RateLimitRequests)
+		llmHoneypot.rateLimiters[clientIP] = limiter
+	}
+	return limiter
+}
+
+// checkRateLimit verifies if the client IP is within rate limits.
+// Returns an error if the rate limit is exceeded.
+func (llmHoneypot *LLMHoneypot) checkRateLimit(clientIP string) error {
+	if !llmHoneypot.RateLimitEnabled {
+		return nil
+	}
+
+	// Validate configuration
+	if llmHoneypot.RateLimitRequests <= 0 || llmHoneypot.RateLimitWindowSeconds <= 0 {
+		log.WithFields(log.Fields{
+			"rateLimitRequests":      llmHoneypot.RateLimitRequests,
+			"rateLimitWindowSeconds": llmHoneypot.RateLimitWindowSeconds,
+		}).Warn("Invalid rate limiting config; disabling rate limit for this request")
+		return nil
+	}
+
+	if clientIP == "" {
+		clientIP = "unknown"
+	}
+
+	limiter := llmHoneypot.getRateLimiter(clientIP)
+	if !limiter.Allow() {
+		return fmt.Errorf("rate limit exceeded for IP %s", clientIP)
+	}
+
+	return nil
+}
+
+// ExecuteModel calls the LLM provider to execute the model with guardrails and rate limiting as configured
+func (llmHoneypot *LLMHoneypot) ExecuteModel(command string, clientIP string) (string, error) {
+	// Check rate limiting before processing
+	if err := llmHoneypot.checkRateLimit(clientIP); err != nil {
+		log.WithFields(log.Fields{
+			"client_ip": clientIP,
+			"command":   command,
+		}).Warn("Rate limit exceeded")
+		return "System busy, please try again later", ErrRateLimited
+	}
 	var err error
 	var response string
 	var prompt []Message

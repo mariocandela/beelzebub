@@ -13,3 +13,6 @@ plugin:
   llmProvider: "openai"
   llmModel: "gpt-4o"
   openAISecretKey: "sk-proj-12345"
+  rateLimitEnabled: true
+  rateLimitRequests: 10
+  rateLimitWindowSeconds: 60

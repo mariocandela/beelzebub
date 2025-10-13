@@ -1,0 +1,32 @@
+# Example SSH LLM Honeypot with Rate Limiting
+# This configuration demonstrates how to enable rate limiting for LLM API calls
+# to prevent abuse and control costs when exposed on public networks
+
+apiVersion: "v1"
+protocol: "ssh"
+address: ":2222"
+description: "SSH interactive OpenAI GPT-4 with rate limiting"
+commands:
+  - regex: "^(.+)$"
+    plugin: "LLMHoneypot"
+serverVersion: "OpenSSH"
+serverName: "ubuntu"
+passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
+deadlineTimeoutSeconds: 60
+plugin:
+  llmProvider: "openai"
+  llmModel: "gpt-4o"
+  openAISecretKey: "sk-proj-your-key-here"
+  
+  # Rate Limiting Configuration
+  # Enable rate limiting to prevent abuse
+  rateLimitEnabled: true
+  
+  # Allow 10 requests per IP address
+  rateLimitRequests: 10
+  
+  # Within a 60 second window (10 requests per minute)
+  rateLimitWindowSeconds: 60
+  
+  # Optional: Custom prompt for the LLM
+  # prompt: "You will act as an Ubuntu Linux terminal..."

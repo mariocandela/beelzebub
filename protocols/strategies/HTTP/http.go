@@ -103,7 +103,12 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 		llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
 		command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
 
-		completions, err := llmHoneypotInstance.ExecuteModel(command)
+		// Extract IP with fallback
+		host, _, err := net.SplitHostPort(request.RemoteAddr)
+		if err != nil {
+			host = request.RemoteAddr
+		}
+		completions, err := llmHoneypotInstance.ExecuteModel(command, host)
 		if err != nil {
 			resp.Body = "404 Not Found!"
 			return resp, fmt.Errorf("ExecuteModel error: %s, %v", command, err)
