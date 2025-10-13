@@ -106,6 +106,7 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 		// Extract IP with fallback
 		host, _, err := net.SplitHostPort(request.RemoteAddr)
 		if err != nil {
+			// Fallback to RemoteAddr if split fails
 			host = request.RemoteAddr
 		}
 		completions, err := llmHoneypotInstance.ExecuteModel(command, host)

@@ -64,7 +64,7 @@ When a rate limit is exceeded, a warning is logged with the following fields:
 
 Example log entry:
 
-```
+```text
 WARN Rate limit exceeded client_ip=192.168.1.100 command="ls -la"
 ```
 
