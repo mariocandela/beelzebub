@@ -100,7 +100,7 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 		}
 
 		llmHoneypot := plugins.BuildHoneypot(nil, tracer.HTTP, llmProvider, servConf)
-		llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+		llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
 		command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
 
 		completions, err := llmHoneypotInstance.ExecuteModel(command)

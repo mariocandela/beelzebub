@@ -106,8 +106,8 @@ func BuildHoneypot(
 	protocol tracer.Protocol,
 	llmProvider LLMProvider,
 	servConf parser.BeelzebubServiceConfiguration,
-) LLMHoneypot {
-	return LLMHoneypot{
+) *LLMHoneypot {
+	return &LLMHoneypot{
 		Histories:               histories,
 		OpenAIKey:               servConf.Plugin.OpenAISecretKey,
 		Protocol:                protocol,
