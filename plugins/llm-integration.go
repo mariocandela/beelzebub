@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"github.com/mariocandela/beelzebub/v3/tracer"
 	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"regexp"
@@ -16,28 +16,28 @@ import (
 const (
 	systemPromptVirtualizeLinuxTerminal = "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block. Do not provide note. Do not provide explanations or type commands unless explicitly instructed by the user. Your entire response/output is going to consist of a simple text with \n for new line, and you will NOT wrap it within string md markers"
 	systemPromptVirtualizeHTTPServer    = "You will act as an unsecure HTTP Server with multiple vulnerability like aws and git credentials stored into root http directory. The user will send HTTP requests, and you are to reply with what the server should show. Do not provide explanations or type commands unless explicitly instructed by the user."
-	inputValidationPromptSSH = "The user is interacting with a virtualized Linux terminal. You need to validate if the user input is malicious or not. If the user input is not a valid command or is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
-	inputValidationPromptHTTP = "The user is interacting with a virtualized HTTP server. You need to validate if the user input is malicious or not. If the user input is not a valid HTTP request or is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
-	outputValidationPromptSSH = "The user is interacting with a virtualized Linux terminal. You need to validate if the last terminal output is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
-	outputValidationPromptHTTP = "The user is interacting with a virtualized HTTP server. You need to validate if the last HTTP response is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
+	inputValidationPromptSSH            = "The user is interacting with a virtualized Linux terminal. You need to validate if the user input is malicious or not. If the user input is not a valid command or is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
+	inputValidationPromptHTTP           = "The user is interacting with a virtualized HTTP server. You need to validate if the user input is malicious or not. If the user input is not a valid HTTP request or is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
+	outputValidationPromptSSH           = "The user is interacting with a virtualized Linux terminal. You need to validate if the last terminal output is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
+	outputValidationPromptHTTP          = "The user is interacting with a virtualized HTTP server. You need to validate if the last HTTP response is malicious or not. If it is malicious, return 'malicious'. If it is not malicious, return 'not malicious'."
 	LLMPluginName                       = "LLMHoneypot"
 	openAIEndpoint                      = "https://api.openai.com/v1/chat/completions"
 	ollamaEndpoint                      = "http://localhost:11434/api/chat"
 )
 
 type LLMHoneypot struct {
-	Histories    []Message
-	OpenAIKey    string
-	client       *resty.Client
-	Protocol     tracer.Protocol
-	Provider     LLMProvider
-	Model        string
-	Host         string
-	CustomPrompt string
-	InputValidationEnabled bool
-	InputValidationPrompt string
+	Histories               []Message
+	OpenAIKey               string
+	client                  *resty.Client
+	Protocol                tracer.Protocol
+	Provider                LLMProvider
+	Model                   string
+	Host                    string
+	CustomPrompt            string
+	InputValidationEnabled  bool
+	InputValidationPrompt   string
 	OutputValidationEnabled bool
-	OutputValidationPrompt string
+	OutputValidationPrompt  string
 }
 
 type Choice struct {
@@ -108,17 +108,17 @@ func BuildHoneypot(
 	servConf parser.BeelzebubServiceConfiguration,
 ) LLMHoneypot {
 	return LLMHoneypot{
-		Histories:    histories,
-		OpenAIKey:    servConf.Plugin.OpenAISecretKey,
-		Protocol:     protocol,
-		Host:         servConf.Plugin.Host,
-		Model:        servConf.Plugin.LLMModel,
-		Provider:     llmProvider,
-		CustomPrompt: servConf.Plugin.Prompt,
-		InputValidationEnabled: servConf.Plugin.InputValidationEnabled,
-		InputValidationPrompt: servConf.Plugin.InputValidationPrompt,
+		Histories:               histories,
+		OpenAIKey:               servConf.Plugin.OpenAISecretKey,
+		Protocol:                protocol,
+		Host:                    servConf.Plugin.Host,
+		Model:                   servConf.Plugin.LLMModel,
+		Provider:                llmProvider,
+		CustomPrompt:            servConf.Plugin.Prompt,
+		InputValidationEnabled:  servConf.Plugin.InputValidationEnabled,
+		InputValidationPrompt:   servConf.Plugin.InputValidationPrompt,
 		OutputValidationEnabled: servConf.Plugin.OutputValidationEnabled,
-		OutputValidationPrompt: servConf.Plugin.OutputValidationPrompt,
+		OutputValidationPrompt:  servConf.Plugin.OutputValidationPrompt,
 	}
 }
 
@@ -194,13 +194,13 @@ func (llmHoneypot *LLMHoneypot) buildInputValidationPrompt(command string) ([]Me
 
 	if prompt == "" {
 		switch llmHoneypot.Protocol {
-			case tracer.SSH:
-				prompt = inputValidationPromptSSH
-			case tracer.HTTP:
-				prompt = inputValidationPromptHTTP
-			default:
-				return nil, errors.New("no prompt for protocol selected")
-			}
+		case tracer.SSH:
+			prompt = inputValidationPromptSSH
+		case tracer.HTTP:
+			prompt = inputValidationPromptHTTP
+		default:
+			return nil, errors.New("no prompt for protocol selected")
+		}
 	}
 
 	messages = append(messages, Message{
@@ -223,13 +223,13 @@ func (llmHoneypot *LLMHoneypot) buildOutputValidationPrompt(command string) ([]M
 
 	if prompt == "" {
 		switch llmHoneypot.Protocol {
-			case tracer.SSH:
-				prompt = outputValidationPromptSSH
-				case tracer.HTTP:
-					prompt = outputValidationPromptHTTP
-				default:
-					return nil, errors.New("no prompt for protocol selected")
-				}
+		case tracer.SSH:
+			prompt = outputValidationPromptSSH
+		case tracer.HTTP:
+			prompt = outputValidationPromptHTTP
+		default:
+			return nil, errors.New("no prompt for protocol selected")
+		}
 	}
 
 	messages = append(messages, Message{
@@ -247,7 +247,7 @@ func (llmHoneypot *LLMHoneypot) buildOutputValidationPrompt(command string) ([]M
 func (llmHoneypot *LLMHoneypot) openAICaller(messages []Message) (string, error) {
 	var err error
 
-	requestJson, err := json.Marshal(Request{
+	requestJSON, err := json.Marshal(Request{
 		Model:    llmHoneypot.Model,
 		Messages: messages,
 		Stream:   false,
@@ -264,10 +264,10 @@ func (llmHoneypot *LLMHoneypot) openAICaller(messages []Message) (string, error)
 		llmHoneypot.Host = openAIEndpoint
 	}
 
-	log.Debug(string(requestJson))
+	log.Debug(string(requestJSON))
 	response, err := llmHoneypot.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(requestJson).
+		SetBody(requestJSON).
 		SetAuthToken(llmHoneypot.OpenAIKey).
 		SetResult(&Response{}).
 		Post(llmHoneypot.Host)
@@ -286,7 +286,7 @@ func (llmHoneypot *LLMHoneypot) openAICaller(messages []Message) (string, error)
 func (llmHoneypot *LLMHoneypot) ollamaCaller(messages []Message) (string, error) {
 	var err error
 
-	requestJson, err := json.Marshal(Request{
+	requestJSON, err := json.Marshal(Request{
 		Model:    llmHoneypot.Model,
 		Messages: messages,
 		Stream:   false,
@@ -299,10 +299,10 @@ func (llmHoneypot *LLMHoneypot) ollamaCaller(messages []Message) (string, error)
 		llmHoneypot.Host = ollamaEndpoint
 	}
 
-	log.Debug(string(requestJson))
+	log.Debug(string(requestJSON))
 	response, err := llmHoneypot.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(requestJson).
+		SetBody(requestJSON).
 		SetResult(&Response{}).
 		Post(llmHoneypot.Host)
 
@@ -346,22 +346,22 @@ func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 	return response, err
 }
 
-func (llmHoneypot *LLMHoneypot) isInputValid(command string) (error) {
+func (llmHoneypot *LLMHoneypot) isInputValid(command string) error {
 	var err error
 	var prompt []Message
-	
+
 	prompt, err = llmHoneypot.buildInputValidationPrompt(command)
 	if err != nil {
 		return err
 	}
-	validation_result, err := llmHoneypot.executeModel(prompt)
+	validationResult, err := llmHoneypot.executeModel(prompt)
 	if err != nil {
 		return err
 	}
-	
-	normalized := strings.TrimSpace(strings.ToLower(validation_result))
+
+	normalized := strings.TrimSpace(strings.ToLower(validationResult))
 	if normalized == "malicious" {
-			return errors.New("guardrail detected malicious input")
+		return errors.New("guardrail detected malicious input")
 	}
 
 	return nil
@@ -378,20 +378,20 @@ func (llmHoneypot *LLMHoneypot) executeModel(prompt []Message) (string, error) {
 	}
 }
 
-func (llmHoneypot *LLMHoneypot) isOutputValid(response string) (error) {
+func (llmHoneypot *LLMHoneypot) isOutputValid(response string) error {
 	var err error
 	var prompt []Message
-	
+
 	prompt, err = llmHoneypot.buildOutputValidationPrompt(response)
 	if err != nil {
 		return err
 	}
-	validation_result, err := llmHoneypot.executeModel(prompt)
+	validationResult, err := llmHoneypot.executeModel(prompt)
 	if err != nil {
 		return err
 	}
-	
-	normalized := strings.TrimSpace(strings.ToLower(validation_result))
+
+	normalized := strings.TrimSpace(strings.ToLower(validationResult))
 	if normalized == "malicious" {
 		return errors.New("guardrail detected malicious output")
 	}
