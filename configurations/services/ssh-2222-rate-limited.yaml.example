@@ -17,16 +17,16 @@ plugin:
   llmProvider: "openai"
   llmModel: "gpt-4o"
   openAISecretKey: "sk-proj-your-key-here"
-  
+
   # Rate Limiting Configuration
   # Enable rate limiting to prevent abuse
   rateLimitEnabled: true
-  
+
   # Allow 10 requests per IP address
   rateLimitRequests: 10
-  
+
   # Within a 60 second window (10 requests per minute)
   rateLimitWindowSeconds: 60
-  
+
   # Optional: Custom prompt for the LLM
   # prompt: "You will act as an Ubuntu Linux terminal..."

@@ -57,6 +57,6 @@ go test ./plugins/... -v -run TestRateLimit
 
 Rate limit violations are logged with client IP and command:
 
-```
+```log
 WARN Rate limit exceeded client_ip=192.168.1.100 command="ls -la"
 ```
