@@ -50,15 +50,18 @@ type Prometheus struct {
 }
 
 type Plugin struct {
-	OpenAISecretKey string `yaml:"openAISecretKey"`
-	Host            string `yaml:"host"`
-	LLMModel        string `yaml:"llmModel"`
-	LLMProvider     string `yaml:"llmProvider"`
-	Prompt          string `yaml:"prompt"`
-	InputValidationEnabled bool `yaml:"inputValidationEnabled"`
-	InputValidationPrompt string `yaml:"inputValidationPrompt"`
-	OutputValidationEnabled bool `yaml:"outputValidationEnabled"`
-	OutputValidationPrompt string `yaml:"outputValidationPrompt"`
+	OpenAISecretKey         string `yaml:"openAISecretKey"`
+	Host                    string `yaml:"host"`
+	LLMModel                string `yaml:"llmModel"`
+	LLMProvider             string `yaml:"llmProvider"`
+	Prompt                  string `yaml:"prompt"`
+	InputValidationEnabled  bool   `yaml:"inputValidationEnabled"`
+	InputValidationPrompt   string `yaml:"inputValidationPrompt"`
+	OutputValidationEnabled bool   `yaml:"outputValidationEnabled"`
+	OutputValidationPrompt  string `yaml:"outputValidationPrompt"`
+	RateLimitEnabled        bool   `yaml:"rateLimitEnabled"`
+	RateLimitRequests       int    `yaml:"rateLimitRequests"`
+	RateLimitWindowSeconds  int    `yaml:"rateLimitWindowSeconds"`
 }
 
 // BeelzebubServiceConfiguration is the struct that contains the configurations of the honeypot service
@@ -160,6 +163,13 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 		err = yaml.Unmarshal(buf, beelzebubServiceConfiguration)
 		if err != nil {
 			return nil, fmt.Errorf("in file %s: %v", filePath, err)
+		}
+		// Validate rate limiting configuration
+		if beelzebubServiceConfiguration.Plugin.RateLimitEnabled {
+			if beelzebubServiceConfiguration.Plugin.RateLimitRequests <= 0 ||
+				beelzebubServiceConfiguration.Plugin.RateLimitWindowSeconds <= 0 {
+				return nil, fmt.Errorf("in file %s: invalid rate limiting config: rateLimitRequests and rateLimitWindowSeconds must be > 0", filePath)
+			}
 		}
 		log.Debug(beelzebubServiceConfiguration)
 		if err := beelzebubServiceConfiguration.CompileCommandRegex(); err != nil {
