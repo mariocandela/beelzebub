@@ -3,10 +3,11 @@ package builder
 import (
 	"errors"
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/protocols/strategies/MCP"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/mariocandela/beelzebub/v3/protocols/strategies/MCP"
 
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/plugins"
@@ -123,7 +124,7 @@ Honeypot Framework, happy hacking!`)
 
 		beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken, true)
 
-		if honeypotsConfiguration, err := beelzebubCloud.GetHoneypotsConfigurations(); err != nil {
+		if honeypotsConfiguration, _, err := beelzebubCloud.GetHoneypotsConfigurations(); err != nil {
 			return err
 		} else {
 			if len(honeypotsConfiguration) == 0 {

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"regexp"
 	"testing"
+	"time"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/mariocandela/beelzebub/v3/parser"
@@ -101,7 +103,7 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 	beelzebubCloud.client = client
 
 	//When
-	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+	result, configurationsHash, err := beelzebubCloud.GetHoneypotsConfigurations()
 
 	//Then
 	assert.Equal(t, &[]parser.BeelzebubServiceConfiguration{
@@ -127,7 +129,7 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 			},
 		},
 	}, &result)
-	assert.Equal(t, "5a76814e57a6c6ab48da4380f6fec988efc8dc6e51a64d78491d974430b773ce", beelzebubCloud.ConfigurationsHash.String())
+	assert.Equal(t, "6a31fd9ef86013f22b9d1eb8f2dfa03dc91ca83dd1f223eb8ef1488c27faccf3", configurationsHash)
 	assert.Nil(t, err)
 }
 
@@ -136,7 +138,7 @@ func TestGetHoneypotsConfigurationsWithErrorValidation(t *testing.T) {
 	beelzebubCloud := InitBeelzebubCloud("", "", false)
 
 	//When
-	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+	result, _, err := beelzebubCloud.GetHoneypotsConfigurations()
 
 	//Then
 	assert.Nil(t, result)
@@ -161,7 +163,7 @@ func TestGetHoneypotsConfigurationsWithErrorAPI(t *testing.T) {
 	beelzebubCloud.client = client
 
 	//When
-	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+	result, _, err := beelzebubCloud.GetHoneypotsConfigurations()
 
 	//Then
 	assert.Nil(t, result)
@@ -190,7 +192,7 @@ func TestGetHoneypotsConfigurationsWithErrorUnmarshal(t *testing.T) {
 	beelzebubCloud.client = client
 
 	//When
-	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+	result, _, err := beelzebubCloud.GetHoneypotsConfigurations()
 
 	//Then
 	assert.Nil(t, result)
@@ -225,7 +227,7 @@ func TestGetHoneypotsConfigurationsWithErrorDeserializeYaml(t *testing.T) {
 	beelzebubCloud.client = client
 
 	//When
-	result, err := beelzebubCloud.GetHoneypotsConfigurations()
+	result, _, err := beelzebubCloud.GetHoneypotsConfigurations()
 
 	//Then
 	assert.Nil(t, result)
@@ -239,13 +241,22 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 
 	uri := "localhost:8081"
 
-	// Given
+	callCount := 0
+
 	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
 		func(req *http.Request) (*http.Response, error) {
+			callCount++
+
+			config := "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndescription: \"SSH interactive ChatGPT\"\ncommands:\n  - regex: \"^(.+)$\"\n    plugin: \"LLMHoneypot\"\nserverVersion: \"OpenSSH\"\nserverName: \"ubuntu\"\npasswordRegex: \"^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$\"\ndeadlineTimeoutSeconds: 60\nplugin:\n  llmModel: \"gpt-4o\"\n  openAISecretKey: \"1234\"\n"
+
+			if callCount > 1 {
+				config = "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndescription: \"SSH interactive ChatGPT MODIFIED\"\ncommands:\n  - regex: \"^(.+)$\"\n    plugin: \"LLMHoneypot\"\nserverVersion: \"OpenSSH\"\nserverName: \"ubuntu\"\npasswordRegex: \"^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$\"\ndeadlineTimeoutSeconds: 60\nplugin:\n  llmModel: \"gpt-3.5-turbo\"\n  openAISecretKey: \"1234\"\n"
+			}
+
 			resp, err := httpmock.NewJsonResponse(200, &[]HoneypotConfigResponseDTO{
 				{
 					ID:      "123456",
-					Config:  "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndescription: \"SSH interactive ChatGPT\"\ncommands:\n  - regex: \"^(.+)$\"\n    plugin: \"LLMHoneypot\"\nserverVersion: \"OpenSSH\"\nserverName: \"ubuntu\"\npasswordRegex: \"^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$\"\ndeadlineTimeoutSeconds: 60\nplugin:\n  llmModel: \"gpt4-o\"\n  openAISecretKey: \"1234\"\n",
+					Config:  config,
 					TokenID: "1234567",
 				},
 			})
@@ -256,43 +267,32 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 		},
 	)
 
-	hashConfigurations := strings.Builder{}
-	hashConfigurations.WriteString("sdafsdgfhggfdfdgdsgdfgsdfg")
 	var exitInvoked bool = false
-
 	exitCalled := make(chan bool)
 
-	// Override exitFunction to set the flag AND exit the infinite loop with panic/recover
 	exitFunction = func(c int) {
 		exitInvoked = true
 		exitCalled <- true
-		panic("Exit function called")
 	}
 
 	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
-	beelzebubCloud.ConfigurationsHash = hashConfigurations
+	beelzebubCloud.PollingInterval = 100 * time.Millisecond
 
-	// Run verifyConfigurationsChanged in a goroutine with panic recovery
 	go func() {
-		defer func() {
-			// Recover from the panic
-			recover()
-		}()
 		err := beelzebubCloud.verifyConfigurationsChanged()
-		t.Errorf("verifyConfigurationsChanged returned unexpectedly with error: %v", err)
+		if err != nil {
+			t.Errorf("verifyConfigurationsChanged returned with error: %v", err)
+		}
 	}()
 
-	// Wait for exitFunction to be called or timeout
 	select {
 	case <-exitCalled:
-		// exitFunction was called, test should pass
-	case <-time.After(5 * time.Second):
+		assert.True(t, exitInvoked, "exitFunction should have been invoked")
+		assert.Greater(t, callCount, 1, "Should have made at least 2 API calls")
+	case <-time.After(2 * time.Second):
 		t.Fatal("Test timed out waiting for exitFunction to be called")
 	}
-
-	// Then
-	assert.Equal(t, true, exitInvoked)
 }
 
 func TestMapToEventDTO(t *testing.T) {
@@ -309,7 +309,6 @@ func TestMapToEventDTO(t *testing.T) {
 		User:            "root",
 		Password:        "root",
 		Client:          "ssh",
-		Headers:         map[string][]string{"Host": {"beelzebub-honeypot.com"}},
 		Cookies:         "qwerty",
 		UserAgent:       "qwerty",
 		HostHTTPRequest: "beelzebub-honeypot.com",
@@ -338,7 +337,6 @@ func TestMapToEventDTO(t *testing.T) {
 		User:            "root",
 		Password:        "root",
 		Client:          "ssh",
-		Headers:         "{\"Host\":[\"beelzebub-honeypot.com\"]}",
 		Cookies:         "qwerty",
 		UserAgent:       "qwerty",
 		HostHTTPRequest: "beelzebub-honeypot.com",

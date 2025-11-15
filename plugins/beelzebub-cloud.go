@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"os"
-	"strings"
-	"time"
 )
 
 type EventDTO struct {
@@ -29,6 +29,7 @@ type EventDTO struct {
 	Password        string
 	Client          string
 	Headers         string
+	HeadersMap      map[string][]string
 	Cookies         string
 	UserAgent       string
 	HostHTTPRequest string
@@ -42,11 +43,10 @@ type EventDTO struct {
 }
 
 type beelzebubCloud struct {
-	URI                string
-	AuthToken          string
-	client             *resty.Client
-	ConfigurationsHash strings.Builder
-	PollingInterval    time.Duration
+	URI             string
+	AuthToken       string
+	client          *resty.Client
+	PollingInterval time.Duration
 }
 
 type HoneypotConfigResponseDTO struct {
@@ -104,9 +104,9 @@ func (beelzebubCloud *beelzebubCloud) SendEvent(event tracer.Event) (bool, error
 	return response.StatusCode() == 200, nil
 }
 
-func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.BeelzebubServiceConfiguration, error) {
+func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.BeelzebubServiceConfiguration, string, error) {
 	if beelzebubCloud.AuthToken == "" {
-		return nil, errors.New("authToken is empty")
+		return nil, "", errors.New("authToken is empty")
 	}
 
 	response, err := beelzebubCloud.client.R().
@@ -116,60 +116,63 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 		Get(fmt.Sprintf("%s/honeypots", beelzebubCloud.URI))
 
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if response.StatusCode() != 200 {
-		return nil, errors.New(fmt.Sprintf("Response code: %v, error: %s", response.StatusCode(), string(response.Body())))
+		return nil, "", errors.New(fmt.Sprintf("Response code: %v, error: %s", response.StatusCode(), string(response.Body())))
 	}
 
 	var honeypotsConfig []HoneypotConfigResponseDTO
 
 	if err = json.Unmarshal(response.Body(), &honeypotsConfig); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var servicesConfiguration = make([]parser.BeelzebubServiceConfiguration, 0)
-	beelzebubCloud.ConfigurationsHash = strings.Builder{}
+	var localHashBuilder strings.Builder
+
 	for _, honeypotConfig := range honeypotsConfig {
 		var honeypotsConfig parser.BeelzebubServiceConfiguration
 
 		if err = yaml.Unmarshal([]byte(honeypotConfig.Config), &honeypotsConfig); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		if err := honeypotsConfig.CompileCommandRegex(); err != nil {
-			return nil, fmt.Errorf("unable to load service config from cloud: invalid regex: %v", err)
+			return nil, "", fmt.Errorf("unable to load service config from cloud: invalid regex: %v", err)
 		}
 		servicesConfiguration = append(servicesConfiguration, honeypotsConfig)
 
 		if hashCode, err := honeypotsConfig.HashCode(); err != nil {
-			return nil, err
+			return nil, "", err
 		} else {
-			beelzebubCloud.ConfigurationsHash.WriteString(hashCode)
+			localHashBuilder.WriteString(hashCode)
 		}
 
 	}
 
-	return servicesConfiguration, nil
+	return servicesConfiguration, localHashBuilder.String(), nil
 }
 
 var exitFunction func(code int) = os.Exit
 
 func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
+	var lastConfigurationsHash = ""
 	for {
-		var lastConfigurationsHash = beelzebubCloud.ConfigurationsHash.String()
-
 		log.Debug("Checking configurations...")
-		if _, err := beelzebubCloud.GetHoneypotsConfigurations(); err != nil {
+		_, configurationsHash, err := beelzebubCloud.GetHoneypotsConfigurations()
+		if err != nil {
 			return err
 		}
-		if len(lastConfigurationsHash) > 0 && lastConfigurationsHash != beelzebubCloud.ConfigurationsHash.String() {
+		if len(lastConfigurationsHash) == 0 {
+			lastConfigurationsHash = configurationsHash
+		}
+		if lastConfigurationsHash != configurationsHash {
 			log.Debug("Configurations changed.")
 			exitFunction(0)
 		}
 		time.Sleep(beelzebubCloud.PollingInterval)
 	}
-	return nil
 }
 
 func (beelzebubCloud *beelzebubCloud) mapToEventDTO(event tracer.Event) (EventDTO, error) {
