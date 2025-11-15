@@ -182,6 +182,21 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Handler, "reset_password ok")
 }
 
+func TestReadConfigurationsServicesGenerateHashCode(t *testing.T) {
+	configurationsParser := Init("", "")
+
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+
+	hashCode, errHashCode := beelzebubServicesConfiguration[0].HashCode()
+
+	assert.Nil(t, err)
+	assert.Nil(t, errHashCode)
+	assert.Equal(t, hashCode, "9c349217fdf25f8a1751c33de9e06799a6c96fa996c2dba40df6d2c34c3025a0")
+}
+
 func TestReadConfigurationsPluginGuardrailsValid(t *testing.T) {
 	configurationsParser := Init("", "")
 

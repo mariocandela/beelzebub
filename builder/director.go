@@ -60,7 +60,7 @@ func (d *Director) beelzebubCloudStrategy(event tracer.Event) {
 
 	conf := d.builder.beelzebubCoreConfigurations.Core.BeelzebubCloud
 
-	beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken)
+	beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken, false)
 
 	result, err := beelzebubCloud.SendEvent(event)
 	if err != nil {
