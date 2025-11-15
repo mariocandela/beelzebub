@@ -397,11 +397,6 @@ $ make test.integration
 $ make test.dependencies.down
 ```
 
-
-## Roadmap
-
-Our future plans for Beelzebub include developing it into a robust PaaS platform.
-
 ## Contributing
 
 The Beelzebub team welcomes contributions and project participation. Whether you want to report bugs, contribute new features, or have any questions, please refer to our [Contributor Guide](CONTRIBUTING.md) for detailed information. We encourage all participants and maintainers to adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) and foster a supportive and respectful community.
@@ -411,9 +406,6 @@ Happy hacking!
 ## License
 
 Beelzebub is licensed under the [GNU GPL v3 License](LICENSE).
-
-## Beelzebub is a member of NVIDIA Inception
-![nvidia-inception-program-badge-rgb-for-screen](https://github.com/user-attachments/assets/62c6cdf8-3999-42ce-aea6-6c9045bc1d4c)
 
 ## Supported by
 [![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
