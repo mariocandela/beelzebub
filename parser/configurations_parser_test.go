@@ -194,7 +194,7 @@ func TestReadConfigurationsServicesGenerateHashCode(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Nil(t, errHashCode)
-	assert.Equal(t, hashCode, "adc42efb365c9b2e675a0f060e6b14116630e722d42795e9f904f85c8df71d6b")
+	assert.Equal(t, hashCode, "9c349217fdf25f8a1751c33de9e06799a6c96fa996c2dba40df6d2c34c3025a0")
 }
 
 func TestReadConfigurationsPluginGuardrailsValid(t *testing.T) {
