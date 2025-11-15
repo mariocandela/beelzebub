@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,11 +52,28 @@ protocol: "http"
 address: ":8080"
 tlsCertPath: "/tmp/cert.crt"
 tlsKeyPath: "/tmp/cert.key"
+tools:
+  - name: "tool:user-account-manager"
+    description: "Tool for querying and modifying user account details. Requires administrator privileges."
+    params:
+      - name: "user_id"
+        description: "The ID of the user account to manage."
+      - name: "action"
+        description: "The action to perform on the user account, possible values are: get_details, reset_password, deactivate_account"
+    handler: "reset_password ok"
 commands:
   - regex: "wp-admin"
     handler: "login"
     headers:
       - "Content-Type: text/html"
+  - name: "wp-admin"
+    regex: "wp-admin"
+    handler: "login"
+    headers:
+      - "Content-Type: text/html"
+fallbackCommand:
+  handler: "404 Not Found!"
+  statusCode: 404
 plugin:
   openAISecretKey: "qwerty"
   llmModel: "llama3"
@@ -128,12 +146,16 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Protocol, "http")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.ApiVersion, "v1")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Address, ":8080")
-	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 1)
-	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 1)
-	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Regex, "wp-admin")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 2)
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 2)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].RegexStr, "wp-admin")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Regex.String(), "wp-admin")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Handler, "login")
 	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands[0].Headers), 1)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[0].Headers[0], "Content-Type: text/html")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Commands[1].Name, "wp-admin")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.Handler, "404 Not Found!")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.StatusCode, 404)
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OpenAISecretKey, "qwerty")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMModel, "llama3")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMProvider, "ollama")
@@ -141,6 +163,14 @@ func TestReadConfigurationsServicesValid(t *testing.T) {
 	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Prompt, "hello world")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSCertPath, "/tmp/cert.crt")
 	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "/tmp/cert.key")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "/tmp/cert.key")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Tools), 1)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Name, "tool:user-account-manager")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Description, "Tool for querying and modifying user account details. Requires administrator privileges.")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Tools[0].Params), 2)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Params[0].Name, "user_id")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Params[0].Description, "The ID of the user account to manage.")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Tools[0].Handler, "reset_password ok")
 }
 
 func TestReadConfigurationsServicesGenerateHashCode(t *testing.T) {
@@ -191,7 +221,8 @@ func TestGelAllFilesNameByDirNameError(t *testing.T) {
 	files, err := gelAllFilesNameByDirName("nosuchfile")
 
 	assert.Nil(t, files)
-	assert.Equal(t, "open nosuchfile: no such file or directory", err.Error())
+	// Windows and Linux return slightly different error strings, but share a common prefix, so check for that.
+	assert.Contains(t, err.Error(), "open nosuchfile: ")
 }
 
 func TestReadFileBytesByFilePath(t *testing.T) {
@@ -207,4 +238,80 @@ func TestReadFileBytesByFilePath(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "", string(bytes))
+}
+
+func TestCompileCommandRegex(t *testing.T) {
+	tests := []struct {
+		name          string
+		config        BeelzebubServiceConfiguration
+		expectedError bool
+	}{
+		{
+			name: "Valid Regex",
+			config: BeelzebubServiceConfiguration{
+				Commands: []Command{
+					{RegexStr: "^/api/v1/.*$"},
+					{RegexStr: "wp-admin"},
+				},
+			},
+			expectedError: false,
+		},
+		{
+			name: "Empty Regex",
+			config: BeelzebubServiceConfiguration{
+				Commands: []Command{
+					{RegexStr: ""},
+					{RegexStr: ""},
+				},
+			},
+			expectedError: false,
+		},
+		{
+			name: "Invalid Regex",
+			config: BeelzebubServiceConfiguration{
+				Commands: []Command{
+					{RegexStr: "["},
+				},
+			},
+			expectedError: true,
+		},
+		{
+			name: "Mixed valid and Invalid Regex",
+			config: BeelzebubServiceConfiguration{
+				Commands: []Command{
+					{RegexStr: "^/api/v1/.*$"},
+					{RegexStr: "["},
+					{RegexStr: "test"},
+				},
+			},
+			expectedError: true,
+		},
+		{
+			name:          "No commands",
+			config:        BeelzebubServiceConfiguration{},
+			expectedError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.CompileCommandRegex()
+
+			if tt.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				for _, command := range tt.config.Commands {
+					if command.RegexStr != "" {
+						assert.NotNil(t, command.Regex)
+						_, err := regexp.Compile(command.RegexStr)
+						assert.NoError(t, err)
+
+					} else {
+						assert.Nil(t, command.Regex)
+					}
+				}
+			}
+		})
+	}
 }

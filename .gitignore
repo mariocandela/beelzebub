@@ -3,3 +3,4 @@
 logs
 .vscode
 .history
+coverage*.out

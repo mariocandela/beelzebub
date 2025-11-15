@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
@@ -135,6 +136,9 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 
 		if err = yaml.Unmarshal([]byte(honeypotConfig.Config), &honeypotsConfig); err != nil {
 			return nil, err
+		}
+		if err := honeypotsConfig.CompileCommandRegex(); err != nil {
+			return nil, fmt.Errorf("unable to load service config from cloud: invalid regex: %v", err)
 		}
 		servicesConfiguration = append(servicesConfiguration, honeypotsConfig)
 

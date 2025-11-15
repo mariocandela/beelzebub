@@ -2,13 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
 
 jobs:
 
   CI:
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version:
+          - "1.24.1"
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -16,7 +21,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.20.0
+        go-version: ${{ matrix.go-version }}
 
     - name: Dependencies
       run: go mod download
@@ -35,12 +40,12 @@ jobs:
 
     - name: Quality Gate - Test coverage shall be above threshold
       env:
-        TESTCOVERAGE_THRESHOLD: 65
+        TESTCOVERAGE_THRESHOLD: 80
       run: |
         echo "Quality Gate: checking test coverage is above threshold ..."
         echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"
         # Excluded the concrete strategy from the unit test coverage, because covered by integration tests
-        cat coverage.tmp.out | grep -v "ssh.go" | grep -v "http.go" | grep -v "tcp.go" > coverage.out
+        cat coverage.tmp.out | grep -v "mcp.go" | grep -v "ssh.go" | grep -v "http.go" | grep -v "tcp.go" | grep -v "builder.go" | grep -v "director.go" > coverage.out
         totalCoverage=`go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
         echo "Current test coverage : $totalCoverage %"
         if (( $(echo "$totalCoverage $TESTCOVERAGE_THRESHOLD" | awk '{print ($1 > $2)}') )); then
@@ -53,6 +58,8 @@ jobs:
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.out
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
