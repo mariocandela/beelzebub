@@ -55,16 +55,8 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									commandOutput = "command not found"
 									llmProvider = plugins.OpenAI
 								}
-								llmHoneypot := plugins.LLMHoneypot{
-									Histories:    histories,
-									OpenAIKey:    servConf.Plugin.OpenAISecretKey,
-									Protocol:     tracer.SSH,
-									Host:         servConf.Plugin.Host,
-									Model:        servConf.Plugin.LLMModel,
-									Provider:     llmProvider,
-									CustomPrompt: servConf.Plugin.Prompt,
-								}
-								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+								llmHoneypot := plugins.BuildHoneypot(histories, tracer.SSH, llmProvider, servConf)
+								llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
 								if commandOutput, err = llmHoneypotInstance.ExecuteModel(sess.RawCommand()); err != nil {
 									log.Errorf("error ExecuteModel: %s, %s", sess.RawCommand(), err.Error())
 									commandOutput = "command not found"
@@ -134,16 +126,8 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 									log.Errorf("error: %s, fallback OpenAI", err.Error())
 									llmProvider = plugins.OpenAI
 								}
-								llmHoneypot := plugins.LLMHoneypot{
-									Histories:    histories,
-									OpenAIKey:    servConf.Plugin.OpenAISecretKey,
-									Protocol:     tracer.SSH,
-									Host:         servConf.Plugin.Host,
-									Model:        servConf.Plugin.LLMModel,
-									Provider:     llmProvider,
-									CustomPrompt: servConf.Plugin.Prompt,
-								}
-								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+								llmHoneypot := plugins.BuildHoneypot(histories, tracer.SSH, llmProvider, servConf)
+								llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
 								if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput); err != nil {
 									log.Errorf("error ExecuteModel: %s, %s", commandInput, err.Error())
 									commandOutput = "command not found"

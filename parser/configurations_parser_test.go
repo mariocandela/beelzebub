@@ -80,7 +80,16 @@ plugin:
   llmProvider: "ollama"
   host: "localhost:1563"
   prompt: "hello world"
+  inputValidationEnabled: true
+  inputValidationPrompt: "hello world"
+  outputValidationEnabled: true
+  outputValidationPrompt: "hello world"
 `)
+	return beelzebubServiceConfiguration, nil
+}
+
+func mockReadfilebytesBeelzebubServiceConfigurationDefaultValues(filePath string) ([]byte, error) {
+	beelzebubServiceConfiguration := []byte(``)
 	return beelzebubServiceConfiguration, nil
 }
 
@@ -186,6 +195,53 @@ func TestReadConfigurationsServicesGenerateHashCode(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Nil(t, errHashCode)
 	assert.Equal(t, hashCode, "adc42efb365c9b2e675a0f060e6b14116630e722d42795e9f904f85c8df71d6b")
+}
+
+func TestReadConfigurationsPluginGuardrailsValid(t *testing.T) {
+	configurationsParser := Init("", "")
+
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	firstBeelzebubServiceConfiguration := beelzebubServicesConfiguration[0]
+
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationEnabled, true)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationPrompt, "hello world")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationEnabled, true)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationPrompt, "hello world")
+}
+
+func TestReadConfigurationsDefaultValues(t *testing.T) {
+
+	configurationsParser := Init("", "")
+
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfigurationDefaultValues
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	firstBeelzebubServiceConfiguration := beelzebubServicesConfiguration[0]
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Protocol, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.ApiVersion, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Address, "")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Commands), 0)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.Handler, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.FallbackCommand.StatusCode, 0)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OpenAISecretKey, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMModel, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.LLMProvider, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Host, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.Prompt, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSCertPath, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.TLSKeyPath, "")
+	assert.Equal(t, len(firstBeelzebubServiceConfiguration.Tools), 0)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationEnabled, false)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.InputValidationPrompt, "")
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationEnabled, false)
+	assert.Equal(t, firstBeelzebubServiceConfiguration.Plugin.OutputValidationPrompt, "")
 }
 
 func TestGelAllFilesNameByDirName(t *testing.T) {

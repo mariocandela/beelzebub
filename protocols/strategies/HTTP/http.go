@@ -99,16 +99,8 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 			return resp, err
 		}
 
-		llmHoneypot := plugins.LLMHoneypot{
-			Histories:    make([]plugins.Message, 0),
-			OpenAIKey:    servConf.Plugin.OpenAISecretKey,
-			Protocol:     tracer.HTTP,
-			Host:         servConf.Plugin.Host,
-			Model:        servConf.Plugin.LLMModel,
-			Provider:     llmProvider,
-			CustomPrompt: servConf.Plugin.Prompt,
-		}
-		llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+		llmHoneypot := plugins.BuildHoneypot(nil, tracer.HTTP, llmProvider, servConf)
+		llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
 		command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
 
 		completions, err := llmHoneypotInstance.ExecuteModel(command)

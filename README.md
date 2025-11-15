@@ -5,13 +5,25 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/mariocandela/beelzebub/v3)](https://goreportcard.com/report/github.com/mariocandela/beelzebub/v3)
 [![codecov](https://codecov.io/gh/mariocandela/beelzebub/graph/badge.svg?token=8XTK7D4WHE)](https://codecov.io/gh/mariocandela/beelzebub)
 [![Go Reference](https://pkg.go.dev/badge/github.com/mariocandela/beelzebub/v3.svg)](https://pkg.go.dev/github.com/mariocandela/beelzebub/v3)
-[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)  
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/mariocandela/beelzebub)](https://archestra.ai/mcp-catalog/mariocandela__beelzebub)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 
 ## Overview
 
 Beelzebub is an advanced honeypot framework designed to provide a highly secure environment for detecting and analyzing cyber attacks. It offers a low code approach for easy implementation and uses AI to mimic the behavior of a high-interaction honeypot.
 
 ![github beelzebub - inception program](https://github.com/user-attachments/assets/e180d602-6de9-4c48-92ad-eb0ef3c5322d)
+
+## 🌍 Global Threat Intelligence Community
+
+Our mission is to establish a collaborative ecosystem of security researchers and white hat professionals worldwide, dedicated to creating a distributed honeypot network that identifies emerging malware, discovers zero-day vulnerabilities, and neutralizes active botnets. 
+
+For a comprehensive overview of our distributed threat intelligence framework and community vision, please refer to our white paper:
+
+[![White Paper](https://img.shields.io/badge/White_Paper-v1.0-blue?style=for-the-badge)](https://github.com/beelzebub-labs/white-paper/)
+
+*The white paper includes information on how to join our Discord community and contribute to the global threat intelligence network.* 
+
 ## Key Features
 
 Beelzebub offers a wide range of features to enhance your honeypot environment:
@@ -398,7 +410,7 @@ Happy hacking!
 
 ## License
 
-Beelzebub is licensed under the [MIT License](LICENSE).
+Beelzebub is licensed under the [GNU GPL v3 License](LICENSE).
 
 ## Beelzebub is a member of NVIDIA Inception
 ![nvidia-inception-program-badge-rgb-for-screen](https://github.com/user-attachments/assets/62c6cdf8-3999-42ce-aea6-6c9045bc1d4c)
