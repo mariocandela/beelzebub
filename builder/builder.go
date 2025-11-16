@@ -79,6 +79,14 @@ func (b *Builder) buildRabbitMQ(rabbitMQURI string) error {
 }
 
 func (b *Builder) Close() error {
+	// Close log file if it was opened
+	if b.logsFile != nil {
+		if err := b.logsFile.Close(); err != nil {
+			return err
+		}
+	}
+
+	// Close RabbitMQ connections
 	if b.rabbitMQConnection != nil {
 		if err := b.rabbitMQChannel.Close(); err != nil {
 			return err
