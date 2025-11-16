@@ -89,7 +89,13 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 		Headers:    command.Headers,
 		StatusCode: command.StatusCode,
 	}
-	traceRequest(request, tr, command, servConf.Description)
+
+	bodyBytes, err := io.ReadAll(request.Body)
+	body := ""
+	if err == nil {
+		body = string(bodyBytes)
+	}
+	traceRequest(request, tr, command, servConf.Description, body)
 
 	if command.Plugin == plugins.LLMPluginName {
 		llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
@@ -101,7 +107,7 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 
 		llmHoneypot := plugins.BuildHoneypot(nil, tracer.HTTP, llmProvider, servConf)
 		llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
-		command := fmt.Sprintf("%s %s", request.Method, request.RequestURI)
+		command := fmt.Sprintf("Method: %s, RequestURI: %s, Body: %s", request.Method, request.RequestURI, body)
 
 		completions, err := llmHoneypotInstance.ExecuteModel(command)
 		if err != nil {
@@ -113,12 +119,7 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 	return resp, nil
 }
 
-func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Command, HoneypotDescription string) {
-	bodyBytes, err := io.ReadAll(request.Body)
-	body := ""
-	if err == nil {
-		body = string(bodyBytes)
-	}
+func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Command, HoneypotDescription, body string) {
 	host, port, _ := net.SplitHostPort(request.RemoteAddr)
 
 	event := tracer.Event{
