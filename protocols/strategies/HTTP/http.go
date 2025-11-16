@@ -90,7 +90,8 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 		StatusCode: command.StatusCode,
 	}
 
-	bodyBytes, err := io.ReadAll(request.Body)
+	// Limit body read to 1MB to prevent DoS attacks
+	bodyBytes, err := io.ReadAll(io.LimitReader(request.Body, 1024*1024))
 	body := ""
 	if err == nil {
 		body = string(bodyBytes)
