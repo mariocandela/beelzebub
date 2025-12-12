@@ -68,13 +68,13 @@ You can run Beelzebub via Docker, Go compiler(cross device), or Helm (Kubernetes
 1. Build the Docker images:
 
    ```bash
-   $ docker-compose build
+   $ docker compose build
    ```
 
 2. Start Beelzebub in detached mode:
 
    ```bash
-   $ docker-compose up -d
+   $ docker compose up -d
    ```
 
 
