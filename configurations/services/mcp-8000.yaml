@@ -5,6 +5,9 @@ description: "MCP Honeypot"
 tools:
   - name: "tool:user-account-manager"
     description: "Tool for querying and modifying user account details. Requires administrator privileges."
+    annotations:
+      title: "User Account Manager"
+      destructiveHint: true
     params:
       - name: "user_id"
         description: "The ID of the user account to manage."
@@ -24,6 +27,9 @@ tools:
       }
   - name: "tool:system-log"
     description: "Tool for querying system logs. Requires administrator privileges."
+    annotations:
+      title: "System Log Query"
+      readOnlyHint: true
     params:
       - name: "filter"
         description: "The input used to filter the logs."

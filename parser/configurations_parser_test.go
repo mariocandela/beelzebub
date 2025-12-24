@@ -93,6 +93,65 @@ func mockReadfilebytesBeelzebubServiceConfigurationDefaultValues(filePath string
 	return beelzebubServiceConfiguration, nil
 }
 
+func mockReadfilebytesToolWithReadOnlyAnnotation(filePath string) ([]byte, error) {
+	beelzebubServiceConfiguration := []byte(`
+apiVersion: "v1"
+protocol: "mcp"
+address: ":8000"
+tools:
+  - name: "tool:query-logs"
+    description: "Query system logs for analysis"
+    annotations:
+      title: "Query Logs"
+      readOnlyHint: true
+    params:
+      - name: "filter"
+        description: "Log filter criteria"
+    handler: "log_query_handler"
+`)
+	return beelzebubServiceConfiguration, nil
+}
+
+func mockReadfilebytesToolWithDestructiveAnnotation(filePath string) ([]byte, error) {
+	beelzebubServiceConfiguration := []byte(`
+apiVersion: "v1"
+protocol: "mcp"
+address: ":8000"
+tools:
+  - name: "tool:delete-user"
+    description: "Delete a user account permanently"
+    annotations:
+      title: "Delete User"
+      destructiveHint: true
+    params:
+      - name: "user_id"
+        description: "The user ID to delete"
+    handler: "delete_user_handler"
+`)
+	return beelzebubServiceConfiguration, nil
+}
+
+func mockReadfilebytesToolWithMultipleAnnotations(filePath string) ([]byte, error) {
+	beelzebubServiceConfiguration := []byte(`
+apiVersion: "v1"
+protocol: "mcp"
+address: ":8000"
+tools:
+  - name: "tool:update-config"
+    description: "Update system configuration"
+    annotations:
+      title: "Update Config"
+      destructiveHint: true
+      idempotentHint: true
+      openWorldHint: false
+    params:
+      - name: "config_key"
+        description: "Configuration key to update"
+    handler: "update_config_handler"
+`)
+	return beelzebubServiceConfiguration, nil
+}
+
 func TestReadConfigurationsCoreError(t *testing.T) {
 	configurationsParser := Init("mockConfigurationsCorePath", "mockConfigurationsServicesDirectory")
 
@@ -370,4 +429,115 @@ func TestCompileCommandRegex(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestToolAnnotationsReadOnlyHint(t *testing.T) {
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesToolWithReadOnlyAnnotation
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	tool := beelzebubServicesConfiguration[0].Tools[0]
+	assert.Equal(t, "tool:query-logs", tool.Name)
+	assert.Equal(t, "Query system logs for analysis", tool.Description)
+
+	// Verify annotations are parsed correctly
+	assert.NotNil(t, tool.Annotations)
+	assert.Equal(t, "Query Logs", tool.Annotations.Title)
+	assert.NotNil(t, tool.Annotations.ReadOnlyHint)
+	assert.True(t, *tool.Annotations.ReadOnlyHint)
+
+	// Other hints should be nil (not specified in YAML)
+	assert.Nil(t, tool.Annotations.DestructiveHint)
+	assert.Nil(t, tool.Annotations.IdempotentHint)
+	assert.Nil(t, tool.Annotations.OpenWorldHint)
+}
+
+func TestToolAnnotationsDestructiveHint(t *testing.T) {
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesToolWithDestructiveAnnotation
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	tool := beelzebubServicesConfiguration[0].Tools[0]
+	assert.Equal(t, "tool:delete-user", tool.Name)
+
+	// Verify annotations are parsed correctly
+	assert.NotNil(t, tool.Annotations)
+	assert.Equal(t, "Delete User", tool.Annotations.Title)
+	assert.NotNil(t, tool.Annotations.DestructiveHint)
+	assert.True(t, *tool.Annotations.DestructiveHint)
+
+	// ReadOnlyHint should be nil (not specified)
+	assert.Nil(t, tool.Annotations.ReadOnlyHint)
+}
+
+func TestToolAnnotationsMultipleHints(t *testing.T) {
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesToolWithMultipleAnnotations
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	tool := beelzebubServicesConfiguration[0].Tools[0]
+	assert.Equal(t, "tool:update-config", tool.Name)
+
+	// Verify all annotations are parsed correctly
+	assert.NotNil(t, tool.Annotations)
+	assert.Equal(t, "Update Config", tool.Annotations.Title)
+
+	assert.NotNil(t, tool.Annotations.DestructiveHint)
+	assert.True(t, *tool.Annotations.DestructiveHint)
+
+	assert.NotNil(t, tool.Annotations.IdempotentHint)
+	assert.True(t, *tool.Annotations.IdempotentHint)
+
+	assert.NotNil(t, tool.Annotations.OpenWorldHint)
+	assert.False(t, *tool.Annotations.OpenWorldHint)
+
+	// ReadOnlyHint should be nil (not specified)
+	assert.Nil(t, tool.Annotations.ReadOnlyHint)
+}
+
+func TestToolWithoutAnnotations(t *testing.T) {
+	configurationsParser := Init("", "")
+	// Uses existing mock that has tools without annotations
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	tool := beelzebubServicesConfiguration[0].Tools[0]
+	assert.Equal(t, "tool:user-account-manager", tool.Name)
+
+	// Annotations should be nil for backward compatibility
+	assert.Nil(t, tool.Annotations)
+
+	// Tool should still be fully functional
+	assert.Equal(t, "Tool for querying and modifying user account details. Requires administrator privileges.", tool.Description)
+	assert.Equal(t, 2, len(tool.Params))
+	assert.Equal(t, "reset_password ok", tool.Handler)
+}
+
+func TestToolAnnotationsHashCodeStability(t *testing.T) {
+	configurationsParser := Init("", "")
+	// Use existing mock without annotations
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	// Existing hash from TestReadConfigurationsServicesGenerateHashCode
+	// This ensures that adding the Annotations field with omitempty doesn't change
+	// the hash for configs that don't use annotations
+	hashCode, errHashCode := beelzebubServicesConfiguration[0].HashCode()
+	assert.Nil(t, errHashCode)
+	assert.Equal(t, "9c349217fdf25f8a1751c33de9e06799a6c96fa996c2dba40df6d2c34c3025a0", hashCode)
 }
