@@ -141,6 +141,19 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 		if err := honeypotsConfig.CompileCommandRegex(); err != nil {
 			return nil, "", fmt.Errorf("unable to load service config from cloud: invalid regex: %v", err)
 		}
+		// Normalize severity values for commands
+		for i := range honeypotsConfig.Commands {
+			honeypotsConfig.Commands[i].Severity = parser.NormalizeSeverity(
+				honeypotsConfig.Commands[i].Severity)
+		}
+		// Normalize severity values for tools
+		for i := range honeypotsConfig.Tools {
+			honeypotsConfig.Tools[i].Severity = parser.NormalizeSeverity(
+				honeypotsConfig.Tools[i].Severity)
+		}
+		// Normalize FallbackCommand severity
+		honeypotsConfig.FallbackCommand.Severity = parser.NormalizeSeverity(
+			honeypotsConfig.FallbackCommand.Severity)
 		servicesConfiguration = append(servicesConfiguration, honeypotsConfig)
 
 		if hashCode, err := honeypotsConfig.HashCode(); err != nil {

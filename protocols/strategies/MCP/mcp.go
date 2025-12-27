@@ -25,7 +25,8 @@ func (mcpStrategy *MCPStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 		server.WithToolCapabilities(false),
 	)
 
-	for _, toolConfig := range servConf.Tools {
+	for _, tc := range servConf.Tools {
+		toolConfig := tc // Capture loop variable for closure
 		if toolConfig.Params == nil || len(toolConfig.Params) == 0 {
 			log.Errorf("Tool %s has no parameters defined", toolConfig.Name)
 			continue
@@ -81,6 +82,9 @@ func (mcpStrategy *MCPStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 				Description:   servConf.Description,
 				Command:       fmt.Sprintf("%s|%s", request.Params.Name, request.Params.Arguments),
 				CommandOutput: toolConfig.Handler,
+				Handler:       toolConfig.Name,
+				Severity:      toolConfig.Severity,
+				IsAlert:       toolConfig.Alert,
 			})
 			return mcp.NewToolResultText(toolConfig.Handler), nil
 		})

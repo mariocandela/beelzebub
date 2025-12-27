@@ -15,6 +15,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Severity levels for alert system
+const (
+	SeverityMedium   = "medium"
+	SeverityHigh     = "high"
+	SeverityCritical = "critical"
+)
+
+// ValidSeverities contains all valid severity values
+var ValidSeverities = map[string]bool{
+	SeverityMedium:   true,
+	SeverityHigh:     true,
+	SeverityCritical: true,
+}
+
 // BeelzebubCoreConfigurations is the struct that contains the configurations of the core
 type BeelzebubCoreConfigurations struct {
 	Core struct {
@@ -101,15 +115,19 @@ type Command struct {
 	StatusCode int            `yaml:"statusCode"`
 	Plugin     string         `yaml:"plugin"`
 	Name       string         `yaml:"name"`
+	Alert      bool           `yaml:"alert,omitempty"`
+	Severity   string         `yaml:"severity,omitempty"`
 }
 
 // Tool is the struct that contains the configurations of the MCP Honeypot
 type Tool struct {
-	Name            string           `yaml:"name" json:"Name"`
-	Description     string           `yaml:"description" json:"Description"`
-	Params          []Param          `yaml:"params" json:"Params"`
-	Handler         string           `yaml:"handler" json:"Handler"`
-	Annotations     *ToolAnnotations `yaml:"annotations,omitempty" json:"Annotations,omitempty"`
+	Name        string           `yaml:"name" json:"Name"`
+	Description string           `yaml:"description" json:"Description"`
+	Params      []Param          `yaml:"params" json:"Params"`
+	Handler     string           `yaml:"handler" json:"Handler"`
+	Annotations *ToolAnnotations `yaml:"annotations,omitempty" json:"Annotations,omitempty"`
+	Alert       bool             `yaml:"alert,omitempty" json:"Alert,omitempty"`
+	Severity    string           `yaml:"severity,omitempty" json:"Severity,omitempty"`
 }
 
 // ToolAnnotations contains MCP tool annotation hints for LLM clients
@@ -187,6 +205,19 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 		if err := beelzebubServiceConfiguration.CompileCommandRegex(); err != nil {
 			return nil, fmt.Errorf("in file %s: invalid regex: %v", filePath, err)
 		}
+		// Normalize severity values for commands
+		for i := range beelzebubServiceConfiguration.Commands {
+			beelzebubServiceConfiguration.Commands[i].Severity = NormalizeSeverity(
+				beelzebubServiceConfiguration.Commands[i].Severity)
+		}
+		// Normalize severity values for tools
+		for i := range beelzebubServiceConfiguration.Tools {
+			beelzebubServiceConfiguration.Tools[i].Severity = NormalizeSeverity(
+				beelzebubServiceConfiguration.Tools[i].Severity)
+		}
+		// Normalize FallbackCommand severity
+		beelzebubServiceConfiguration.FallbackCommand.Severity = NormalizeSeverity(
+			beelzebubServiceConfiguration.FallbackCommand.Severity)
 		servicesConfiguration = append(servicesConfiguration, *beelzebubServiceConfiguration)
 	}
 
@@ -224,4 +255,18 @@ func gelAllFilesNameByDirName(dirName string) ([]string, error) {
 
 func readFileBytesByFilePath(filePath string) ([]byte, error) {
 	return os.ReadFile(filePath)
+}
+
+// NormalizeSeverity validates and normalizes a severity value.
+// Returns "medium" for empty or invalid values (silent fallback).
+func NormalizeSeverity(severity string) string {
+	if severity == "" {
+		return SeverityMedium
+	}
+	normalized := strings.ToLower(strings.TrimSpace(severity))
+	if ValidSeverities[normalized] {
+		return normalized
+	}
+	// Silent fallback to default as per requirements
+	return SeverityMedium
 }
