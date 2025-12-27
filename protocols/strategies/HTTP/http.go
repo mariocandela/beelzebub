@@ -141,6 +141,8 @@ func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Comman
 		ID:              uuid.New().String(),
 		Description:     HoneypotDescription,
 		Handler:         command.Name,
+		Severity:        command.Severity,
+		IsAlert:         command.Alert,
 	}
 	// Capture the TLS details from the request, if provided.
 	if request.TLS != nil {

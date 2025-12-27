@@ -3,6 +3,20 @@ protocol: "ssh"
 address: ":22"
 description: "SSH interactive"
 commands:
+  # High-value tripwire commands - trigger alerts when attackers attempt these
+  - regex: "^cat /etc/shadow$"
+    handler: "cat: /etc/shadow: Permission denied"
+    alert: true
+    severity: "critical"
+  - regex: "^cat /etc/passwd$"
+    handler: "root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin"
+    alert: true
+    severity: "high"
+  - regex: "^(wget|curl) .*$"
+    handler: "command not found"
+    alert: true
+    severity: "high"
+  # Normal commands - no alerts
   - regex: "^ls$"
     handler: "Documents Images  Desktop Downloads .m2 .kube .ssh  .docker"
   - regex: "^pwd$"
