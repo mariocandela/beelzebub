@@ -117,7 +117,11 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 					RegexStr: "^(.+)$",
 					Regex:    regexp.MustCompile("^(.+)$"),
 					Plugin:   "LLMHoneypot",
+					Severity: "medium", // Normalized default
 				},
+			},
+			FallbackCommand: parser.Command{
+				Severity: "medium", // Normalized default
 			},
 			ServerVersion:          "OpenSSH",
 			ServerName:             "ubuntu",
@@ -129,7 +133,8 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 			},
 		},
 	}, &result)
-	assert.Equal(t, "ce1980af6e5f88063341fa4ccc12ff7355fa4f283872da181959a12b51dea041", configurationsHash)
+	// Hash updated after adding Alert/Severity fields with severity normalization to "medium"
+	assert.Equal(t, "e79e327d51bcd756f2b6c0a12aa93524972a4c048005aa3ebfe907511cdae018", configurationsHash)
 	assert.Nil(t, err)
 }
 
