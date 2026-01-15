@@ -100,26 +100,98 @@ func TestUpdatePrometheusCounters(t *testing.T) {
 	mockStrategy := func(event Event) {}
 
 	tracer := &tracer{
-		strategy:        mockStrategy,
-		eventsChan:      make(chan Event, Workers),
-		eventsTotal:     mockCounter{},
-		eventsSSHTotal:  mockCounter{},
-		eventsTCPTotal:  mockCounter{},
-		eventsHTTPTotal: mockCounter{},
-		eventsMCPTotal:  mockCounter{},
+		strategy:                    mockStrategy,
+		eventsChan:                  make(chan Event, Workers),
+		eventsTotal:                 mockCounter{},
+		eventsSSHTotal:              mockCounter{},
+		eventsTCPTotal:              mockCounter{},
+		eventsHTTPTotal:             mockCounter{},
+		eventsMCPTotal:              mockCounter{},
+		eventsSeverityMediumTotal:   mockCounter{},
+		eventsSeverityHighTotal:     mockCounter{},
+		eventsSeverityCriticalTotal: mockCounter{},
+		alertsTotal:                 mockCounter{},
 	}
 
-	tracer.updatePrometheusCounters(SSH.String())
-	assert.Equal(t, 2, counter)
+	counter = 0 // Reset counter
 
-	tracer.updatePrometheusCounters(HTTP.String())
-	assert.Equal(t, 4, counter)
+	tracer.updatePrometheusCounters(SSH.String(), "medium", false)
+	assert.Equal(t, 3, counter) // eventsSSHTotal + eventsTotal + eventsSeverityMediumTotal
 
-	tracer.updatePrometheusCounters(TCP.String())
+	tracer.updatePrometheusCounters(HTTP.String(), "medium", false)
 	assert.Equal(t, 6, counter)
 
-	tracer.updatePrometheusCounters(MCP.String())
-	assert.Equal(t, 8, counter)
+	tracer.updatePrometheusCounters(TCP.String(), "medium", false)
+	assert.Equal(t, 9, counter)
+
+	tracer.updatePrometheusCounters(MCP.String(), "medium", false)
+	assert.Equal(t, 12, counter)
+}
+
+func TestUpdatePrometheusCountersSeverity(t *testing.T) {
+	mockStrategy := func(event Event) {}
+
+	tracer := &tracer{
+		strategy:                    mockStrategy,
+		eventsChan:                  make(chan Event, Workers),
+		eventsTotal:                 mockCounter{},
+		eventsSSHTotal:              mockCounter{},
+		eventsTCPTotal:              mockCounter{},
+		eventsHTTPTotal:             mockCounter{},
+		eventsMCPTotal:              mockCounter{},
+		eventsSeverityMediumTotal:   mockCounter{},
+		eventsSeverityHighTotal:     mockCounter{},
+		eventsSeverityCriticalTotal: mockCounter{},
+		alertsTotal:                 mockCounter{},
+	}
+
+	counter = 0 // Reset counter
+
+	// Test medium severity (default)
+	tracer.updatePrometheusCounters(SSH.String(), "medium", false)
+	assert.Equal(t, 3, counter) // SSH + total + medium
+
+	// Test high severity
+	tracer.updatePrometheusCounters(SSH.String(), "high", false)
+	assert.Equal(t, 6, counter) // SSH + total + high
+
+	// Test critical severity
+	tracer.updatePrometheusCounters(SSH.String(), "critical", false)
+	assert.Equal(t, 9, counter) // SSH + total + critical
+
+	// Test empty severity defaults to medium
+	tracer.updatePrometheusCounters(SSH.String(), "", false)
+	assert.Equal(t, 12, counter) // SSH + total + medium (default)
+
+	// Test alert flag
+	tracer.updatePrometheusCounters(SSH.String(), "critical", true)
+	assert.Equal(t, 16, counter) // SSH + total + critical + alerts
+}
+
+func TestTraceEventWithSeverity(t *testing.T) {
+	eventCalled := Event{}
+	var wg sync.WaitGroup
+
+	mockStrategy := func(event Event) {
+		defer wg.Done()
+		eventCalled = event
+	}
+
+	tracer := GetInstance(mockStrategy)
+	tracer.strategy = mockStrategy
+
+	wg.Add(1)
+	tracer.TraceEvent(Event{
+		ID:       "mockID",
+		Protocol: SSH.String(),
+		Status:   Interaction.String(),
+		Severity: "critical",
+		IsAlert:  true,
+	})
+	wg.Wait()
+
+	assert.Equal(t, "critical", eventCalled.Severity)
+	assert.True(t, eventCalled.IsAlert)
 }
 
 func TestGetStrategy(t *testing.T) {

@@ -36,8 +36,10 @@ type Event struct {
 	Description     string
 	SourceIp        string
 	SourcePort      string
-	TLSServerName   string
-	Handler         string
+	TLSServerName string
+	Handler       string
+	Severity      string // "medium"|"high"|"critical"
+	IsAlert       bool   // true if this event should trigger an alert
 }
 
 type (
@@ -82,6 +84,12 @@ type tracer struct {
 	eventsHTTPTotal prometheus.Counter
 	eventsMCPTotal  prometheus.Counter
 
+	// Severity counters
+	eventsSeverityMediumTotal   prometheus.Counter
+	eventsSeverityHighTotal     prometheus.Counter
+	eventsSeverityCriticalTotal prometheus.Counter
+	alertsTotal                 prometheus.Counter
+
 	strategyMutex sync.RWMutex
 }
 
@@ -122,6 +130,26 @@ func GetInstance(defaultStrategy Strategy) *tracer {
 					Name:      "mcp_events_total",
 					Help:      "The total number of MCP events",
 				}),
+				eventsSeverityMediumTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "events_severity_medium_total",
+					Help:      "The total number of events with medium severity",
+				}),
+				eventsSeverityHighTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "events_severity_high_total",
+					Help:      "The total number of events with high severity",
+				}),
+				eventsSeverityCriticalTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "events_severity_critical_total",
+					Help:      "The total number of events with critical severity",
+				}),
+				alertsTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "alerts_total",
+					Help:      "The total number of alert events",
+				}),
 			}
 
 			for i := 0; i < Workers; i++ {
@@ -155,10 +183,10 @@ func (tracer *tracer) TraceEvent(event Event) {
 
 	tracer.eventsChan <- event
 
-	tracer.updatePrometheusCounters(event.Protocol)
+	tracer.updatePrometheusCounters(event.Protocol, event.Severity, event.IsAlert)
 }
 
-func (tracer *tracer) updatePrometheusCounters(protocol string) {
+func (tracer *tracer) updatePrometheusCounters(protocol, severity string, isAlert bool) {
 	switch protocol {
 	case HTTP.String():
 		tracer.eventsHTTPTotal.Inc()
@@ -170,4 +198,20 @@ func (tracer *tracer) updatePrometheusCounters(protocol string) {
 		tracer.eventsMCPTotal.Inc()
 	}
 	tracer.eventsTotal.Inc()
+
+	// Update severity counters
+	switch severity {
+	case "high":
+		tracer.eventsSeverityHighTotal.Inc()
+	case "critical":
+		tracer.eventsSeverityCriticalTotal.Inc()
+	default:
+		// Default to medium if not specified (backward compatibility)
+		tracer.eventsSeverityMediumTotal.Inc()
+	}
+
+	// Update alerts counter
+	if isAlert {
+		tracer.alertsTotal.Inc()
+	}
 }

@@ -84,6 +84,8 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								Command:       sess.RawCommand(),
 								CommandOutput: commandOutput,
 								Handler:       command.Name,
+								Severity:      command.Severity,
+								IsAlert:       command.Alert,
 							})
 							return
 						}
@@ -154,6 +156,8 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								Protocol:      tracer.SSH.String(),
 								Description:   servConf.Description,
 								Handler:       command.Name,
+								Severity:      command.Severity,
+								IsAlert:       command.Alert,
 							})
 							break // Inner range over commands.
 						}

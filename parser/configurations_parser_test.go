@@ -253,7 +253,8 @@ func TestReadConfigurationsServicesGenerateHashCode(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Nil(t, errHashCode)
-	assert.Equal(t, hashCode, "9c349217fdf25f8a1751c33de9e06799a6c96fa996c2dba40df6d2c34c3025a0")
+	// Hash updated after adding Alert/Severity fields with severity normalization to "medium"
+	assert.Equal(t, hashCode, "80107100eb04b61ba95a0a38c36ebd5fbfed40516f137ff66cde2e39474eecf2")
 }
 
 func TestReadConfigurationsPluginGuardrailsValid(t *testing.T) {
@@ -534,10 +535,148 @@ func TestToolAnnotationsHashCodeStability(t *testing.T) {
 	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
 	assert.Nil(t, err)
 
-	// Existing hash from TestReadConfigurationsServicesGenerateHashCode
+	// Hash from TestReadConfigurationsServicesGenerateHashCode
 	// This ensures that adding the Annotations field with omitempty doesn't change
 	// the hash for configs that don't use annotations
+	// Hash updated after adding Alert/Severity fields with severity normalization to "medium"
 	hashCode, errHashCode := beelzebubServicesConfiguration[0].HashCode()
 	assert.Nil(t, errHashCode)
-	assert.Equal(t, "9c349217fdf25f8a1751c33de9e06799a6c96fa996c2dba40df6d2c34c3025a0", hashCode)
+	assert.Equal(t, "80107100eb04b61ba95a0a38c36ebd5fbfed40516f137ff66cde2e39474eecf2", hashCode)
+}
+
+func TestNormalizeSeverity(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"", "medium"},
+		{"medium", "medium"},
+		{"high", "high"},
+		{"critical", "critical"},
+		{"CRITICAL", "critical"},   // Case insensitive
+		{"  High  ", "high"},       // Trimmed
+		{"low", "medium"},          // Invalid -> fallback
+		{"warning", "medium"},      // Invalid -> fallback
+		{"invalid", "medium"},      // Invalid -> fallback
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := NormalizeSeverity(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func mockReadfilebytesCommandWithAlertSeverity(filePath string) ([]byte, error) {
+	beelzebubServiceConfiguration := []byte(`
+apiVersion: "v1"
+protocol: "ssh"
+address: ":22"
+description: "SSH with alerts"
+commands:
+  - regex: "^cat /etc/passwd$"
+    handler: "root:x:0:0:root:/root:/bin/bash"
+    alert: true
+    severity: "critical"
+  - regex: "^ls$"
+    handler: "Documents"
+    alert: false
+    severity: "medium"
+  - regex: "^whoami$"
+    handler: "root"
+`)
+	return beelzebubServiceConfiguration, nil
+}
+
+func TestCommandAlertSeverity(t *testing.T) {
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesCommandWithAlertSeverity
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	commands := beelzebubServicesConfiguration[0].Commands
+
+	// First command: explicit alert=true, severity=critical
+	assert.True(t, commands[0].Alert)
+	assert.Equal(t, "critical", commands[0].Severity)
+
+	// Second command: explicit alert=false, severity=medium
+	assert.False(t, commands[1].Alert)
+	assert.Equal(t, "medium", commands[1].Severity)
+
+	// Third command: no alert/severity - defaults
+	assert.False(t, commands[2].Alert)
+	assert.Equal(t, "medium", commands[2].Severity) // Normalized
+}
+
+func mockReadfilebytesToolWithAlertSeverity(filePath string) ([]byte, error) {
+	beelzebubServiceConfiguration := []byte(`
+apiVersion: "v1"
+protocol: "mcp"
+address: ":8000"
+tools:
+  - name: "tool:delete-database"
+    description: "Delete entire database"
+    alert: true
+    severity: "critical"
+    params:
+      - name: "confirm"
+        description: "Confirmation"
+    handler: "deleted"
+  - name: "tool:list-files"
+    description: "List files"
+    severity: "low"
+    params:
+      - name: "path"
+        description: "Path"
+    handler: "files"
+`)
+	return beelzebubServiceConfiguration, nil
+}
+
+func TestToolAlertSeverity(t *testing.T) {
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesToolWithAlertSeverity
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	tools := beelzebubServicesConfiguration[0].Tools
+
+	// First tool: alert=true, severity=critical
+	assert.True(t, tools[0].Alert)
+	assert.Equal(t, "critical", tools[0].Severity)
+
+	// Second tool: invalid severity "low" should fallback to "medium"
+	assert.False(t, tools[1].Alert)
+	assert.Equal(t, "medium", tools[1].Severity) // Fallback
+}
+
+func TestFallbackCommandSeverityNormalization(t *testing.T) {
+	mockConfig := func(filePath string) ([]byte, error) {
+		return []byte(`
+apiVersion: "v1"
+protocol: "http"
+address: ":80"
+fallbackCommand:
+  handler: "404 Not Found"
+  severity: "INVALID_SEVERITY"
+  alert: true
+`), nil
+	}
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockConfig
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	beelzebubServicesConfiguration, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	// FallbackCommand severity should be normalized to "medium"
+	assert.Equal(t, "medium", beelzebubServicesConfiguration[0].FallbackCommand.Severity)
+	assert.True(t, beelzebubServicesConfiguration[0].FallbackCommand.Alert)
 }
