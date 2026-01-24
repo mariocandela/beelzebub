@@ -50,10 +50,11 @@ const (
 	SSH
 	TCP
 	MCP
+	TELNET
 )
 
 func (protocol Protocol) String() string {
-	return [...]string{"HTTP", "SSH", "TCP", "MCP"}[protocol]
+	return [...]string{"HTTP", "SSH", "TCP", "MCP", "TELNET"}[protocol]
 }
 
 const (
@@ -74,13 +75,14 @@ type Tracer interface {
 }
 
 type tracer struct {
-	strategy        Strategy
-	eventsChan      chan Event
-	eventsTotal     prometheus.Counter
-	eventsSSHTotal  prometheus.Counter
-	eventsTCPTotal  prometheus.Counter
-	eventsHTTPTotal prometheus.Counter
-	eventsMCPTotal  prometheus.Counter
+	strategy          Strategy
+	eventsChan        chan Event
+	eventsTotal       prometheus.Counter
+	eventsSSHTotal    prometheus.Counter
+	eventsTCPTotal    prometheus.Counter
+	eventsHTTPTotal   prometheus.Counter
+	eventsMCPTotal    prometheus.Counter
+	eventsTelnetTotal prometheus.Counter
 
 	strategyMutex sync.RWMutex
 }
@@ -121,6 +123,11 @@ func GetInstance(defaultStrategy Strategy) *tracer {
 					Namespace: "beelzebub",
 					Name:      "mcp_events_total",
 					Help:      "The total number of MCP events",
+				}),
+				eventsTelnetTotal: promauto.NewCounter(prometheus.CounterOpts{
+					Namespace: "beelzebub",
+					Name:      "telnet_events_total",
+					Help:      "The total number of TELNET events",
 				}),
 			}
 
@@ -168,6 +175,8 @@ func (tracer *tracer) updatePrometheusCounters(protocol string) {
 		tracer.eventsTCPTotal.Inc()
 	case MCP.String():
 		tracer.eventsMCPTotal.Inc()
+	case TELNET.String():
+		tracer.eventsTelnetTotal.Inc()
 	}
 	tracer.eventsTotal.Inc()
 }

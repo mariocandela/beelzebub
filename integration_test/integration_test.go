@@ -29,16 +29,42 @@ import (
 
 type IntegrationTestSuite struct {
 	suite.Suite
-	beelzebubBuilder *builder.Builder
-	prometheusHost   string
-	httpHoneypotHost string
-	tcpHoneypotHost  string
-	sshHoneypotHost  string
-	rabbitMQURI      string
+	beelzebubBuilder   *builder.Builder
+	prometheusHost     string
+	httpHoneypotHost   string
+	tcpHoneypotHost    string
+	sshHoneypotHost    string
+	telnetHoneypotHost string
+	rabbitMQURI        string
 
 	tlsCertPath string
 	tlsKeyPath  string
 	tlsCleanup  func()
+}
+
+// readTelnetUntil reads from connection until it finds the expected string, skipping IAC sequences
+func readTelnetUntil(conn *net.TCPConn, expected string) (string, error) {
+	reply := make([]byte, 4096)
+	var fullResponse string
+
+	for {
+		n, err := conn.Read(reply)
+		if err != nil {
+			return "", err
+		}
+
+		fullResponse += string(reply[:n])
+
+		// Check if response contains expected string
+		if strings.Contains(fullResponse, expected) {
+			return fullResponse, nil
+		}
+
+		// If we've accumulated a lot of data without finding the expected string, something is wrong
+		if len(fullResponse) > 8192 {
+			return fullResponse, nil
+		}
+	}
 }
 
 func TestIntegrationTestSuite(t *testing.T) {
@@ -119,6 +145,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.httpHoneypotHost = "http://localhost:8080"
 	suite.tcpHoneypotHost = "localhost:3306"
 	suite.sshHoneypotHost = "localhost"
+	suite.telnetHoneypotHost = "localhost:2300"
 	suite.prometheusHost = "http://localhost:2112/metrics"
 
 	suite.tlsCertPath, suite.tlsKeyPath, suite.tlsCleanup = generateTLSCertInCertsDir(suite.T())
@@ -263,6 +290,290 @@ func (suite *IntegrationTestSuite) TestInvokeSSHHoneypot() {
 	suite.Require().NoError(err)
 
 	suite.Equal("root@ubuntu:~$ ", string(out))
+}
+
+func (suite *IntegrationTestSuite) TestInvokeTelnetHoneypot() {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", suite.telnetHoneypotHost)
+	suite.Require().NoError(err)
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	suite.Require().NoError(err)
+	defer conn.Close()
+
+	// Set read/write timeout
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Read login prompt and send username
+	response, err := readTelnetUntil(conn, "login:")
+	suite.Require().NoError(err)
+	suite.Contains(response, "login:")
+
+	_, err = conn.Write([]byte("root\r\n"))
+	suite.Require().NoError(err)
+
+	// Read password prompt and send password
+	response, err = readTelnetUntil(conn, "Password:")
+	suite.Require().NoError(err)
+	suite.Contains(response, "Password:")
+
+	_, err = conn.Write([]byte("test\r\n"))
+	suite.Require().NoError(err)
+
+	// Read initial prompt
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+	suite.Contains(response, "root@test-server:~$")
+
+	// Send a command
+	_, err = conn.Write([]byte("whoami\r\n"))
+	suite.Require().NoError(err)
+
+	// Read response
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+	suite.Contains(response, "root")
+
+	// Send exit command
+	_, err = conn.Write([]byte("exit\r\n"))
+	suite.Require().NoError(err)
+}
+
+func (suite *IntegrationTestSuite) TestTelnetAuthenticationFailure() {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", suite.telnetHoneypotHost)
+	suite.Require().NoError(err)
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	suite.Require().NoError(err)
+	defer conn.Close()
+
+	// Set read/write timeout
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Read login prompt
+	response, err := readTelnetUntil(conn, "login:")
+	suite.Require().NoError(err)
+	suite.Contains(response, "login:")
+
+	// Send invalid username
+	_, err = conn.Write([]byte("invaliduser\r\n"))
+	suite.Require().NoError(err)
+
+	// Read password prompt
+	response, err = readTelnetUntil(conn, "Password:")
+	suite.Require().NoError(err)
+	suite.Contains(response, "Password:")
+
+	// Send invalid password
+	_, err = conn.Write([]byte("invalidpass\r\n"))
+	suite.Require().NoError(err)
+
+	// Should receive login incorrect message
+	response, err = readTelnetUntil(conn, "Login incorrect")
+	suite.Require().NoError(err)
+	suite.Contains(response, "Login incorrect")
+}
+
+func (suite *IntegrationTestSuite) TestTelnetCommandResponses() {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", suite.telnetHoneypotHost)
+	suite.Require().NoError(err)
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	suite.Require().NoError(err)
+	defer conn.Close()
+
+	// Set read/write timeout
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Authenticate
+	response, err := readTelnetUntil(conn, "login:")
+	suite.Require().NoError(err)
+
+	_, err = conn.Write([]byte("root\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "Password:")
+	suite.Require().NoError(err)
+
+	_, err = conn.Write([]byte("test\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+
+	// Test pwd command
+	_, err = conn.Write([]byte("pwd\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+	suite.Contains(response, "/root")
+
+	// Test id command
+	_, err = conn.Write([]byte("id\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+	suite.Contains(response, "uid=0(root)")
+
+	// Test ls command
+	_, err = conn.Write([]byte("ls\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+	suite.Contains(response, "bin")
+	suite.Contains(response, "boot")
+
+	// Test uname command
+	_, err = conn.Write([]byte("uname\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+	suite.Contains(response, "Linux")
+
+	// Send exit
+	_, err = conn.Write([]byte("exit\r\n"))
+	suite.Require().NoError(err)
+}
+
+func (suite *IntegrationTestSuite) TestTelnetUnknownCommand() {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", suite.telnetHoneypotHost)
+	suite.Require().NoError(err)
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	suite.Require().NoError(err)
+	defer conn.Close()
+
+	// Set read/write timeout
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Authenticate
+	response, err := readTelnetUntil(conn, "login:")
+	suite.Require().NoError(err)
+
+	_, err = conn.Write([]byte("root\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "Password:")
+	suite.Require().NoError(err)
+
+	_, err = conn.Write([]byte("test\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+
+	// Send unknown command
+	_, err = conn.Write([]byte("unknowncmd\r\n"))
+	suite.Require().NoError(err)
+
+	// Should receive command not found message
+	response, err = readTelnetUntil(conn, "command not found")
+	suite.Require().NoError(err)
+	suite.Contains(response, "command not found")
+
+	// Send exit
+	_, err = conn.Write([]byte("exit\r\n"))
+	suite.Require().NoError(err)
+}
+
+func (suite *IntegrationTestSuite) TestTelnetSequenceOfCommands() {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", suite.telnetHoneypotHost)
+	suite.Require().NoError(err)
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	suite.Require().NoError(err)
+	defer conn.Close()
+
+	// Set read/write timeout
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Authenticate
+	response, err := readTelnetUntil(conn, "login:")
+	suite.Require().NoError(err)
+	suite.Contains(response, "login:")
+
+	_, err = conn.Write([]byte("root\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "Password:")
+	suite.Require().NoError(err)
+	suite.Contains(response, "Password:")
+
+	_, err = conn.Write([]byte("test\r\n"))
+	suite.Require().NoError(err)
+
+	response, err = readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+	suite.Contains(response, "root@test-server:~$")
+
+	// Execute multiple commands in sequence
+	commands := []struct {
+		cmd      string
+		expected string
+	}{
+		{"pwd\r\n", "/root"},
+		{"whoami\r\n", "root"},
+		{"uname\r\n", "Linux"},
+		{"id\r\n", "uid=0(root)"},
+	}
+
+	for _, cmdTest := range commands {
+		_, err := conn.Write([]byte(cmdTest.cmd))
+		suite.Require().NoError(err)
+
+		cmdResponse, err := readTelnetUntil(conn, "root@test-server:~$")
+		suite.Require().NoError(err)
+		suite.Contains(cmdResponse, cmdTest.expected, "Command: %s", cmdTest.cmd)
+		suite.Contains(cmdResponse, "root@test-server:~$", "Expected prompt after command: %s", cmdTest.cmd)
+	}
+
+	// Send exit
+	_, err = conn.Write([]byte("exit\r\n"))
+	suite.Require().NoError(err)
+}
+
+func (suite *IntegrationTestSuite) TestTelnetPromptCorrectness() {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", suite.telnetHoneypotHost)
+	suite.Require().NoError(err)
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	suite.Require().NoError(err)
+	defer conn.Close()
+
+	// Set read/write timeout
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Verify login prompt
+	loginPrompt, err := readTelnetUntil(conn, "login:")
+	suite.Require().NoError(err)
+	suite.Contains(loginPrompt, "login:")
+
+	// Send username
+	_, err = conn.Write([]byte("root\r\n"))
+	suite.Require().NoError(err)
+
+	// Verify password prompt
+	passwordPrompt, err := readTelnetUntil(conn, "Password:")
+	suite.Require().NoError(err)
+	suite.Contains(passwordPrompt, "Password:")
+
+	// Send password
+	_, err = conn.Write([]byte("test\r\n"))
+	suite.Require().NoError(err)
+
+	// Verify terminal prompt format
+	terminalPrompt, err := readTelnetUntil(conn, "root@test-server:~$")
+	suite.Require().NoError(err)
+	suite.Contains(terminalPrompt, "root@test-server:~$")
+	suite.NotContains(terminalPrompt, "login:")
+	suite.NotContains(terminalPrompt, "Password:")
+
+	// Send exit
+	_, err = conn.Write([]byte("exit\r\n"))
+	suite.Require().NoError(err)
 }
 
 func (suite *IntegrationTestSuite) TestRabbitMQ() {
