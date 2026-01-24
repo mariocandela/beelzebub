@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/mariocandela/beelzebub/v3/protocols/strategies/MCP"
+	"github.com/mariocandela/beelzebub/v3/protocols/strategies/TELNET"
 
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/plugins"
@@ -123,6 +124,7 @@ Honeypot Framework, happy hacking!`)
 	hypertextTransferProtocolStrategy := &HTTP.HTTPStrategy{}
 	transmissionControlProtocolStrategy := &TCP.TCPStrategy{}
 	modelContextProtocolStrategy := &MCP.MCPStrategy{}
+	telnetStrategy := &TELNET.TelnetStrategy{}
 
 	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
@@ -152,6 +154,8 @@ Honeypot Framework, happy hacking!`)
 			protocolManager.SetProtocolStrategy(transmissionControlProtocolStrategy)
 		case "mcp":
 			protocolManager.SetProtocolStrategy(modelContextProtocolStrategy)
+		case "telnet":
+			protocolManager.SetProtocolStrategy(telnetStrategy)
 		default:
 			log.Fatalf("protocol %s not managed", beelzebubServiceConfiguration.Protocol)
 		}
