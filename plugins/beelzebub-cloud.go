@@ -126,7 +126,7 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 	var honeypotsConfig []HoneypotConfigResponseDTO
 
 	if err = json.Unmarshal(response.Body(), &honeypotsConfig); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("failed to parse honeypots response: %w, body: %s", err, string(response.Body()))
 	}
 
 	var servicesConfiguration = make([]parser.BeelzebubServiceConfiguration, 0)
