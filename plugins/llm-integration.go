@@ -138,7 +138,7 @@ func (llmHoneypot *LLMHoneypot) buildPrompt(command string) ([]Message, error) {
 	var prompt string
 
 	switch llmHoneypot.Protocol {
-	case tracer.SSH:
+	case tracer.SSH, tracer.TELNET:
 		prompt = systemPromptVirtualizeLinuxTerminal
 		if llmHoneypot.CustomPrompt != "" {
 			prompt = llmHoneypot.CustomPrompt
@@ -194,7 +194,7 @@ func (llmHoneypot *LLMHoneypot) buildInputValidationPrompt(command string) ([]Me
 
 	if prompt == "" {
 		switch llmHoneypot.Protocol {
-		case tracer.SSH:
+		case tracer.SSH, tracer.TELNET:
 			prompt = inputValidationPromptSSH
 		case tracer.HTTP:
 			prompt = inputValidationPromptHTTP
@@ -223,7 +223,7 @@ func (llmHoneypot *LLMHoneypot) buildOutputValidationPrompt(command string) ([]M
 
 	if prompt == "" {
 		switch llmHoneypot.Protocol {
-		case tracer.SSH:
+		case tracer.SSH, tracer.TELNET:
 			prompt = outputValidationPromptSSH
 		case tracer.HTTP:
 			prompt = outputValidationPromptHTTP

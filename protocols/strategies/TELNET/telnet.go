@@ -1,7 +1,6 @@
 package TELNET
 
 import (
-	"bytes"
 	"fmt"
 	"net"
 	"regexp"
@@ -20,8 +19,12 @@ import (
 // Telnet IAC (Interpret As Command) constants
 const (
 	IAC               = 255 // Interpret As Command
+	DO                = 253 // Do perform option
+	DONT              = 254 // Don't perform option
 	WILL              = 251 // Will perform option
 	WONT              = 252 // Won't perform option
+	SB                = 250 // Subnegotiation Begin
+	SE                = 240 // Subnegotiation End
 	ECHO              = 1   // Echo option
 	SUPPRESS_GO_AHEAD = 3   // Suppress Go Ahead option
 )
@@ -37,7 +40,7 @@ func (telnetStrategy *TelnetStrategy) Init(servConf parser.BeelzebubServiceConfi
 	go telnetStrategy.Sessions.HistoryCleaner()
 
 	go func() {
-		listener, err := net.Listen("tcp4", servConf.Address)
+		listener, err := net.Listen("tcp", servConf.Address)
 		if err != nil {
 			log.Errorf("error during init TELNET Protocol: %s", err.Error())
 			return
@@ -77,14 +80,11 @@ func handleTelnetConnection(conn net.Conn, servConf parser.BeelzebubServiceConfi
 
 	host, port, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
-	// Negotiate telnet options
+	// Drain any unsolicited client negotiation requests
 	negotiateTelnet(conn)
 
-	// Read and discard any client responses to our IAC
-	drainInitialInput(conn)
-
 	// Authentication phase
-	_, err := conn.Write([]byte("login: \r\n"))
+	_, err := conn.Write([]byte("\r\nlogin: "))
 	if err != nil {
 		return
 	}
@@ -193,6 +193,10 @@ func handleTelnetConnection(conn net.Conn, servConf parser.BeelzebubServiceConfi
 			if command.Regex.MatchString(commandInput) {
 				matched = true
 				commandOutput := command.Handler
+				handlerName := command.Name
+				if handlerName == "" {
+					handlerName = "configured_regex"
+				}
 
 				// LLM integration - exactly like SSH
 				if command.Plugin == plugins.LLMPluginName {
@@ -233,8 +237,9 @@ func handleTelnetConnection(conn net.Conn, servConf parser.BeelzebubServiceConfi
 					CommandOutput: commandOutput,
 					ID:            uuidSession.String(),
 					Protocol:      tracer.TELNET.String(),
+					User:          username,
 					Description:   servConf.Description,
-					Handler:       command.Name,
+					Handler:       handlerName,
 				})
 
 				break // Found match, exit command loop
@@ -260,6 +265,7 @@ func handleTelnetConnection(conn net.Conn, servConf parser.BeelzebubServiceConfi
 				CommandOutput: commandOutput,
 				ID:            uuidSession.String(),
 				Protocol:      tracer.TELNET.String(),
+				User:          username,
 				Description:   servConf.Description,
 				Handler:       "not_found",
 			})
@@ -277,28 +283,11 @@ func handleTelnetConnection(conn net.Conn, servConf parser.BeelzebubServiceConfi
 
 func negotiateTelnet(conn net.Conn) {
 	// Minimal telnet negotiation
-	// Send what we support but don't wait for client response
-	// Many simple telnet clients don't handle complex negotiation
-	conn.Write([]byte{IAC, WILL, ECHO})
-	conn.Write([]byte{IAC, WILL, SUPPRESS_GO_AHEAD})
-	// Don't read or wait for responses
-}
-
-func drainInitialInput(conn net.Conn) {
-	// Read and discard any IAC sequences the client sends back
-	// Set a longer timeout to ensure we catch all negotiation bytes
-	conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
-
+	// Don't send WILL ECHO or SUPPRESS_GO_AHEAD, let client stay in NVT line mode
+	// WILL ECHO is only used during password phase to hide input
 	buf := make([]byte, 256)
-	for {
-		_, err := conn.Read(buf)
-		if err != nil {
-			// Timeout or other error - we're done
-			break
-		}
-	}
-
-	// Reset to no deadline
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	conn.Read(buf)
 	conn.SetReadDeadline(time.Time{})
 }
 
@@ -306,7 +295,6 @@ func readLine(conn net.Conn) (string, error) {
 	// Read one byte at a time until we get a newline
 	var line []byte
 	buf := make([]byte, 1)
-	var i int = 0
 
 	for {
 		_, err := conn.Read(buf)
@@ -314,46 +302,47 @@ func readLine(conn net.Conn) (string, error) {
 			return "", err
 		}
 
-		byte := buf[0]
+		b := buf[0]
 
-		// Check for IAC (Interpret As Command) - skip it and next 2 bytes
-		if byte == IAC && i+2 < 256 {
-			// Read and discard the next 2 bytes
-			conn.Read(buf) // command
-			conn.Read(buf) // option
+		// Skip IAC (Interpret As Command) sequences
+		if b == IAC {
+			if _, err := conn.Read(buf); err != nil {
+				return "", err
+			}
+			cmd := buf[0]
+			if cmd == SB {
+				// Subnegotiation: skip until IAC SE
+				for {
+					if _, err := conn.Read(buf); err != nil {
+						return "", err
+					}
+					if buf[0] == IAC {
+						if _, err := conn.Read(buf); err != nil {
+							return "", err
+						}
+						if buf[0] == SE {
+							break
+						}
+					}
+				}
+			} else if cmd == WILL || cmd == WONT || cmd == DO || cmd == DONT {
+				conn.Read(buf) // discard option byte
+			}
 			continue
 		}
 
 		// Check for newline
-		if byte == '\n' {
+		if b == '\n' {
 			break
 		}
 
-		// Skip carriage returns but keep other characters
-		if byte != '\r' {
-			line = append(line, byte)
+		// Only keep printable ASCII and tab, skip control bytes
+		if b >= 32 && b <= 126 || b == '\t' {
+			line = append(line, b)
 		}
-
-		i++
 	}
 
 	return string(line), nil
-}
-
-func stripIAC(data string) string {
-	// Remove IAC sequences (IAC followed by two bytes)
-	var result bytes.Buffer
-	i := 0
-	for i < len(data) {
-		if data[i] == IAC && i+2 < len(data) {
-			// Skip IAC sequence
-			i += 3
-		} else {
-			result.WriteByte(data[i])
-			i++
-		}
-	}
-	return result.String()
 }
 
 func buildPrompt(user string, serverName string) string {
