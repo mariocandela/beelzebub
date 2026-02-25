@@ -49,8 +49,6 @@ type LLMHoneypot struct {
 	RateLimitEnabled        bool
 	RateLimitRequests       int
 	RateLimitWindowSeconds  int
-	rateLimiters            map[string]*rate.Limiter
-	rateLimiterMutex        sync.RWMutex
 }
 
 type Choice struct {
