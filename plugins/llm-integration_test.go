@@ -1,14 +1,15 @@
 package plugins
 
 import (
+	"net/http"
+	"os"
+	"testing"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"os"
-	"testing"
 )
 
 const SystemPromptLen = 4
@@ -121,7 +122,7 @@ func TestBuildInputValidationPromptDefault(t *testing.T) {
 func TestBuildInputValidationPromptCustom(t *testing.T) {
 
 	llmHoneypot := LLMHoneypot{
-		Protocol: tracer.SSH,
+		Protocol:              tracer.SSH,
 		InputValidationPrompt: "test",
 	}
 
@@ -145,7 +146,7 @@ func TestBuildOutputValidationPromptDefault(t *testing.T) {
 	assert.Equal(t, prompt[0].Role, SYSTEM.String())
 
 	llmHoneypot = LLMHoneypot{
-		Protocol: tracer.HTTP,
+		Protocol:               tracer.HTTP,
 		OutputValidationPrompt: "test",
 	}
 
@@ -602,11 +603,11 @@ func TestIsInputValidFailValidation(t *testing.T) {
 	)
 
 	llmHoneypot := LLMHoneypot{
-		Histories:    make([]Message, 0),
-		OpenAIKey:    "sdjdnklfjndslkjanfk",
-		Protocol:     tracer.SSH,
-		Model:        "gpt-4o",
-		Provider:     OpenAI,
+		Histories:             make([]Message, 0),
+		OpenAIKey:             "sdjdnklfjndslkjanfk",
+		Protocol:              tracer.SSH,
+		Model:                 "gpt-4o",
+		Provider:              OpenAI,
 		InputValidationPrompt: "test input validation",
 	}
 
@@ -648,11 +649,11 @@ func TestIsInputValidPassValidation(t *testing.T) {
 	)
 
 	llmHoneypot := LLMHoneypot{
-		Histories:    make([]Message, 0),
-		OpenAIKey:    "sdjdnklfjndslkjanfk",
-		Protocol:     tracer.SSH,
-		Model:        "gpt-4o",
-		Provider:     OpenAI,
+		Histories:             make([]Message, 0),
+		OpenAIKey:             "sdjdnklfjndslkjanfk",
+		Protocol:              tracer.SSH,
+		Model:                 "gpt-4o",
+		Provider:              OpenAI,
 		InputValidationPrompt: "test input validation",
 	}
 
@@ -693,11 +694,11 @@ func TestIsOutputValidFailValidation(t *testing.T) {
 	)
 
 	llmHoneypot := LLMHoneypot{
-		Histories:    make([]Message, 0),
-		OpenAIKey:    "sdjdnklfjndslkjanfk",
-		Protocol:     tracer.SSH,
-		Model:        "gpt-4o",
-		Provider:     OpenAI,
+		Histories:              make([]Message, 0),
+		OpenAIKey:              "sdjdnklfjndslkjanfk",
+		Protocol:               tracer.SSH,
+		Model:                  "gpt-4o",
+		Provider:               OpenAI,
 		OutputValidationPrompt: "test output validation",
 	}
 
@@ -739,11 +740,11 @@ func TestIsOutputValidPassValidation(t *testing.T) {
 	)
 
 	llmHoneypot := LLMHoneypot{
-		Histories:    make([]Message, 0),
-		OpenAIKey:    "sdjdnklfjndslkjanfk",
-		Protocol:     tracer.SSH,
-		Model:        "gpt-4o",
-		Provider:     OpenAI,
+		Histories:              make([]Message, 0),
+		OpenAIKey:              "sdjdnklfjndslkjanfk",
+		Protocol:               tracer.SSH,
+		Model:                  "gpt-4o",
+		Provider:               OpenAI,
 		OutputValidationPrompt: "test output validation",
 	}
 
@@ -784,20 +785,20 @@ func TestExecuteModelFailInputValidation(t *testing.T) {
 	)
 
 	llmHoneypot := LLMHoneypot{
-		Histories:    make([]Message, 0),
-		OpenAIKey:    "sdjdnklfjndslkjanfk",
-		Protocol:     tracer.SSH,
-		Model:        "gpt-4o",
-		Provider:     OpenAI,
+		Histories:              make([]Message, 0),
+		OpenAIKey:              "sdjdnklfjndslkjanfk",
+		Protocol:               tracer.SSH,
+		Model:                  "gpt-4o",
+		Provider:               OpenAI,
 		InputValidationEnabled: true,
-		InputValidationPrompt: "test input validation",
+		InputValidationPrompt:  "test input validation",
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.NotNil(t, err)
@@ -869,24 +870,23 @@ func TestExecuteModelPassInputValidationFailOutputValidation(t *testing.T) {
 	)
 
 	llmHoneypot := LLMHoneypot{
-		Histories:    make([]Message, 0),
-		OpenAIKey:    "sdjdnklfjndslkjanfk",
-		Protocol:     tracer.SSH,
-		Model:        "gpt-4o",
-		Provider:     OpenAI,
-		CustomPrompt: "custom prompt",
-		InputValidationEnabled: true,
+		Histories:               make([]Message, 0),
+		OpenAIKey:               "sdjdnklfjndslkjanfk",
+		Protocol:                tracer.SSH,
+		Model:                   "gpt-4o",
+		Provider:                OpenAI,
+		CustomPrompt:            "custom prompt",
+		InputValidationEnabled:  true,
 		OutputValidationEnabled: true,
-		InputValidationPrompt: "test input validation",
-		OutputValidationPrompt: "test output validation",
-		
+		InputValidationPrompt:   "test input validation",
+		OutputValidationPrompt:  "test output validation",
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.NotNil(t, err)
@@ -958,24 +958,23 @@ func TestExecuteModelPassAllValidations(t *testing.T) {
 	)
 
 	llmHoneypot := LLMHoneypot{
-		Histories:    make([]Message, 0),
-		OpenAIKey:    "sdjdnklfjndslkjanfk",
-		Protocol:     tracer.SSH,
-		Model:        "gpt-4o",
-		Provider:     OpenAI,
-		CustomPrompt: "custom prompt",
-		InputValidationEnabled: true,
+		Histories:               make([]Message, 0),
+		OpenAIKey:               "sdjdnklfjndslkjanfk",
+		Protocol:                tracer.SSH,
+		Model:                   "gpt-4o",
+		Provider:                OpenAI,
+		CustomPrompt:            "custom prompt",
+		InputValidationEnabled:  true,
 		OutputValidationEnabled: true,
-		InputValidationPrompt: "test input validation",
-		OutputValidationPrompt: "test output validation",
-		
+		InputValidationPrompt:   "test input validation",
+		OutputValidationPrompt:  "test output validation",
 	}
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)
