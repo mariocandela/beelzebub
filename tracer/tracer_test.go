@@ -100,13 +100,14 @@ func TestUpdatePrometheusCounters(t *testing.T) {
 	mockStrategy := func(event Event) {}
 
 	tracer := &tracer{
-		strategy:        mockStrategy,
-		eventsChan:      make(chan Event, Workers),
-		eventsTotal:     mockCounter{},
-		eventsSSHTotal:  mockCounter{},
-		eventsTCPTotal:  mockCounter{},
-		eventsHTTPTotal: mockCounter{},
-		eventsMCPTotal:  mockCounter{},
+		strategy:          mockStrategy,
+		eventsChan:        make(chan Event, Workers),
+		eventsTotal:       mockCounter{},
+		eventsSSHTotal:    mockCounter{},
+		eventsTCPTotal:    mockCounter{},
+		eventsHTTPTotal:   mockCounter{},
+		eventsMCPTotal:    mockCounter{},
+		eventsTelnetTotal: mockCounter{},
 	}
 
 	tracer.updatePrometheusCounters(SSH.String())
@@ -120,6 +121,9 @@ func TestUpdatePrometheusCounters(t *testing.T) {
 
 	tracer.updatePrometheusCounters(MCP.String())
 	assert.Equal(t, 8, counter)
+
+	tracer.updatePrometheusCounters(TELNET.String())
+	assert.Equal(t, 10, counter)
 }
 
 func TestGetStrategy(t *testing.T) {

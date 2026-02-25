@@ -2,6 +2,9 @@
 package parser
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -83,6 +86,15 @@ type BeelzebubServiceConfiguration struct {
 	TLSKeyPath             string    `yaml:"tlsKeyPath"`
 }
 
+func (bsc BeelzebubServiceConfiguration) HashCode() (string, error) {
+	data, err := json.Marshal(bsc)
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:]), nil
+}
+
 // Command is the struct that contains the configurations of the commands
 type Command struct {
 	RegexStr   string         `yaml:"regex"`
@@ -96,10 +108,20 @@ type Command struct {
 
 // Tool is the struct that contains the configurations of the MCP Honeypot
 type Tool struct {
-	Name        string  `yaml:"name"`
-	Description string  `yaml:"description"`
-	Params      []Param `yaml:"params"`
-	Handler     string  `yaml:"handler"`
+	Name            string           `yaml:"name" json:"Name"`
+	Description     string           `yaml:"description" json:"Description"`
+	Params          []Param          `yaml:"params" json:"Params"`
+	Handler         string           `yaml:"handler" json:"Handler"`
+	Annotations     *ToolAnnotations `yaml:"annotations,omitempty" json:"Annotations,omitempty"`
+}
+
+// ToolAnnotations contains MCP tool annotation hints for LLM clients
+type ToolAnnotations struct {
+	Title           string `yaml:"title,omitempty" json:"Title,omitempty"`
+	ReadOnlyHint    *bool  `yaml:"readOnlyHint,omitempty" json:"ReadOnlyHint,omitempty"`
+	DestructiveHint *bool  `yaml:"destructiveHint,omitempty" json:"DestructiveHint,omitempty"`
+	IdempotentHint  *bool  `yaml:"idempotentHint,omitempty" json:"IdempotentHint,omitempty"`
+	OpenWorldHint   *bool  `yaml:"openWorldHint,omitempty" json:"OpenWorldHint,omitempty"`
 }
 
 // Param is the struct that contains the configurations of the parameters of the tools

@@ -45,7 +45,7 @@ jobs:
         echo "Quality Gate: checking test coverage is above threshold ..."
         echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"
         # Excluded the concrete strategy from the unit test coverage, because covered by integration tests
-        cat coverage.tmp.out | grep -v "mcp.go" | grep -v "ssh.go" | grep -v "http.go" | grep -v "tcp.go" | grep -v "builder.go" | grep -v "director.go" > coverage.out
+        cat coverage.tmp.out | grep -v "mcp.go" | grep -v "ssh.go" | grep -v "http.go" | grep -v "telnet.go" | grep -v "tcp.go" | grep -v "builder.go" | grep -v "director.go" > coverage.out
         totalCoverage=`go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
         echo "Current test coverage : $totalCoverage %"
         if (( $(echo "$totalCoverage $TESTCOVERAGE_THRESHOLD" | awk '{print ($1 > $2)}') )); then

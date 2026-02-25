@@ -35,6 +35,26 @@ func (mcpStrategy *MCPStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 			mcp.WithDescription(toolConfig.Description),
 		}
 
+		// Add tool annotations if configured
+		if toolConfig.Annotations != nil {
+			ann := toolConfig.Annotations
+			if ann.Title != "" {
+				opts = append(opts, mcp.WithTitleAnnotation(ann.Title))
+			}
+			if ann.ReadOnlyHint != nil {
+				opts = append(opts, mcp.WithReadOnlyHintAnnotation(*ann.ReadOnlyHint))
+			}
+			if ann.DestructiveHint != nil {
+				opts = append(opts, mcp.WithDestructiveHintAnnotation(*ann.DestructiveHint))
+			}
+			if ann.IdempotentHint != nil {
+				opts = append(opts, mcp.WithIdempotentHintAnnotation(*ann.IdempotentHint))
+			}
+			if ann.OpenWorldHint != nil {
+				opts = append(opts, mcp.WithOpenWorldHintAnnotation(*ann.OpenWorldHint))
+			}
+		}
+
 		for _, param := range toolConfig.Params {
 			opts = append(opts,
 				mcp.WithString(

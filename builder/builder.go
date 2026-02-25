@@ -3,10 +3,12 @@ package builder
 import (
 	"errors"
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/protocols/strategies/MCP"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/mariocandela/beelzebub/v3/protocols/strategies/MCP"
+	"github.com/mariocandela/beelzebub/v3/protocols/strategies/TELNET"
 
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/plugins"
@@ -78,6 +80,14 @@ func (b *Builder) buildRabbitMQ(rabbitMQURI string) error {
 }
 
 func (b *Builder) Close() error {
+	// Close log file if it was opened
+	if b.logsFile != nil {
+		if err := b.logsFile.Close(); err != nil {
+			return err
+		}
+	}
+
+	// Close RabbitMQ connections
 	if b.rabbitMQConnection != nil {
 		if err := b.rabbitMQChannel.Close(); err != nil {
 			return err
@@ -114,6 +124,7 @@ Honeypot Framework, happy hacking!`)
 	hypertextTransferProtocolStrategy := &HTTP.HTTPStrategy{}
 	transmissionControlProtocolStrategy := &TCP.TCPStrategy{}
 	modelContextProtocolStrategy := &MCP.MCPStrategy{}
+	telnetStrategy := &TELNET.TelnetStrategy{}
 
 	// Init Tracer strategies, and set the trace strategy default HTTP
 	protocolManager := protocols.InitProtocolManager(b.traceStrategy, hypertextTransferProtocolStrategy)
@@ -121,9 +132,9 @@ Honeypot Framework, happy hacking!`)
 	if b.beelzebubCoreConfigurations.Core.BeelzebubCloud.Enabled {
 		conf := b.beelzebubCoreConfigurations.Core.BeelzebubCloud
 
-		beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken)
+		beelzebubCloud := plugins.InitBeelzebubCloud(conf.URI, conf.AuthToken, true)
 
-		if honeypotsConfiguration, err := beelzebubCloud.GetHoneypotsConfigurations(); err != nil {
+		if honeypotsConfiguration, _, err := beelzebubCloud.GetHoneypotsConfigurations(); err != nil {
 			return err
 		} else {
 			if len(honeypotsConfiguration) == 0 {
@@ -143,6 +154,8 @@ Honeypot Framework, happy hacking!`)
 			protocolManager.SetProtocolStrategy(transmissionControlProtocolStrategy)
 		case "mcp":
 			protocolManager.SetProtocolStrategy(modelContextProtocolStrategy)
+		case "telnet":
+			protocolManager.SetProtocolStrategy(telnetStrategy)
 		default:
 			log.Fatalf("protocol %s not managed", beelzebubServiceConfiguration.Protocol)
 		}
