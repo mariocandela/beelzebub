@@ -1,14 +1,15 @@
 package plugins
 
 import (
+	"net/http"
+	"os"
+	"testing"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"os"
-	"testing"
 )
 
 const SystemPromptLen = 4
@@ -809,7 +810,7 @@ func TestExecuteModelFailInputValidation(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.NotNil(t, err)
@@ -897,7 +898,7 @@ func TestExecuteModelPassInputValidationFailOutputValidation(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.NotNil(t, err)
@@ -985,7 +986,7 @@ func TestExecuteModelPassAllValidations(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)

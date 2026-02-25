@@ -12,7 +12,7 @@ deadlineTimeoutSeconds: 6000
 plugin:
   llmProvider: "openai"
   llmModel: "gpt-4o"
-  openAISecretKey: "${OPENAI_API_KEY}"
+  openAISecretKey: "sk-proj-12345"
   rateLimitEnabled: true
   rateLimitRequests: 10
   rateLimitWindowSeconds: 60
