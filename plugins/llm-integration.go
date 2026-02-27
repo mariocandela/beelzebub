@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+
+	"os"
+	"regexp"
+	"strings"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"regexp"
-	"strings"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -25,6 +29,10 @@ const (
 	ollamaEndpoint                      = "http://localhost:11434/api/chat"
 )
 
+var ErrRateLimited = errors.New("rate limited")
+var globalRateLimiters = make(map[string]*rate.Limiter)
+var globalRateLimiterMutex sync.RWMutex
+
 type LLMHoneypot struct {
 	Histories               []Message
 	OpenAIKey               string
@@ -38,6 +46,9 @@ type LLMHoneypot struct {
 	InputValidationPrompt   string
 	OutputValidationEnabled bool
 	OutputValidationPrompt  string
+	RateLimitEnabled        bool
+	RateLimitRequests       int
+	RateLimitWindowSeconds  int
 }
 
 type Choice struct {
@@ -119,6 +130,9 @@ func BuildHoneypot(
 		InputValidationPrompt:   servConf.Plugin.InputValidationPrompt,
 		OutputValidationEnabled: servConf.Plugin.OutputValidationEnabled,
 		OutputValidationPrompt:  servConf.Plugin.OutputValidationPrompt,
+		RateLimitEnabled:        servConf.Plugin.RateLimitEnabled,
+		RateLimitRequests:       servConf.Plugin.RateLimitRequests,
+		RateLimitWindowSeconds:  servConf.Plugin.RateLimitWindowSeconds,
 	}
 }
 
@@ -276,6 +290,7 @@ func (llmHoneypot *LLMHoneypot) openAICaller(messages []Message) (string, error)
 		return "", err
 	}
 	log.Debug(response)
+
 	if len(response.Result().(*Response).Choices) == 0 {
 		return "", errors.New("no choices")
 	}
@@ -314,8 +329,68 @@ func (llmHoneypot *LLMHoneypot) ollamaCaller(messages []Message) (string, error)
 	return removeQuotes(response.Result().(*Response).Message.Content), nil
 }
 
-// Calls the LLM provider to execute the model with guardrails as configured
-func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
+// getRateLimiter returns a rate limiter for the given client IP and if it doesn't exist,
+// it creates a new one based on the honeypot configuration. It uses a double-checked locking pattern to minimize lock contention.
+func (llmHoneypot *LLMHoneypot) getRateLimiter(clientIP string) *rate.Limiter {
+	globalRateLimiterMutex.RLock()
+	limiter, exists := globalRateLimiters[clientIP]
+	globalRateLimiterMutex.RUnlock()
+
+	if exists {
+		return limiter
+	}
+
+	globalRateLimiterMutex.Lock()
+	defer globalRateLimiterMutex.Unlock()
+
+	if limiter, exists = globalRateLimiters[clientIP]; !exists {
+		limit := rate.Limit(float64(llmHoneypot.RateLimitRequests) / float64(llmHoneypot.RateLimitWindowSeconds))
+		limiter = rate.NewLimiter(limit, llmHoneypot.RateLimitRequests)
+		globalRateLimiters[clientIP] = limiter
+	}
+
+	return limiter
+}
+
+// checkRateLimit verifies if the client IP is within rate limits.
+// Returns an error if the rate limit is exceeded.
+func (llmHoneypot *LLMHoneypot) checkRateLimit(clientIP string) error {
+	if !llmHoneypot.RateLimitEnabled {
+		return nil
+	}
+
+	if llmHoneypot.RateLimitRequests <= 0 || llmHoneypot.RateLimitWindowSeconds <= 0 {
+		log.WithFields(log.Fields{
+			"rateLimitRequests":      llmHoneypot.RateLimitRequests,
+			"rateLimitWindowSeconds": llmHoneypot.RateLimitWindowSeconds,
+		}).Warn("Invalid rate limiting config; disabling rate limit for this request")
+		return nil
+	}
+
+	if clientIP == "" {
+		clientIP = "unknown"
+	}
+
+	limiter := llmHoneypot.getRateLimiter(clientIP)
+	isAllowed := limiter.Allow()
+
+	if !isAllowed {
+		return fmt.Errorf("rate limit exceeded for IP %s", clientIP)
+	}
+
+	return nil
+}
+
+// ExecuteModel calls the LLM provider to execute the model with guardrails and rate limiting as configured
+func (llmHoneypot *LLMHoneypot) ExecuteModel(command string, clientIP string) (string, error) {
+	if err := llmHoneypot.checkRateLimit(clientIP); err != nil {
+		log.WithFields(log.Fields{
+			"client_ip": clientIP,
+			"command":   command,
+		}).Warn("Rate limit exceeded")
+		return "System busy, please try again later", ErrRateLimited
+	}
+
 	var err error
 	var response string
 	var prompt []Message
@@ -331,6 +406,7 @@ func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	response, err = llmHoneypot.executeModel(prompt)
 	if err != nil {
 		return "", err
@@ -338,6 +414,7 @@ func (llmHoneypot *LLMHoneypot) ExecuteModel(command string) (string, error) {
 
 	if llmHoneypot.OutputValidationEnabled {
 		err = llmHoneypot.isOutputValid(response)
+
 		if err != nil {
 			return "", err
 		}

@@ -207,7 +207,7 @@ func handleTelnetConnection(conn net.Conn, servConf parser.BeelzebubServiceConfi
 					}
 					llmHoneypot := plugins.BuildHoneypot(histories, tracer.TELNET, llmProvider, servConf)
 					llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
-					if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput); err != nil {
+					if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput, host); err != nil {
 						log.Errorf("error ExecuteModel: %s, %s", commandInput, err.Error())
 						commandOutput = "command not found"
 					}

@@ -53,15 +53,18 @@ type Prometheus struct {
 }
 
 type Plugin struct {
-	OpenAISecretKey string `yaml:"openAISecretKey"`
-	Host            string `yaml:"host"`
-	LLMModel        string `yaml:"llmModel"`
-	LLMProvider     string `yaml:"llmProvider"`
-	Prompt          string `yaml:"prompt"`
-	InputValidationEnabled bool `yaml:"inputValidationEnabled"`
-	InputValidationPrompt string `yaml:"inputValidationPrompt"`
-	OutputValidationEnabled bool `yaml:"outputValidationEnabled"`
-	OutputValidationPrompt string `yaml:"outputValidationPrompt"`
+	OpenAISecretKey         string `yaml:"openAISecretKey"`
+	Host                    string `yaml:"host"`
+	LLMModel                string `yaml:"llmModel"`
+	LLMProvider             string `yaml:"llmProvider"`
+	Prompt                  string `yaml:"prompt"`
+	InputValidationEnabled  bool   `yaml:"inputValidationEnabled"`
+	InputValidationPrompt   string `yaml:"inputValidationPrompt"`
+	OutputValidationEnabled bool   `yaml:"outputValidationEnabled"`
+	OutputValidationPrompt  string `yaml:"outputValidationPrompt"`
+	RateLimitEnabled        bool   `yaml:"rateLimitEnabled"`
+	RateLimitRequests       int    `yaml:"rateLimitRequests"`
+	RateLimitWindowSeconds  int    `yaml:"rateLimitWindowSeconds"`
 }
 
 // BeelzebubServiceConfiguration is the struct that contains the configurations of the honeypot service
@@ -167,26 +170,41 @@ func (bp configurationsParser) ReadConfigurationsCore() (*BeelzebubCoreConfigura
 // ReadConfigurationsServices is the method that reads the configurations of the honeypot services from files
 func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceConfiguration, error) {
 	services, err := bp.gelAllFilesNameByDirNameDependency(bp.configurationsServicesDirectory)
+
 	if err != nil {
 		return nil, fmt.Errorf("in directory %s: %v", bp.configurationsServicesDirectory, err)
 	}
 
 	var servicesConfiguration []BeelzebubServiceConfiguration
+
 	for _, servicesName := range services {
 		filePath := filepath.Join(bp.configurationsServicesDirectory, servicesName)
 		buf, err := bp.readFileBytesByFilePathDependency(filePath)
+
 		if err != nil {
 			return nil, fmt.Errorf("in file %s: %v", filePath, err)
 		}
+
 		beelzebubServiceConfiguration := &BeelzebubServiceConfiguration{}
 		err = yaml.Unmarshal(buf, beelzebubServiceConfiguration)
+
 		if err != nil {
 			return nil, fmt.Errorf("in file %s: %v", filePath, err)
 		}
+
+		if beelzebubServiceConfiguration.Plugin.RateLimitEnabled {
+			if beelzebubServiceConfiguration.Plugin.RateLimitRequests <= 0 ||
+				beelzebubServiceConfiguration.Plugin.RateLimitWindowSeconds <= 0 {
+				return nil, fmt.Errorf("in file %s: invalid rate limiting config: rateLimitRequests and rateLimitWindowSeconds must be > 0", filePath)
+			}
+		}
+
 		log.Debug(beelzebubServiceConfiguration)
+
 		if err := beelzebubServiceConfiguration.CompileCommandRegex(); err != nil {
 			return nil, fmt.Errorf("in file %s: invalid regex: %v", filePath, err)
 		}
+
 		servicesConfiguration = append(servicesConfiguration, *beelzebubServiceConfiguration)
 	}
 

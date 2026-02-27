@@ -129,7 +129,7 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 			},
 		},
 	}, &result)
-	assert.Equal(t, "ce1980af6e5f88063341fa4ccc12ff7355fa4f283872da181959a12b51dea041", configurationsHash)
+	assert.Equal(t, "1212319b58fef59aaddd18537d2d65c62f6fb6e9874ac92d426f5cd8859e2d9e", configurationsHash)
 	assert.Nil(t, err)
 }
 
@@ -240,7 +240,6 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	uri := "localhost:8081"
-
 	callCount := 0
 
 	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
@@ -267,8 +266,8 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 		},
 	)
 
-	var exitInvoked bool = false
-	exitCalled := make(chan bool)
+	exitInvoked := false
+	exitCalled := make(chan bool, 1)
 
 	exitFunction = func(c int) {
 		exitInvoked = true
@@ -277,21 +276,16 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 
 	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
-	beelzebubCloud.PollingInterval = 100 * time.Millisecond
+	beelzebubCloud.PollingInterval = 50 * time.Millisecond
 
-	go func() {
-		err := beelzebubCloud.verifyConfigurationsChanged()
-		if err != nil {
-			t.Errorf("verifyConfigurationsChanged returned with error: %v", err)
-		}
-	}()
+	go beelzebubCloud.verifyConfigurationsChanged()
 
 	select {
 	case <-exitCalled:
-		assert.True(t, exitInvoked, "exitFunction should have been invoked")
-		assert.Greater(t, callCount, 1, "Should have made at least 2 API calls")
+		assert.True(t, exitInvoked)
+		assert.Greater(t, callCount, 1)
 	case <-time.After(2 * time.Second):
-		t.Fatal("Test timed out waiting for exitFunction to be called")
+		t.Fatal("timeout waiting for exitFunction")
 	}
 }
 

@@ -100,6 +100,7 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 
 	if command.Plugin == plugins.LLMPluginName {
 		llmProvider, err := plugins.FromStringToLLMProvider(servConf.Plugin.LLMProvider)
+
 		if err != nil {
 			log.Errorf("error: %v", err)
 			resp.Body = "404 Not Found!"
@@ -110,13 +111,23 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 		llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
 		command := fmt.Sprintf("Method: %s, RequestURI: %s, Body: %s", request.Method, request.RequestURI, body)
 
-		completions, err := llmHoneypotInstance.ExecuteModel(command)
+		// Extract IP with fallback
+		host, _, err := net.SplitHostPort(request.RemoteAddr)
+
+		if err != nil {
+			host = request.RemoteAddr
+		}
+
+		completions, err := llmHoneypotInstance.ExecuteModel(command, host)
+
 		if err != nil {
 			resp.Body = "404 Not Found!"
 			return resp, fmt.Errorf("ExecuteModel error: %s, %v", command, err)
 		}
+
 		resp.Body = completions
 	}
+
 	return resp, nil
 }
 
