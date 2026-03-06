@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"runtime/debug"
 
@@ -36,6 +37,10 @@ func main() {
 
 	beelzebubServicesConfiguration, err := parser.ReadConfigurationsServices()
 	failOnError(err, "Error during ReadConfigurationsServices: ")
+
+	if len(beelzebubServicesConfiguration) == 0 && !coreConfigurations.Core.BeelzebubCloud.Enabled {
+		failOnError(errors.New("no services configured: provide a services directory, set BEELZEBUB_SERVICES_CONFIG, or enable beelzebub-cloud"), "Error during ReadConfigurationsServices: ")
+	}
 
 	beelzebubBuilder := builder.NewBuilder()
 
