@@ -638,3 +638,42 @@ func TestReadConfigurationsServicesFileFallbackWhenEnvAbsent(t *testing.T) {
 	assert.Len(t, services, 1)
 	assert.Equal(t, "http", services[0].Protocol)
 }
+
+func TestReadConfigurationsCoreEnvLoggingFields(t *testing.T) {
+	t.Setenv("BEELZEBUB_LOGGING_DEBUG_REPORT_CALLER", "true")
+	t.Setenv("BEELZEBUB_LOGGING_LOG_DISABLE_TIMESTAMP", "true")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesConfigurationsCore
+
+	cfg, err := configurationsParser.ReadConfigurationsCore()
+	assert.Nil(t, err)
+	assert.Equal(t, true, cfg.Core.Logging.DebugReportCaller)
+	assert.Equal(t, true, cfg.Core.Logging.LogDisableTimestamp)
+}
+
+func TestReadConfigurationsServicesDirectoryNotFound(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "nonexistent-dir")
+	configurationsParser.gelAllFilesNameByDirNameDependency = func(dirPath string) ([]string, error) {
+		return nil, os.ErrNotExist
+	}
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+	assert.Empty(t, services)
+}
+
+func TestReadConfigurationsServicesFromEnvInvalidRegex(t *testing.T) {
+	// Use the Go field name "RegexStr" as JSON key so that json.Unmarshal stores the value
+	// as a plain string and leaves regex compilation to CompileCommandRegex.
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `[{"protocol":"ssh","address":":22","commands":[{"RegexStr":"[invalid"}]}]`)
+
+	configurationsParser := Init("", "")
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid regex in BEELZEBUB_SERVICES_CONFIG")
+}
