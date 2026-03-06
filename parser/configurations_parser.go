@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -108,11 +109,11 @@ type Command struct {
 
 // Tool is the struct that contains the configurations of the MCP Honeypot
 type Tool struct {
-	Name            string           `yaml:"name" json:"Name"`
-	Description     string           `yaml:"description" json:"Description"`
-	Params          []Param          `yaml:"params" json:"Params"`
-	Handler         string           `yaml:"handler" json:"Handler"`
-	Annotations     *ToolAnnotations `yaml:"annotations,omitempty" json:"Annotations,omitempty"`
+	Name        string           `yaml:"name" json:"Name"`
+	Description string           `yaml:"description" json:"Description"`
+	Params      []Param          `yaml:"params" json:"Params"`
+	Handler     string           `yaml:"handler" json:"Handler"`
+	Annotations *ToolAnnotations `yaml:"annotations,omitempty" json:"Annotations,omitempty"`
 }
 
 // ToolAnnotations contains MCP tool annotation hints for LLM clients
@@ -151,27 +152,96 @@ func Init(configurationsCorePath, configurationsServicesDirectory string) *confi
 	}
 }
 
-// ReadConfigurationsCore is the method that reads the configurations of the core from files
+// ReadConfigurationsCore is the method that reads the configurations of the core from files.
+// If the file does not exist, a default empty configuration is used.
+// Environment variables always override file values (see applyEnvOverrides).
 func (bp configurationsParser) ReadConfigurationsCore() (*BeelzebubCoreConfigurations, error) {
 	buf, err := bp.readFileBytesByFilePathDependency(bp.configurationsCorePath)
 	if err != nil {
-		return nil, fmt.Errorf("in file %s: %v", bp.configurationsCorePath, err)
+		if !isNotFound(err) {
+			return nil, fmt.Errorf("in file %s: %v", bp.configurationsCorePath, err)
+		}
+		log.Debug("Core config file not found, falling back to environment variables")
+		buf = []byte{}
 	}
 
 	beelzebubConfiguration := &BeelzebubCoreConfigurations{}
-	err = yaml.Unmarshal(buf, beelzebubConfiguration)
-	if err != nil {
+	if err = yaml.Unmarshal(buf, beelzebubConfiguration); err != nil {
 		return nil, fmt.Errorf("in file %s: %v", bp.configurationsCorePath, err)
 	}
 
+	applyEnvOverrides(beelzebubConfiguration)
 	return beelzebubConfiguration, nil
 }
 
-// ReadConfigurationsServices is the method that reads the configurations of the honeypot services from files
+// applyEnvOverrides overrides configuration fields with environment variable values when set.
+// Supported variables:
+//
+//	BEELZEBUB_LOGGING_DEBUG, BEELZEBUB_LOGGING_DEBUG_REPORT_CALLER,
+//	BEELZEBUB_LOGGING_LOG_DISABLE_TIMESTAMP, BEELZEBUB_LOGGING_LOGS_PATH,
+//	BEELZEBUB_RABBITMQ_ENABLED, BEELZEBUB_RABBITMQ_URI,
+//	BEELZEBUB_PROMETHEUS_PATH, BEELZEBUB_PROMETHEUS_PORT,
+//	BEELZEBUB_CLOUD_ENABLED, BEELZEBUB_CLOUD_URI, BEELZEBUB_CLOUD_AUTH_TOKEN
+func applyEnvOverrides(cfg *BeelzebubCoreConfigurations) {
+	if v := os.Getenv("BEELZEBUB_LOGGING_DEBUG"); v != "" {
+		cfg.Core.Logging.Debug = parseBool(v)
+	}
+	if v := os.Getenv("BEELZEBUB_LOGGING_DEBUG_REPORT_CALLER"); v != "" {
+		cfg.Core.Logging.DebugReportCaller = parseBool(v)
+	}
+	if v := os.Getenv("BEELZEBUB_LOGGING_LOG_DISABLE_TIMESTAMP"); v != "" {
+		cfg.Core.Logging.LogDisableTimestamp = parseBool(v)
+	}
+	if v := os.Getenv("BEELZEBUB_LOGGING_LOGS_PATH"); v != "" {
+		cfg.Core.Logging.LogsPath = v
+	}
+	if v := os.Getenv("BEELZEBUB_RABBITMQ_ENABLED"); v != "" {
+		cfg.Core.Tracings.RabbitMQ.Enabled = parseBool(v)
+	}
+	if v := os.Getenv("BEELZEBUB_RABBITMQ_URI"); v != "" {
+		cfg.Core.Tracings.RabbitMQ.URI = v
+	}
+	if v := os.Getenv("BEELZEBUB_PROMETHEUS_PATH"); v != "" {
+		cfg.Core.Prometheus.Path = v
+	}
+	if v := os.Getenv("BEELZEBUB_PROMETHEUS_PORT"); v != "" {
+		cfg.Core.Prometheus.Port = v
+	}
+	if v := os.Getenv("BEELZEBUB_CLOUD_ENABLED"); v != "" {
+		cfg.Core.BeelzebubCloud.Enabled = parseBool(v)
+	}
+	if v := os.Getenv("BEELZEBUB_CLOUD_URI"); v != "" {
+		cfg.Core.BeelzebubCloud.URI = v
+	}
+	if v := os.Getenv("BEELZEBUB_CLOUD_AUTH_TOKEN"); v != "" {
+		cfg.Core.BeelzebubCloud.AuthToken = v
+	}
+}
+
+func parseBool(v string) bool {
+	b, _ := strconv.ParseBool(v)
+	return b
+}
+
+func isNotFound(err error) bool {
+	return os.IsNotExist(err)
+}
+
+// ReadConfigurationsServices is the method that reads the configurations of the honeypot services.
+// If the BEELZEBUB_SERVICES_CONFIG environment variable is set (JSON array), it is used directly.
+// Otherwise, service YAML files are loaded from the configured directory (existing behaviour).
 func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceConfiguration, error) {
+	if envConfig := os.Getenv("BEELZEBUB_SERVICES_CONFIG"); envConfig != "" {
+		return parseServicesFromEnv(envConfig)
+	}
+
 	services, err := bp.gelAllFilesNameByDirNameDependency(bp.configurationsServicesDirectory)
 
 	if err != nil {
+		if isNotFound(err) {
+			log.Debug("Services config directory not found, falling back to empty configuration")
+			return []BeelzebubServiceConfiguration{}, nil
+		}
 		return nil, fmt.Errorf("in directory %s: %v", bp.configurationsServicesDirectory, err)
 	}
 
@@ -206,6 +276,31 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 		}
 
 		servicesConfiguration = append(servicesConfiguration, *beelzebubServiceConfiguration)
+	}
+
+	return servicesConfiguration, nil
+}
+
+// parseServicesFromEnv parses a JSON array of BeelzebubServiceConfiguration from
+// the BEELZEBUB_SERVICES_CONFIG environment variable.
+func parseServicesFromEnv(jsonStr string) ([]BeelzebubServiceConfiguration, error) {
+	var servicesConfiguration []BeelzebubServiceConfiguration
+	if err := json.Unmarshal([]byte(jsonStr), &servicesConfiguration); err != nil {
+		return nil, fmt.Errorf("invalid BEELZEBUB_SERVICES_CONFIG: %v", err)
+	}
+
+	for i := range servicesConfiguration {
+		svc := &servicesConfiguration[i]
+
+		if svc.Plugin.RateLimitEnabled {
+			if svc.Plugin.RateLimitRequests <= 0 || svc.Plugin.RateLimitWindowSeconds <= 0 {
+				return nil, fmt.Errorf("invalid rate limiting config in BEELZEBUB_SERVICES_CONFIG[%d]: rateLimitRequests and rateLimitWindowSeconds must be > 0", i)
+			}
+		}
+
+		if err := svc.CompileCommandRegex(); err != nil {
+			return nil, fmt.Errorf("invalid regex in BEELZEBUB_SERVICES_CONFIG[%d]: %v", i, err)
+		}
 	}
 
 	return servicesConfiguration, nil
