@@ -239,7 +239,7 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 
 	if err != nil {
 		if isNotFound(err) {
-			log.Debug("Services config directory not found, falling back to empty configuration")
+			log.Warnf("Services config directory %q not found, falling back to empty configuration", bp.configurationsServicesDirectory)
 			return []BeelzebubServiceConfiguration{}, nil
 		}
 		return nil, fmt.Errorf("in directory %s: %v", bp.configurationsServicesDirectory, err)

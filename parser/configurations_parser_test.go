@@ -660,6 +660,8 @@ func TestReadConfigurationsServicesDirectoryNotFound(t *testing.T) {
 		return nil, os.ErrNotExist
 	}
 
+	// Parser returns empty slice without error — the caller (main.go) is responsible
+	// for rejecting empty services when cloud is also not enabled.
 	services, err := configurationsParser.ReadConfigurationsServices()
 	assert.Nil(t, err)
 	assert.Empty(t, services)
