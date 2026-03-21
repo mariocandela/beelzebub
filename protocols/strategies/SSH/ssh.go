@@ -57,7 +57,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								}
 								llmHoneypot := plugins.BuildHoneypot(histories, tracer.SSH, llmProvider, servConf)
 								llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
-								if commandOutput, err = llmHoneypotInstance.ExecuteModel(sess.RawCommand()); err != nil {
+								if commandOutput, err = llmHoneypotInstance.ExecuteModel(sess.RawCommand(), host); err != nil {
 									log.Errorf("error ExecuteModel: %s, %s", sess.RawCommand(), err.Error())
 									commandOutput = "command not found"
 								}
@@ -128,7 +128,7 @@ func (sshStrategy *SSHStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 								}
 								llmHoneypot := plugins.BuildHoneypot(histories, tracer.SSH, llmProvider, servConf)
 								llmHoneypotInstance := plugins.InitLLMHoneypot(*llmHoneypot)
-								if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput); err != nil {
+								if commandOutput, err = llmHoneypotInstance.ExecuteModel(commandInput, host); err != nil {
 									log.Errorf("error ExecuteModel: %s, %s", commandInput, err.Error())
 									commandOutput = "command not found"
 								}

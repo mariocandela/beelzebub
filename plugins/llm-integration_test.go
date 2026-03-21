@@ -1,14 +1,15 @@
 package plugins
 
 import (
+	"net/http"
+	"os"
+	"testing"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"os"
-	"testing"
 )
 
 const SystemPromptLen = 4
@@ -180,7 +181,7 @@ func TestBuildExecuteModelFailValidation(t *testing.T) {
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	assert.Equal(t, "openAIKey is empty", err.Error())
 }
@@ -242,7 +243,7 @@ func TestBuildExecuteModelWithCustomPrompt(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	str, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials")
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)
@@ -261,7 +262,7 @@ func TestBuildExecuteModelFailValidationStrategyType(t *testing.T) {
 
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	assert.Equal(t, "no prompt for protocol selected", err.Error())
 }
@@ -278,7 +279,7 @@ func TestBuildExecuteModelFailValidationModelType(t *testing.T) {
 	openAIGPTVirtualTerminal := InitLLMHoneypot(llmHoneypot)
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("ls", "127.0.0.1")
 
 	//Then
 	assert.Errorf(t, err, "no model selected")
@@ -321,7 +322,7 @@ func TestBuildExecuteModelSSHWithResultsOpenAI(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)
@@ -360,7 +361,7 @@ func TestBuildExecuteModelSSHWithResultsLLama(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)
@@ -397,7 +398,7 @@ func TestBuildExecuteModelSSHWithoutResults(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("ls", "127.0.0.1")
 
 	//Then
 	assert.Equal(t, "no choices", err.Error())
@@ -440,7 +441,7 @@ func TestBuildExecuteModelHTTPWithResults(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	str, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials")
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)
@@ -477,7 +478,7 @@ func TestBuildExecuteModelHTTPWithoutResults(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("GET /.aws/credentials", "127.0.0.1")
 
 	//Then
 	assert.Equal(t, "no choices", err.Error())
@@ -527,7 +528,7 @@ func TestBuildExecuteModelSSHWithoutPlaintextSection(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)
@@ -566,7 +567,7 @@ func TestBuildExecuteModelSSHWithoutQuotesSection(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls")
+	str, err := openAIGPTVirtualTerminal.ExecuteModel("ls", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)
@@ -809,7 +810,7 @@ func TestExecuteModelFailInputValidation(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.NotNil(t, err)
@@ -897,7 +898,7 @@ func TestExecuteModelPassInputValidationFailOutputValidation(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.NotNil(t, err)
@@ -985,7 +986,7 @@ func TestExecuteModelPassAllValidations(t *testing.T) {
 	openAIGPTVirtualTerminal.client = client
 
 	//When
-	_, err := openAIGPTVirtualTerminal.ExecuteModel("test")
+	_, err := openAIGPTVirtualTerminal.ExecuteModel("test", "127.0.0.1")
 
 	//Then
 	assert.Nil(t, err)

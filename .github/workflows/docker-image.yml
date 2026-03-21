@@ -29,4 +29,6 @@ jobs:
           tags: |
             m4r10/beelzebub:${{  github.ref_name }}
             m4r10/beelzebub:latest
+            beelzebubmaintainer/beelzebub:${{  github.ref_name }}
+            beelzebubmaintainer/beelzebub:latest
           platforms: linux/amd64,linux/arm64

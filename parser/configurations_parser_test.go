@@ -152,6 +152,10 @@ tools:
 	return beelzebubServiceConfiguration, nil
 }
 
+func mockReadfilebytesNotFound(filePath string) ([]byte, error) {
+	return nil, os.ErrNotExist
+}
+
 func TestReadConfigurationsCoreError(t *testing.T) {
 	configurationsParser := Init("mockConfigurationsCorePath", "mockConfigurationsServicesDirectory")
 
@@ -253,7 +257,7 @@ func TestReadConfigurationsServicesGenerateHashCode(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Nil(t, errHashCode)
-	assert.Equal(t, hashCode, "9c349217fdf25f8a1751c33de9e06799a6c96fa996c2dba40df6d2c34c3025a0")
+	assert.Equal(t, hashCode, "528e52a4b7addc43ec887dba7913070c9fd9f2ec246723c4b6ee73de75426e24")
 }
 
 func TestReadConfigurationsPluginGuardrailsValid(t *testing.T) {
@@ -539,5 +543,139 @@ func TestToolAnnotationsHashCodeStability(t *testing.T) {
 	// the hash for configs that don't use annotations
 	hashCode, errHashCode := beelzebubServicesConfiguration[0].HashCode()
 	assert.Nil(t, errHashCode)
-	assert.Equal(t, "9c349217fdf25f8a1751c33de9e06799a6c96fa996c2dba40df6d2c34c3025a0", hashCode)
+	assert.Equal(t, "528e52a4b7addc43ec887dba7913070c9fd9f2ec246723c4b6ee73de75426e24", hashCode)
+}
+
+func TestReadConfigurationsCoreEnvOverridesFile(t *testing.T) {
+	t.Setenv("BEELZEBUB_PROMETHEUS_PORT", ":9999")
+	t.Setenv("BEELZEBUB_PROMETHEUS_PATH", "/custom-metrics")
+	t.Setenv("BEELZEBUB_RABBITMQ_ENABLED", "true")
+	t.Setenv("BEELZEBUB_RABBITMQ_URI", "amqp://env-host/")
+	t.Setenv("BEELZEBUB_CLOUD_ENABLED", "true")
+	t.Setenv("BEELZEBUB_CLOUD_URI", "https://env-cloud/")
+	t.Setenv("BEELZEBUB_CLOUD_AUTH_TOKEN", "env-token")
+	t.Setenv("BEELZEBUB_LOGGING_DEBUG", "true")
+	t.Setenv("BEELZEBUB_LOGGING_LOGS_PATH", "/tmp/env-logs")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesConfigurationsCore
+
+	cfg, err := configurationsParser.ReadConfigurationsCore()
+	assert.Nil(t, err)
+
+	assert.Equal(t, ":9999", cfg.Core.Prometheus.Port)
+	assert.Equal(t, "/custom-metrics", cfg.Core.Prometheus.Path)
+	assert.Equal(t, true, cfg.Core.Tracings.RabbitMQ.Enabled)
+	assert.Equal(t, "amqp://env-host/", cfg.Core.Tracings.RabbitMQ.URI)
+	assert.Equal(t, true, cfg.Core.BeelzebubCloud.Enabled)
+	assert.Equal(t, "https://env-cloud/", cfg.Core.BeelzebubCloud.URI)
+	assert.Equal(t, "env-token", cfg.Core.BeelzebubCloud.AuthToken)
+	assert.Equal(t, true, cfg.Core.Logging.Debug)
+	assert.Equal(t, "/tmp/env-logs", cfg.Core.Logging.LogsPath)
+}
+
+func TestReadConfigurationsCoreEnvOnlyNoFile(t *testing.T) {
+	t.Setenv("BEELZEBUB_PROMETHEUS_PORT", ":2112")
+	t.Setenv("BEELZEBUB_PROMETHEUS_PATH", "/metrics")
+	t.Setenv("BEELZEBUB_LOGGING_LOGS_PATH", "./logs")
+
+	configurationsParser := Init("nonexistent.yaml", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesNotFound
+
+	cfg, err := configurationsParser.ReadConfigurationsCore()
+	assert.Nil(t, err)
+	assert.Equal(t, ":2112", cfg.Core.Prometheus.Port)
+	assert.Equal(t, "/metrics", cfg.Core.Prometheus.Path)
+	assert.Equal(t, "./logs", cfg.Core.Logging.LogsPath)
+}
+
+func TestReadConfigurationsServicesFromEnv(t *testing.T) {
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `[{"apiVersion":"v1","protocol":"ssh","address":":2222","serverVersion":"OpenSSH","serverName":"ubuntu","passwordRegex":"^root$","deadlineTimeoutSeconds":60}]`)
+
+	configurationsParser := Init("", "")
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+	assert.Len(t, services, 1)
+	assert.Equal(t, "ssh", services[0].Protocol)
+	assert.Equal(t, ":2222", services[0].Address)
+	assert.Equal(t, "v1", services[0].ApiVersion)
+	assert.Equal(t, "OpenSSH", services[0].ServerVersion)
+	assert.Equal(t, "ubuntu", services[0].ServerName)
+}
+
+func TestReadConfigurationsServicesFromEnvInvalidJSON(t *testing.T) {
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `{invalid}`)
+
+	configurationsParser := Init("", "")
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid BEELZEBUB_SERVICES_CONFIG")
+}
+
+func TestReadConfigurationsServicesFromEnvInvalidRateLimit(t *testing.T) {
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `[{"protocol":"ssh","address":":2222","plugin":{"rateLimitEnabled":true,"rateLimitRequests":0,"rateLimitWindowSeconds":0}}]`)
+
+	configurationsParser := Init("", "")
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid rate limiting config")
+}
+
+func TestReadConfigurationsServicesFileFallbackWhenEnvAbsent(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+	assert.Len(t, services, 1)
+	assert.Equal(t, "http", services[0].Protocol)
+}
+
+func TestReadConfigurationsCoreEnvLoggingFields(t *testing.T) {
+	t.Setenv("BEELZEBUB_LOGGING_DEBUG_REPORT_CALLER", "true")
+	t.Setenv("BEELZEBUB_LOGGING_LOG_DISABLE_TIMESTAMP", "true")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesConfigurationsCore
+
+	cfg, err := configurationsParser.ReadConfigurationsCore()
+	assert.Nil(t, err)
+	assert.Equal(t, true, cfg.Core.Logging.DebugReportCaller)
+	assert.Equal(t, true, cfg.Core.Logging.LogDisableTimestamp)
+}
+
+func TestReadConfigurationsServicesDirectoryNotFound(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "nonexistent-dir")
+	configurationsParser.gelAllFilesNameByDirNameDependency = func(dirPath string) ([]string, error) {
+		return nil, os.ErrNotExist
+	}
+
+	// Parser returns empty slice without error — the caller (main.go) is responsible
+	// for rejecting empty services when cloud is also not enabled.
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+	assert.Empty(t, services)
+}
+
+func TestReadConfigurationsServicesFromEnvInvalidRegex(t *testing.T) {
+	// Use the Go field name "RegexStr" as JSON key so that json.Unmarshal stores the value
+	// as a plain string and leaves regex compilation to CompileCommandRegex.
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `[{"protocol":"ssh","address":":22","commands":[{"RegexStr":"[invalid"}]}]`)
+
+	configurationsParser := Init("", "")
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid regex in BEELZEBUB_SERVICES_CONFIG")
 }
