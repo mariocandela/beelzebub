@@ -1,6 +1,7 @@
 package HTTP
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -14,6 +15,37 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
+
+// llmHTTPResponse represents the structured JSON response from the LLM for HTTP honeypots.
+type llmHTTPResponse struct {
+	Headers    map[string]string `json:"headers"`
+	Body       string            `json:"body"`
+	StatusCode int               `json:"statusCode"`
+}
+
+// parseLLMHTTPResponse attempts to parse the LLM output as a structured JSON response
+// with headers, body, and optional status code. If parsing fails, it falls back to
+// using the raw output as the response body.
+func parseLLMHTTPResponse(completions string, resp *httpResponse) {
+	var llmResp llmHTTPResponse
+	if err := json.Unmarshal([]byte(completions), &llmResp); err != nil {
+		resp.Body = completions
+		return
+	}
+
+	resp.Body = llmResp.Body
+	for key, value := range llmResp.Headers {
+		// Skip headers managed by Go's HTTP server to avoid conflicts
+		lower := strings.ToLower(key)
+		if lower == "content-length" || lower == "date" || lower == "transfer-encoding" || lower == "connection" {
+			continue
+		}
+		resp.Headers = append(resp.Headers, fmt.Sprintf("%s: %s", key, value))
+	}
+	if llmResp.StatusCode > 0 {
+		resp.StatusCode = llmResp.StatusCode
+	}
+}
 
 type HTTPStrategy struct{}
 
@@ -125,7 +157,7 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 			return resp, fmt.Errorf("ExecuteModel error: %s, %v", command, err)
 		}
 
-		resp.Body = completions
+		parseLLMHTTPResponse(completions, &resp)
 	}
 
 	if command.Plugin == plugins.MazePluginName {
