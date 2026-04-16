@@ -3,6 +3,7 @@ package TCP
 import (
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/mariocandela/beelzebub/v3/historystore"
@@ -117,7 +118,7 @@ func handleTCPConnection(conn net.Conn, servConf parser.BeelzebubServiceConfigur
 			break
 		}
 
-		commandInput := string(buffer[:n])
+		commandInput := strings.TrimRight(string(buffer[:n]), "\r\n")
 
 		// Match command against regexes
 		matched := false
