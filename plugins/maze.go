@@ -198,10 +198,19 @@ func (m *MazeHoneypot) HandleRequest(request *http.Request) MazeResponse {
 	return m.generateDirectoryListing(reqPath)
 }
 
+// knownNoExtFiles are files with no extension that should be served as files, not directories.
+var knownNoExtFiles = map[string]bool{
+	"Dockerfile": true,
+	"Makefile":   true,
+}
+
 // isFilePath returns true if the basename looks like a file (has extension or is a dotfile).
 func isFilePath(base string) bool {
 	if base == "/" || base == "." {
 		return false
+	}
+	if knownNoExtFiles[base] {
+		return true
 	}
 	// dotfiles like .env, .htaccess, .gitignore
 	if strings.HasPrefix(base, ".") && !strings.Contains(base[1:], "/") {
@@ -343,10 +352,17 @@ func (m *MazeHoneypot) generateFileResponse(reqPath string) MazeResponse {
 	contentType := "text/plain; charset=UTF-8"
 
 	for _, tmpl := range allFileTemplates {
-		fullName := tmpl.name + tmpl.ext
-		if base == fullName || path.Ext(base) == tmpl.ext {
+		if base == tmpl.name+tmpl.ext {
 			genFunc = tmpl.genFunc
 			break
+		}
+	}
+	if genFunc == nil {
+		for _, tmpl := range allFileTemplates {
+			if tmpl.ext != "" && path.Ext(base) == tmpl.ext {
+				genFunc = tmpl.genFunc
+				break
+			}
 		}
 	}
 
@@ -495,7 +511,7 @@ func genSQLDump(r *rand.Rand, fullPath string) string {
 				user := pickOne(r, []string{"admin", "john.doe", "jane.smith", "dev_ops", "backup_admin", "service_account", "deploy_bot", "root"})
 				domain := pickOne(r, []string{"company.com", "internal.io", "corp.net", "example.org"})
 				sb.WriteString(fmt.Sprintf("INSERT INTO `%s` VALUES (%d,'%s@%s','$2b$12$%s','%s','ak_%s','2023-%02d-%02d 10:%02d:00',NULL);\n",
-					table, j+1, user, domain, randomHash(r, 22), pickOne(r, []string{"admin", "user", "user"}),
+					table, j+1, user, domain, randomHash(r, 53), pickOne(r, []string{"admin", "user", "user"}),
 					randomHex(r, 16), 1+r.Intn(12), 1+r.Intn(28), r.Intn(24)))
 			}
 		}
