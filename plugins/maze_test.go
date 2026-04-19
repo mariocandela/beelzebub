@@ -199,7 +199,8 @@ func TestIsFilePath(t *testing.T) {
 		{".gitignore", true},
 		{"backup.tar.gz", true},
 		{"dump.sql", true},
-		{"Makefile", false}, // No extension, not a dotfile
+		{"Makefile", true},
+		{"Dockerfile", true},
 	}
 
 	for _, tt := range tests {
