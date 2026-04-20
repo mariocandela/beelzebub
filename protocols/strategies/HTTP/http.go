@@ -128,6 +128,21 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 		resp.Body = completions
 	}
 
+	if command.Plugin == plugins.MazePluginName {
+		maze := &plugins.MazeHoneypot{
+			ServerVersion: servConf.ServerVersion,
+			ServerName:    servConf.ServerName,
+		}
+		mazeResp := maze.HandleRequest(request)
+		resp.StatusCode = mazeResp.StatusCode
+		resp.Body = mazeResp.Body
+		// Merge maze headers into response headers
+		for k, v := range mazeResp.Headers {
+			resp.Headers = append(resp.Headers, fmt.Sprintf("%s: %s", k, v))
+		}
+		resp.Headers = append(resp.Headers, fmt.Sprintf("Content-Type: %s", mazeResp.ContentType))
+	}
+
 	return resp, nil
 }
 
