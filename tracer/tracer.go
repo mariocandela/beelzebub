@@ -38,6 +38,12 @@ type Event struct {
 	SourcePort      string
 	TLSServerName   string
 	Handler         string
+	// CommandRaw is a hex-escaped representation of the raw bytes the
+	// client sent, populated only when the strategy captures a binary
+	// frame that would otherwise be mangled by a string conversion
+	// (e.g. RESP2 / LDAP BER / PostgreSQL startup). Omitted from JSON
+	// when empty, so existing events keep their wire shape.
+	CommandRaw string `json:"CommandRaw,omitempty"`
 }
 
 type (

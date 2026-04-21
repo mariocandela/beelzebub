@@ -26,7 +26,14 @@ func (tcpStrategy *TCPStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 		for {
 			if conn, err := listen.Accept(); err == nil {
 				go func() {
+					defer conn.Close()
 					conn.SetDeadline(time.Now().Add(time.Duration(servConf.DeadlineTimeoutSeconds) * time.Second))
+
+					if servConf.BinarySafe {
+						handleBinarySafeConnection(conn, servConf, tr)
+						return
+					}
+
 					conn.Write(fmt.Appendf([]byte{}, "%s\n", servConf.Banner))
 
 					buffer := make([]byte, 1024)
@@ -49,7 +56,6 @@ func (tcpStrategy *TCPStrategy) Init(servConf parser.BeelzebubServiceConfigurati
 						ID:          uuid.New().String(),
 						Description: servConf.Description,
 					})
-					conn.Close()
 				}()
 			}
 		}

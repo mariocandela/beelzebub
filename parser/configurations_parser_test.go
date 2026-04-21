@@ -546,6 +546,24 @@ func TestToolAnnotationsHashCodeStability(t *testing.T) {
 	assert.Equal(t, "528e52a4b7addc43ec887dba7913070c9fd9f2ec246723c4b6ee73de75426e24", hashCode)
 }
 
+// Verifies that the new BinarySafe / ReplyFormat / ReplyBulks fields
+// do not alter the HashCode of existing configs that leave them unset.
+// This is the same backward-compatibility guarantee the ToolAnnotations
+// addition established.
+func TestBinarySafeReplyFormatHashCodeStability(t *testing.T) {
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	cfgs, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+
+	hashCode, errHashCode := cfgs[0].HashCode()
+	assert.Nil(t, errHashCode)
+	assert.Equal(t, "528e52a4b7addc43ec887dba7913070c9fd9f2ec246723c4b6ee73de75426e24", hashCode,
+		"adding BinarySafe/ReplyFormat/ReplyBulks with omitempty must not change the hash of existing configs")
+}
+
 func TestReadConfigurationsCoreEnvOverridesFile(t *testing.T) {
 	t.Setenv("BEELZEBUB_PROMETHEUS_PORT", ":9999")
 	t.Setenv("BEELZEBUB_PROMETHEUS_PATH", "/custom-metrics")

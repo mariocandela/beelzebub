@@ -1,0 +1,71 @@
+# Redis 7.2.4 — binary-safe RESP2 honeypot
+#
+# Uses binarySafe: true and replyFormat: redis-* so real RESP2 clients
+# (redis-cli, redis-py, go-redis, ioredis, jedis, ...) get wire-correct
+# replies. Verified against redis-cli 7.0.15 and redis-py 7.4.0.
+#
+# Each handler declares its reply format; encodeReply in the TCP
+# strategy frames the bytes per https://redis.io/docs/latest/develop/reference/protocol-spec/.
+
+apiVersion: "v1"
+protocol: "tcp"
+address: ":6379"
+description: "Redis 7.2.4"
+deadlineTimeoutSeconds: 60
+binarySafe: true
+
+commands:
+  # RESP3 negotiation: reply with NOPROTO so clients fall back to RESP2.
+  - regex: "^(?i)HELLO(\\s+.*)?$"
+    replyFormat: "redis-error"
+    handler: "NOPROTO unsupported protocol version"
+    name: "hello"
+
+  # CLIENT SETINFO / SETNAME / NO-EVICT / etc. — client init chatter.
+  - regex: "^(?i)CLIENT\\s+(SETINFO|SETNAME|NO-EVICT|UNPAUSE|REPLY)(\\s+.*)?$"
+    replyFormat: "redis-simple"
+    handler: "OK"
+    name: "client_setters"
+
+  - regex: "^(?i)PING$"
+    replyFormat: "redis-simple"
+    handler: "PONG"
+    name: "ping"
+
+  - regex: "^(?i)AUTH(\\s+.*)?$"
+    replyFormat: "redis-error"
+    handler: "ERR Client sent AUTH, but no password is set. Try CONFIG SET requirepass."
+    name: "auth"
+
+  - regex: "^(?i)INFO(\\s+\\w+)?$"
+    replyFormat: "redis-bulk"
+    handler: |
+      # Server
+      redis_version:7.2.4
+      redis_git_sha1:00000000
+      redis_mode:standalone
+      os:Linux 5.15.0-generic x86_64
+      arch_bits:64
+      tcp_port:6379
+      uptime_in_seconds:2847391
+      # Clients
+      connected_clients:3
+      # Memory
+      used_memory:1247896
+      # Stats
+      total_connections_received:58234
+    name: "info"
+
+  - regex: "^(?i)COMMAND(\\s+.*)?$"
+    replyFormat: "redis-array"
+    replyBulks:
+      - "get"
+      - "set"
+      - "ping"
+      - "info"
+    name: "command"
+
+  - regex: "^(.+)$"
+    replyFormat: "redis-error"
+    handler: "ERR unknown command"
+    name: "catch_all"
