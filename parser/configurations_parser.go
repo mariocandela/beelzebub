@@ -85,6 +85,13 @@ type BeelzebubServiceConfiguration struct {
 	Plugin                 Plugin    `yaml:"plugin"`
 	TLSCertPath            string    `yaml:"tlsCertPath"`
 	TLSKeyPath             string    `yaml:"tlsKeyPath"`
+	// BinarySafe switches the TCP strategy from its default banner-and-read
+	// behavior to a frame-aware reader that preserves every byte (CR/LF,
+	// non-printable, multi-line payloads) and enables RESP2-aware reply
+	// framing via Command.ReplyFormat. Intended for binary wire protocols
+	// like Redis RESP2 where a regex on a line-mangled read cannot match.
+	// Defaults to false; existing TCP configs are unaffected.
+	BinarySafe bool `yaml:"binarySafe" json:",omitempty"`
 }
 
 func (bsc BeelzebubServiceConfiguration) HashCode() (string, error) {
@@ -105,6 +112,26 @@ type Command struct {
 	StatusCode int            `yaml:"statusCode"`
 	Plugin     string         `yaml:"plugin"`
 	Name       string         `yaml:"name"`
+	// ReplyFormat selects the wire encoding for this command's reply when
+	// the enclosing service sets binarySafe: true. Empty string preserves
+	// the legacy plain-text behavior (handler + "\r\n"). Supported values
+	// for Redis RESP2:
+	//
+	//   "redis-simple"   -> "+<handler>\r\n"
+	//   "redis-integer"  -> ":<handler>\r\n"
+	//   "redis-error"    -> "-<handler>\r\n"
+	//   "redis-bulk"     -> "$<len>\r\n<handler>\r\n" (length auto-computed)
+	//   "redis-nil-bulk" -> "$-1\r\n"
+	//   "redis-array"    -> "*<n>\r\n" + per-entry bulk encoding drawn from ReplyBulks
+	//   "redis-raw"      -> handler bytes written verbatim (escape hatch for
+	//                       nested RESP shapes the typed encoders can't express)
+	//
+	// Any unrecognized value falls through to the legacy plaintext behavior
+	// with a logged warning, so a YAML typo does not silently drop traffic.
+	ReplyFormat string `yaml:"replyFormat,omitempty" json:",omitempty"`
+	// ReplyBulks supplies the per-entry bulk-string payload for replies
+	// emitted with ReplyFormat: "redis-array". Ignored otherwise.
+	ReplyBulks []string `yaml:"replyBulks,omitempty" json:",omitempty"`
 }
 
 // Tool is the struct that contains the configurations of the MCP Honeypot
