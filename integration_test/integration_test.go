@@ -8,14 +8,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
-	"github.com/go-resty/resty/v2"
-	"github.com/mariocandela/beelzebub/v3/builder"
-	"github.com/mariocandela/beelzebub/v3/parser"
-	"github.com/mariocandela/beelzebub/v3/tracer"
-	"github.com/melbahja/goph"
-	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/stretchr/testify/suite"
-	"golang.org/x/crypto/ssh"
 	"math/big"
 	"net"
 	"net/http"
@@ -25,6 +17,15 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/mariocandela/beelzebub/v3/builder"
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/tracer"
+	"github.com/melbahja/goph"
+	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/stretchr/testify/suite"
+	"golang.org/x/crypto/ssh"
 )
 
 type IntegrationTestSuite struct {
@@ -170,6 +171,17 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 
 	suite.Require().NoError(suite.beelzebubBuilder.Run())
+
+	suite.Require().Eventually(func() bool {
+		conn, err := net.DialTimeout("tcp", "localhost:8080", time.Second)
+
+		if err != nil {
+			return false
+		}
+
+		conn.Close()
+		return true
+	}, 5*time.Second, 50*time.Millisecond, "HTTP honeypot did not become ready in time")
 }
 
 func (suite *IntegrationTestSuite) TestInvokeHTTPHoneypot() {
@@ -621,6 +633,15 @@ func (suite *IntegrationTestSuite) TestRabbitMQ() {
 	suite.Require().NoError(err)
 	defer ch.Close()
 
+	for {
+		msg, ok, err := ch.Get("event", true)
+		suite.Require().NoError(err)
+
+		if !ok || msg.Body == nil {
+			break
+		}
+	}
+
 	msgs, err := ch.Consume("event", "", true, false, false, false, nil)
 	suite.Require().NoError(err)
 
@@ -629,17 +650,28 @@ func (suite *IntegrationTestSuite) TestRabbitMQ() {
 
 	suite.Require().NoError(err)
 	suite.Equal(http.StatusOK, response.StatusCode())
+	timeout := time.After(5 * time.Second)
 
-	for msg := range msgs {
-		var event tracer.Event
-		err := json.Unmarshal(msg.Body, &event)
-		suite.Require().NoError(err)
+	for {
+		select {
+		case msg := <-msgs:
+			var event tracer.Event
+			err := json.Unmarshal(msg.Body, &event)
+			suite.Require().NoError(err)
 
-		suite.Equal("GET", event.HTTPMethod)
-		suite.Equal("/index.php", event.RequestURI)
-		break
+			if event.HTTPMethod == "" {
+				continue
+			}
+
+			suite.Equal("GET", event.HTTPMethod)
+			suite.Equal("/index.php", event.RequestURI)
+			return
+
+		case <-timeout:
+			suite.Fail("timed out waiting for HTTP event in RabbitMQ queue")
+			return
+		}
 	}
-
 }
 func (suite *IntegrationTestSuite) TestPrometheus() {
 	//Invoke HTTP Honeypot

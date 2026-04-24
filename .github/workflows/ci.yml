@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         go-version:
-          - "1.24.1"
+          - "1.25.9"
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
