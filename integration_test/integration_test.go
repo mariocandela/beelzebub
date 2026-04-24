@@ -274,6 +274,42 @@ func (suite *IntegrationTestSuite) TestInvokeTCPHoneypot() {
 	suite.Equal("8.0.29\n", string(reply[:n]))
 }
 
+func (suite *IntegrationTestSuite) TestInvokeTCPInteractiveHoneypot() {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", "localhost:6379")
+	suite.Require().NoError(err)
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	suite.Require().NoError(err)
+	defer conn.Close()
+
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// Test PING command
+	_, err = conn.Write([]byte("PING\n"))
+	suite.Require().NoError(err)
+
+	reply := make([]byte, 1024)
+	n, err := conn.Read(reply)
+	suite.Require().NoError(err)
+	suite.Equal("+PONG\r\n", string(reply[:n]))
+
+	// Test INFO command
+	_, err = conn.Write([]byte("INFO\n"))
+	suite.Require().NoError(err)
+
+	n, err = conn.Read(reply)
+	suite.Require().NoError(err)
+	suite.Equal("+INFO OK\r\n", string(reply[:n]))
+
+	// Test unknown command
+	_, err = conn.Write([]byte("UNKNOWN\n"))
+	suite.Require().NoError(err)
+
+	n, err = conn.Read(reply)
+	suite.Require().NoError(err)
+	suite.Equal("-ERR unknown command\r\n", string(reply[:n]))
+}
+
 func (suite *IntegrationTestSuite) TestInvokeSSHHoneypot() {
 	client, err := goph.NewConn(
 		&goph.Config{

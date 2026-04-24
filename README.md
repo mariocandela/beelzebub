@@ -330,7 +330,7 @@ deadlineTimeoutSeconds: 60
 plugin:
    llmProvider: "openai"
    llmModel: "gpt-4o" #Models https://platform.openai.com/docs/models
-   openAISecretKey: "sk-proj-123456"
+   openAISecretKey: "sk-proj-1234"
 ```
 
 Using local Ollama instance:
@@ -370,7 +370,7 @@ deadlineTimeoutSeconds: 60
 plugin:
    llmProvider: "openai"
    llmModel: "gpt-4o"
-   openAISecretKey: "sk-proj-123456"
+   openAISecretKey: "sk-proj-1234"
    prompt: "You will act as an Ubuntu Linux terminal. The user will type commands, and you are to reply with what the terminal should show. Your responses must be contained within a single code block."
 ```
 
@@ -424,7 +424,7 @@ deadlineTimeoutSeconds: 120
 plugin:
    llmProvider: "openai"
    llmModel: "gpt-4o"
-   openAISecretKey: "sk-proj-..."
+   openAISecretKey: "sk-1234"
 ```
 
 #### Static TELNET Honeypot
@@ -448,7 +448,11 @@ deadlineTimeoutSeconds: 60
 
 ### TCP Honeypot
 
-TCP honeypots respond with a configurable banner to any TCP connection. Useful for simulating database servers or other TCP services.
+TCP honeypots support both simple banner-only mode and interactive command-based sessions with regex matching and LLM integration.
+
+#### Banner-Only Mode (Legacy)
+
+Simple banner response for basic service simulation:
 
 ```yaml
 apiVersion: "v1"
@@ -458,6 +462,114 @@ description: "MySQL 8.0.29"
 banner: "8.0.29"
 deadlineTimeoutSeconds: 10
 ```
+
+#### Interactive Mode with Commands
+
+TCP honeypots can now handle multi-turn interactions using regex-based command matching, just like SSH and TELNET:
+
+**Redis Honeypot** (text-based protocol):
+
+```yaml
+apiVersion: "v1"
+protocol: "tcp"
+address: ":6379"
+description: "Redis 7.0.12"
+commands:
+  - regex: "^PING"
+    handler: "+PONG\r\n"
+    name: "ping"
+  - regex: "^AUTH"
+    handler: "-ERR Client sent AUTH, but no password is set\r\n"
+    name: "auth"
+  - regex: "^INFO"
+    handler: "$180\r\n# Server\r\nredis_version:7.0.12\r\nos:Linux 5.15.0-76-generic x86_64\r\ntcp_port:6379\r\n\r\n"
+    name: "info"
+  - regex: "^(.+)$"
+    handler: "-ERR unknown command\r\n"
+    name: "catch_all"
+deadlineTimeoutSeconds: 60
+serverName: "redis-prod-01"
+```
+
+**LDAP / Active Directory Honeypot** (binary protocol):
+
+```yaml
+apiVersion: "v1"
+protocol: "tcp"
+address: ":389"
+description: "Active Directory LDAP Domain Controller"
+banner: "0\x84\x00\x00\x00\x10\x02\x01\x01\x61\x84\x00\x00\x00\x07\x0a\x01\x00\x04\x00\x04\x00"
+commands:
+  - regex: "\\x30.*\\x60"
+    handler: "0\x84\x00\x00\x00\x10\x02\x01\x01\x61\x84\x00\x00\x00\x07\x0a\x01\x00\x04\x00\x04\x00"
+    name: "ldap_bind_response"
+  - regex: "\\x30.*\\x63"
+    handler: "0\x84\x00\x00\x00\x2a\x02\x01\x02\x65\x84\x00\x00\x00\x21\x04\x00\x30\x84\x00\x00\x00\x00"
+    name: "ldap_search_result_done"
+deadlineTimeoutSeconds: 30
+serverName: "DC01.corp.local"
+```
+
+**SMB File Server Honeypot**:
+
+```yaml
+apiVersion: "v1"
+protocol: "tcp"
+address: ":445"
+description: "Windows SMB File Server"
+commands:
+  - regex: "\\xfeSMB"
+    handler: "\xfeSMB@\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    name: "smb2_negotiate_response"
+  - regex: "\\xffSMB"
+    handler: "\xffSMB\x72\x00\x00\x00\x00"
+    name: "smb1_negotiate_response"
+deadlineTimeoutSeconds: 20
+serverName: "FILESERVER01"
+```
+
+**RDP Honeypot**:
+
+```yaml
+apiVersion: "v1"
+protocol: "tcp"
+address: ":3389"
+description: "Windows Remote Desktop Service"
+banner: "\x03\x00\x00\x13\x0e\xd0\x00\x00\x12\x34\x00\x02\x00\x08\x00\x02\x00\x00\x00"
+commands:
+  - regex: "\\x03\\x00"
+    handler: "\x03\x00\x00\x13\x0e\xd0\x00\x00\x12\x34\x00\x02\x01\x08\x00\x02\x00\x00\x00"
+    name: "x224_connection_confirm"
+deadlineTimeoutSeconds: 15
+serverName: "WIN-DC01"
+```
+
+#### TCP with LLM Integration
+
+TCP honeypots can use LLM providers to generate dynamic responses:
+
+```yaml
+apiVersion: "v1"
+protocol: "tcp"
+address: ":5432"
+description: "PostgreSQL 15.3 with LLM"
+commands:
+  - regex: "^(.+)$"
+    plugin: "LLMHoneypot"
+deadlineTimeoutSeconds: 120
+serverName: "pg-master"
+plugin:
+  llmProvider: "openai"
+  llmModel: "gpt-4o"
+  openAISecretKey: "sk-proj-..."
+  prompt: "You are simulating a PostgreSQL 15.3 server. Respond to incoming TCP data as a PostgreSQL server would."
+```
+
+Additional example configurations are available in `configurations/services/` for:
+- Memcached (`:11211`)
+- MS-SQL (`:1433`)
+- VNC (`:5900`)
+- MQTT (`:1883`)
 
 ## Observability
 
