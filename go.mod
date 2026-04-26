@@ -1,15 +1,13 @@
 module github.com/mariocandela/beelzebub/v3
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.25.9
 
 require (
 	github.com/gliderlabs/ssh v0.3.8
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/google/uuid v1.6.0
 	github.com/jarcoal/httpmock v1.4.1
-	github.com/mark3labs/mcp-go v0.48.0
+	github.com/mark3labs/mcp-go v0.49.0
 	github.com/melbahja/goph v1.5.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rabbitmq/amqp091-go v1.11.0
