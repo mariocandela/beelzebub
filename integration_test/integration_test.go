@@ -19,9 +19,9 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/mariocandela/beelzebub/v3/builder"
-	"github.com/mariocandela/beelzebub/v3/parser"
-	"github.com/mariocandela/beelzebub/v3/tracer"
+	"github.com/mariocandela/beelzebub/v3/internal/builder"
+	"github.com/mariocandela/beelzebub/v3/internal/parser"
+	"github.com/mariocandela/beelzebub/v3/internal/tracer"
 	"github.com/melbahja/goph"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/suite"
