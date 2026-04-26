@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
 	"github.com/go-resty/resty/v2"
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
-	"github.com/mariocandela/beelzebub/v3/internal/tracer"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 )

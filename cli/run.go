@@ -8,8 +8,8 @@ import (
 	"runtime/debug"
 	"syscall"
 
-	"github.com/mariocandela/beelzebub/v3/internal/builder"
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/builder"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
 	"github.com/spf13/cobra"
 )
 

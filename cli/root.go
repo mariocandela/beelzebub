@@ -8,13 +8,13 @@ const logo = `
 ██████  █████   █████   ██        ███   █████   ██████  ██    ██ ██████
 ██   ██ ██      ██      ██       ███    ██      ██   ██ ██    ██ ██   ██
 ██████  ███████ ███████ ███████ ███████ ███████ ██████   ██████  ██████
-Honeypot Framework, happy hacking!
+Deception runtime framework, happy hacking!
 `
 
 var rootCmd = &cobra.Command{
 	Use:          "beelzebub",
-	Short:        "A honeypot framework supporting SSH, HTTP, TCP, TELNET, and MCP",
-	Long:         logo + "A honeypot framework supporting SSH, HTTP, TCP, TELNET, and MCP.",
+	Short:        "A Deception runtime framework supporting SSH, HTTP, TCP, TELNET, and MCP",
+	Long:         logo + "A Deception runtime framework supporting SSH, HTTP, TCP, TELNET, and MCP.",
 	SilenceUsage: true,
 }
 

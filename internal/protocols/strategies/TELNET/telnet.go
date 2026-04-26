@@ -11,11 +11,11 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/mariocandela/beelzebub/v3/internal/historystore"
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
-	"github.com/mariocandela/beelzebub/v3/internal/plugins"
-	"github.com/mariocandela/beelzebub/v3/internal/tracer"
-	"github.com/mariocandela/beelzebub/v3/pkg/plugin"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/historystore"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/plugins"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
+	"github.com/beelzebub-labs/beelzebub/v3/pkg/plugin"
 )
 
 // Telnet IAC (Interpret As Command) constants

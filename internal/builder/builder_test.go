@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
 	"github.com/stretchr/testify/assert"
 )
 

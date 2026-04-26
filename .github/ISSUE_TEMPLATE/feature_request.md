@@ -3,7 +3,7 @@ name: ✨ Feature Request
 about: Suggest an idea or improvement for this project
 title: '[FEATURE] '
 labels: enhancement
-assignees: mariocandela
+assignees: beelzebub-labs
 
 ---
 

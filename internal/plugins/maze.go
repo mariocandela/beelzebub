@@ -1443,7 +1443,6 @@ func main() {
 	})
 
 	http.HandleFunc("/api/v1/config", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: add authentication middleware
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"database": dbURL,
 			"version":  "%d.%d.%d",

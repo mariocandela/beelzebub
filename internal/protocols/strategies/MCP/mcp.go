@@ -3,9 +3,9 @@ package MCP
 import (
 	"context"
 	"fmt"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
 	"github.com/google/uuid"
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
-	"github.com/mariocandela/beelzebub/v3/internal/tracer"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	log "github.com/sirupsen/logrus"

@@ -1,8 +1,8 @@
 package plugins
 
 import (
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
-	"github.com/mariocandela/beelzebub/v3/pkg/plugin"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/pkg/plugin"
 )
 
 // MessagesToPlugin converts internal plugin.Message slice to pkg/plugin format.

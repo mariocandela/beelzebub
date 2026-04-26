@@ -7,16 +7,16 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mariocandela/beelzebub/v3/internal/protocols/strategies/MCP"
-	"github.com/mariocandela/beelzebub/v3/internal/protocols/strategies/TELNET"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/MCP"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/TELNET"
 
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
-	"github.com/mariocandela/beelzebub/v3/internal/plugins"
-	"github.com/mariocandela/beelzebub/v3/internal/protocols"
-	"github.com/mariocandela/beelzebub/v3/internal/protocols/strategies/HTTP"
-	"github.com/mariocandela/beelzebub/v3/internal/protocols/strategies/SSH"
-	"github.com/mariocandela/beelzebub/v3/internal/protocols/strategies/TCP"
-	"github.com/mariocandela/beelzebub/v3/internal/tracer"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/plugins"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/protocols"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/HTTP"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/SSH"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/TCP"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -112,7 +112,7 @@ func (b *Builder) Run() error {
 ██████  █████   █████   ██        ███   █████   ██████  ██    ██ ██████  
 ██   ██ ██      ██      ██       ███    ██      ██   ██ ██    ██ ██   ██ 
 ██████  ███████ ███████ ███████ ███████ ███████ ██████   ██████  ██████  
-Honeypot Framework, happy hacking!`)
+Deception runtime framework, happy hacking!`)
 	// Init Prometheus openmetrics
 	go func() {
 		if (b.beelzebubCoreConfigurations.Core.Prometheus != parser.Prometheus{}) {

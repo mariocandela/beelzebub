@@ -7,9 +7,9 @@ endif
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT     := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-LDFLAGS    := -X github.com/mariocandela/beelzebub/v3/cli.Version=$(VERSION) \
-              -X github.com/mariocandela/beelzebub/v3/cli.CommitSHA=$(COMMIT) \
-              -X github.com/mariocandela/beelzebub/v3/cli.BuildDate=$(BUILD_DATE)
+LDFLAGS    := -X github.com/beelzebub-labs/beelzebub/v3/cli.Version=$(VERSION) \
+              -X github.com/beelzebub-labs/beelzebub/v3/cli.CommitSHA=$(COMMIT) \
+              -X github.com/beelzebub-labs/beelzebub/v3/cli.BuildDate=$(BUILD_DATE)
 
 .PHONY: build
 build:

@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
-	"github.com/mariocandela/beelzebub/v3/internal/tracer"
 	"github.com/stretchr/testify/assert"
 )
 

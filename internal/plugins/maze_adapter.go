@@ -3,7 +3,7 @@ package plugins
 import (
 	"net/http"
 
-	"github.com/mariocandela/beelzebub/v3/pkg/plugin"
+	"github.com/beelzebub-labs/beelzebub/v3/pkg/plugin"
 )
 
 // mazePlugin is the registry adapter for MazeHoneypot.

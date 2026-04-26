@@ -3,9 +3,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/mariocandela/beelzebub/v3/pkg/plugin"
+	"github.com/beelzebub-labs/beelzebub/v3/pkg/plugin"
 	// Blank imports ensure built-in plugins self-register before the command runs.
-	_ "github.com/mariocandela/beelzebub/v3/internal/plugins"
+	_ "github.com/beelzebub-labs/beelzebub/v3/internal/plugins"
 	"github.com/spf13/cobra"
 )
 

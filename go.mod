@@ -1,4 +1,4 @@
-module github.com/mariocandela/beelzebub/v3
+module github.com/beelzebub-labs/beelzebub/v3
 
 go 1.25.9
 

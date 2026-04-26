@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
 	"github.com/go-resty/resty/v2"
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
-	"github.com/mariocandela/beelzebub/v3/internal/tracer"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )

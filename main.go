@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/mariocandela/beelzebub/v3/cli"
+	"github.com/beelzebub-labs/beelzebub/v3/cli"
 	log "github.com/sirupsen/logrus"
 )
 

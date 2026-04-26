@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mariocandela/beelzebub/v3/internal/plugins"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/plugins"
 	"github.com/stretchr/testify/assert"
 )
 

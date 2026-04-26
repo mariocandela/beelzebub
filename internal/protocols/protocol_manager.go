@@ -2,8 +2,8 @@
 package protocols
 
 import (
-	"github.com/mariocandela/beelzebub/v3/internal/parser"
-	"github.com/mariocandela/beelzebub/v3/internal/tracer"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
 )
 
 // ServiceStrategy is the common interface that each protocol honeypot implements

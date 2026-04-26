@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mariocandela/beelzebub/v3/internal/tracer"
-	"github.com/mariocandela/beelzebub/v3/pkg/plugin"
+	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
+	"github.com/beelzebub-labs/beelzebub/v3/pkg/plugin"
 )
 
 // llmPlugin is the registry adapter for LLMHoneypot.
