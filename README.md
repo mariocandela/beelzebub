@@ -22,7 +22,6 @@ Beelzebub is an open-source deception runtime that deploys adaptive, LLM-powered
 - [Observability](#observability)
   - [Prometheus Metrics](#prometheus-metrics)
   - [RabbitMQ Integration](#rabbitmq-integration)
-  - [Beelzebub Cloud](#beelzebub-cloud)
 - [Testing](#testing)
 - [Code Quality](#code-quality)
 - [Contributing](#contributing)
@@ -43,7 +42,7 @@ Beelzebub is an open-source deception runtime that deploys adaptive, LLM-powered
 - **Low-code service definition**: YAML-based configuration with regex command matching — no custom code required to deploy a new decoy service
 - **Multi-protocol coverage**: SSH, HTTP, TCP, TELNET, MCP  from infrastructure targets to AI agent attack surfaces
 - **Extensible plugin system**: Implement the `CommandPlugin` or `HTTPPlugin` interface and register via `init()`  no core changes required
-- **Full observability stack**: Prometheus metrics, RabbitMQ event streaming, ELK integration, Beelzebub Cloud
+- **Full observability stack**: Prometheus metrics, RabbitMQ event streaming
 - **Production-ready runtime**: Docker, Kubernetes (Helm), graceful shutdown, per-service memory limits
 
 ## LLM Deception Demo
@@ -205,22 +204,6 @@ core:
 
 Events are published as structured JSON to the `event` queue.
 
-### Beelzebub Cloud
-
-Connect to the managed Beelzebub Cloud platform for centralised event aggregation, analytics, and multi-node orchestration:
-
-```yaml
-core:
-  beelzebub-cloud:
-    enabled: true
-    uri: "https://your-cloud-endpoint"
-    auth-token: "your-token"
-```
-
-### ELK Stack
-
-Official Elastic integration available at [Elastic docs](https://www.elastic.co/docs/reference/integrations/beelzebub).
-
 ## Testing
 
 ```bash
@@ -251,17 +234,21 @@ The Beelzebub team welcomes contributions. Whether you want to report a bug, imp
 
 Beelzebub is licensed under the [GNU GPL v3 License](LICENSE).
 
-## Supported By
+## Contributing
 
-[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
+The Beelzebub team welcomes contributions and project participation. Whether you want to report bugs, contribute new features, or have any questions, please refer to our [Contributor Guide](CONTRIBUTING.md) for detailed information. We encourage all participants and maintainers to adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) and foster a supportive and respectful community.
 
-![gitbook logo](https://i.postimg.cc/VNQh5hnk/gitbook.png)
+Happy hacking!
+
+## License
+
+Beelzebub is licensed under the [GNU GPL v3 License](LICENSE).
 
 ## Configuration Reference
 
 Beelzebub uses a two-tier configuration system:
 
-1. **Core configuration** (`beelzebub.yaml`)  global settings: logging, tracing, Prometheus, Beelzebub Cloud
+1. **Core configuration** (`beelzebub.yaml`)  global settings: logging, tracing, Prometheus
 2. **Service configurations** (`services/*.yaml`)  one file per decoy service
 
 ### Core Configuration
@@ -280,13 +267,9 @@ core:
   prometheus:
     path: "/metrics"
     port: ":2112"
-  beelzebub-cloud:
-    enabled: false
-    uri: ""
-    auth-token: ""
 ```
 
-Environment variable overrides are supported for all fields (e.g. `BEELZEBUB_RABBITMQ_ENABLED`, `BEELZEBUB_CLOUD_AUTH_TOKEN`). Service configurations can also be supplied entirely via `BEELZEBUB_SERVICES_CONFIG` as a JSON array.
+Environment variable overrides are supported for all fields (e.g. `BEELZEBUB_RABBITMQ_ENABLED`). Service configurations can also be supplied entirely via `BEELZEBUB_SERVICES_CONFIG` as a JSON array.
 
 ### Service Configuration
 
@@ -572,3 +555,9 @@ plugin:
 ```
 
 Additional example configurations are available in `configurations/services/` for Memcached, MS-SQL, SMB, RDP, VNC, and MQTT.
+
+## Supported By
+
+[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
+
+![gitbook logo](https://i.postimg.cc/VNQh5hnk/gitbook.png)
