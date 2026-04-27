@@ -1,0 +1,713 @@
+package parser
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func makeService(filename, protocol, address string, commands []Command) BeelzebubServiceConfiguration {
+	return BeelzebubServiceConfiguration{
+		Filename: filename,
+		Protocol: protocol,
+		Address:  address,
+		Commands: commands,
+	}
+}
+
+func findIssues(result ValidateResult, filename string) []ValidationIssue {
+	for _, r := range result.Results {
+		if r.Filename == filename {
+			return r.Issues
+		}
+	}
+	return nil
+}
+
+func hasIssue(issues []ValidationIssue, level, message string) bool {
+	for _, issue := range issues {
+		if issue.Level == level && issue.Message == message {
+			return true
+		}
+	}
+	return false
+}
+
+func TestValidateProtocol(t *testing.T) {
+	tests := []struct {
+		name      string
+		protocol  string
+		wantError bool
+		errorMsg  string
+	}{
+		{"missing protocol", "", true, `invalid protocol "", valid: http, ssh, tcp, mcp, telnet`},
+		{"invalid protocol ftp", "ftp", true, `invalid protocol "ftp", valid: http, ssh, tcp, mcp, telnet`},
+		{"valid http", "http", false, ""},
+		{"valid ssh", "ssh", false, ""},
+		{"valid tcp", "tcp", false, ""},
+		{"valid mcp", "mcp", false, ""},
+		{"valid telnet", "telnet", false, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", tt.protocol, ":8080", nil)
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantError {
+				assert.True(t, hasIssue(issues, LevelError, tt.errorMsg))
+			} else {
+				for _, issue := range issues {
+					assert.NotContains(t, issue.Message, "invalid protocol")
+				}
+			}
+		})
+	}
+}
+
+func TestValidateAddress(t *testing.T) {
+	tests := []struct {
+		name      string
+		address   string
+		wantError bool
+	}{
+		{"empty address", "", true},
+		{"whitespace-only address", "   ", true},
+		{"valid address", ":8080", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", tt.address, nil)
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantError {
+				assert.True(t, hasIssue(issues, LevelError, "address is empty"))
+			} else {
+				assert.False(t, hasIssue(issues, LevelError, "address is empty"))
+			}
+		})
+	}
+}
+
+func TestValidateCommandRegexEmpty(t *testing.T) {
+	tests := []struct {
+		name      string
+		commands  []Command
+		wantError bool
+	}{
+		{
+			name:      "empty regex",
+			commands:  []Command{{RegexStr: ""}},
+			wantError: true,
+		},
+		{
+			name:      "non-empty regex",
+			commands:  []Command{{RegexStr: "wp-admin"}},
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", ":8080", tt.commands)
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantError {
+				assert.True(t, hasIssue(issues, LevelError, "command[0] has empty regex"))
+			} else {
+				assert.False(t, hasIssue(issues, LevelError, "command[0] has empty regex"))
+			}
+		})
+	}
+}
+
+func TestValidateCommandPluginInvalid(t *testing.T) {
+	tests := []struct {
+		name      string
+		plugin    string
+		wantError bool
+	}{
+		{"typo plugin name", "TypoPlugin", true},
+		{"empty plugin", "", false},
+		{"LLMHoneypot", "LLMHoneypot", false},
+		{"MazeHoneypot", "MazeHoneypot", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", ":8080", []Command{
+				{RegexStr: "test", Plugin: tt.plugin},
+			})
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantError {
+				expectedMsg := fmt.Sprintf("command[0] has invalid plugin %q, valid: (none), LLMHoneypot, MazeHoneypot", tt.plugin)
+				assert.True(t, hasIssue(issues, LevelError, expectedMsg))
+			} else {
+				for _, issue := range issues {
+					assert.NotContains(t, issue.Message, "invalid plugin")
+				}
+			}
+		})
+	}
+}
+
+func TestValidateFallbackCommand(t *testing.T) {
+	tests := []struct {
+		name          string
+		fallback      Command
+		wantRegexErr  bool
+		wantPluginErr bool
+	}{
+		{
+			name:          "empty handler and plugin",
+			fallback:      Command{},
+			wantRegexErr:  false,
+			wantPluginErr: false,
+		},
+		{
+			name:          "invalid plugin with valid regex",
+			fallback:      Command{Handler: "test", Plugin: "BadPlugin", RegexStr: ".*"},
+			wantRegexErr:  false,
+			wantPluginErr: true,
+		},
+		{
+			name:          "empty regex with valid plugin (fallback is catch-all, no regex needed)",
+			fallback:      Command{Handler: "test", Plugin: "LLMHoneypot"},
+			wantRegexErr:  false,
+			wantPluginErr: false,
+		},
+		{
+			name:          "invalid regex syntax in fallback",
+			fallback:      Command{Handler: "test", Plugin: "LLMHoneypot", RegexStr: "[invalid"},
+			wantRegexErr:  true,
+			wantPluginErr: false,
+		},
+		{
+			name:          "valid regex and valid plugin",
+			fallback:      Command{Handler: "test", Plugin: "MazeHoneypot", RegexStr: ".*"},
+			wantRegexErr:  false,
+			wantPluginErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", ":8080", nil)
+			svc.FallbackCommand = tt.fallback
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantRegexErr {
+				assert.True(t, len(issues) > 0, "expected a regex error")
+				for _, issue := range issues {
+					if issue.Level == LevelError {
+						assert.Contains(t, issue.Message, "fallbackCommand has invalid regex")
+					}
+				}
+			} else {
+				for _, issue := range issues {
+					assert.NotContains(t, issue.Message, "fallbackCommand has invalid regex")
+				}
+			}
+
+			if tt.wantPluginErr {
+				expectedMsg := fmt.Sprintf("fallbackCommand has invalid plugin %q, valid: (none), LLMHoneypot, MazeHoneypot", tt.fallback.Plugin)
+				assert.True(t, hasIssue(issues, LevelError, expectedMsg))
+			} else {
+				for _, issue := range issues {
+					assert.NotContains(t, issue.Message, "fallbackCommand has invalid plugin")
+				}
+			}
+		})
+	}
+}
+
+func TestValidatePortCollision(t *testing.T) {
+	tests := []struct {
+		name      string
+		services  []BeelzebubServiceConfiguration
+		wantError bool
+	}{
+		{
+			name: "same protocol and address",
+			services: []BeelzebubServiceConfiguration{
+				makeService("a.yaml", "http", ":8080", nil),
+				makeService("b.yaml", "http", ":8080", nil),
+			},
+			wantError: true,
+		},
+		{
+			name: "different addresses",
+			services: []BeelzebubServiceConfiguration{
+				makeService("a.yaml", "http", ":8080", nil),
+				makeService("b.yaml", "http", ":9090", nil),
+			},
+			wantError: false,
+		},
+		{
+			name: "same address different protocol",
+			services: []BeelzebubServiceConfiguration{
+				makeService("a.yaml", "http", ":8080", nil),
+				makeService("b.yaml", "ssh", ":8080", nil),
+			},
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Validate(tt.services, nil)
+
+			for _, svc := range tt.services {
+				issues := findIssues(result, svc.Filename)
+				expectedMsg := fmt.Sprintf("address %s:%s is used by multiple services", svc.Protocol, svc.Address)
+				if tt.wantError {
+					assert.True(t, hasIssue(issues, LevelError, expectedMsg))
+				} else {
+					assert.False(t, hasIssue(issues, LevelError, expectedMsg))
+				}
+			}
+		})
+	}
+}
+
+func TestValidateInlineSecretKey(t *testing.T) {
+	tests := []struct {
+		name      string
+		secretKey string
+		wantWarn  bool
+	}{
+		{"non-empty secret key", "sk-12345", true},
+		{"empty secret key", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", ":8080", nil)
+			svc.Plugin.OpenAISecretKey = tt.secretKey
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantWarn {
+				assert.True(t, hasIssue(issues, LevelWarning, "openAISecretKey is set inline, consider using env var OPEN_AI_SECRET_KEY"))
+			} else {
+				assert.False(t, hasIssue(issues, LevelWarning, "openAISecretKey is set inline"))
+			}
+		})
+	}
+}
+
+func TestValidateDeadlineTimeout(t *testing.T) {
+	tests := []struct {
+		name     string
+		timeout  int
+		commands []Command
+		wantWarn bool
+	}{
+		{"zero with commands", 0, []Command{{RegexStr: "test"}}, true},
+		{"zero without commands", 0, nil, false},
+		{"non-zero with commands", 30, []Command{{RegexStr: "test"}}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", ":8080", tt.commands)
+			svc.DeadlineTimeoutSeconds = tt.timeout
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantWarn {
+				assert.True(t, hasIssue(issues, LevelWarning, "deadlineTimeoutSeconds is not set, connections may be closed immediately"))
+			} else {
+				assert.False(t, hasIssue(issues, LevelWarning, "deadlineTimeoutSeconds is not set"))
+			}
+		})
+	}
+}
+
+func TestValidateWithParseIssues(t *testing.T) {
+	parseIssues := []ValidationIssue{
+		{Level: LevelError, Message: "YAML parse error: ...", Filename: "bad.yaml"},
+		{Level: LevelWarning, Message: "deprecated field", Filename: "old.yaml"},
+	}
+
+	result := Validate(nil, parseIssues)
+
+	assert.Len(t, result.Results, 2)
+	assert.Equal(t, 1, result.TotalErrors)
+	assert.Equal(t, 1, result.TotalWarnings)
+
+	badIssues := findIssues(result, "bad.yaml")
+	assert.True(t, hasIssue(badIssues, LevelError, "YAML parse error: ..."))
+
+	oldIssues := findIssues(result, "old.yaml")
+	assert.True(t, hasIssue(oldIssues, LevelWarning, "deprecated field"))
+}
+
+func TestValidatePrint(t *testing.T) {
+	tests := []struct {
+		name   string
+		result ValidateResult
+		want   string
+	}{
+		{
+			name: "no issues",
+			result: ValidateResult{
+				Results: []ValidationResult{
+					{Filename: "service.yaml"},
+				},
+			},
+			want: "OK service.yaml\n\n0 errors, 0 warnings\n",
+		},
+		{
+			name: "errors",
+			result: ValidateResult{
+				Results: []ValidationResult{
+					{
+						Filename: "service.yaml",
+						Issues: []ValidationIssue{
+							{Level: LevelError, Message: "address is empty"},
+						},
+					},
+				},
+				TotalErrors: 1,
+			},
+			want: "FAIL service.yaml\n  ERROR: address is empty\n\n1 errors, 0 warnings\n",
+		},
+		{
+			name: "warnings only",
+			result: ValidateResult{
+				Results: []ValidationResult{
+					{
+						Filename: "service.yaml",
+						Issues: []ValidationIssue{
+							{Level: LevelWarning, Message: "some warning"},
+						},
+					},
+				},
+				TotalWarnings: 1,
+			},
+			want: "WARN service.yaml\n  WARNING: some warning\n\n0 errors, 1 warnings\n",
+		},
+		{
+			name: "sorted by filename",
+			result: ValidateResult{
+				Results: []ValidationResult{
+					{Filename: "z.yaml"},
+					{Filename: "a.yaml"},
+				},
+			},
+			want: "OK a.yaml\nOK z.yaml\n\n0 errors, 0 warnings\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			tt.result.Print()
+
+			w.Close()
+			os.Stdout = oldStdout
+
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+			got := buf.String()
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestValidateExitCode(t *testing.T) {
+	tests := []struct {
+		name     string
+		result   ValidateResult
+		wantCode int
+	}{
+		{"no errors", ValidateResult{TotalErrors: 0}, 0},
+		{"has errors", ValidateResult{TotalErrors: 3}, 1},
+		{"only warnings", ValidateResult{TotalErrors: 0, TotalWarnings: 5}, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.wantCode, tt.result.ExitCode())
+		})
+	}
+}
+
+func TestValidateCore(t *testing.T) {
+	t.Run("all valid", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 0, result.TotalErrors)
+	})
+
+	t.Run("custom filename", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Tracings.RabbitMQ.Enabled = true
+		result := ValidateCore(config, "/custom/path/core.yaml")
+		assert.Equal(t, 1, result.TotalErrors)
+		assert.Equal(t, "/custom/path/core.yaml", result.Results[0].Filename)
+		assert.True(t, hasIssue(result.Results[0].Issues, LevelError, "rabbitMQ is enabled but URI is empty"))
+	})
+
+	t.Run("rabbitmq enabled with empty URI", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Tracings.RabbitMQ.Enabled = true
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 1, result.TotalErrors)
+		assert.True(t, hasIssue(result.Results[0].Issues, LevelError, "rabbitMQ is enabled but URI is empty"))
+	})
+
+	t.Run("rabbitmq enabled with URI set", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Tracings.RabbitMQ.Enabled = true
+		config.Core.Tracings.RabbitMQ.URI = "amqp://localhost"
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 0, result.TotalErrors)
+	})
+
+	t.Run("beelzebub-cloud enabled with empty URI and auth-token", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.BeelzebubCloud.Enabled = true
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 2, result.TotalErrors)
+	})
+
+	t.Run("beelzebub-cloud enabled with URI but empty auth-token", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.BeelzebubCloud.Enabled = true
+		config.Core.BeelzebubCloud.URI = "https://api.example.com"
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 1, result.TotalErrors)
+		assert.True(t, hasIssue(result.Results[0].Issues, LevelError, "beelzebub-cloud is enabled but auth-token is empty"))
+	})
+
+	t.Run("beelzebub-cloud fully configured", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.BeelzebubCloud.Enabled = true
+		config.Core.BeelzebubCloud.URI = "https://api.example.com"
+		config.Core.BeelzebubCloud.AuthToken = "token123"
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 0, result.TotalErrors)
+	})
+
+	t.Run("multiple core issues", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Tracings.RabbitMQ.Enabled = true
+		config.Core.BeelzebubCloud.Enabled = true
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 3, result.TotalErrors)
+	})
+
+	t.Run("prometheus all valid", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Prometheus.Path = "/metrics"
+		config.Core.Prometheus.Port = ":9090"
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 0, result.TotalErrors)
+		assert.Equal(t, 0, result.TotalWarnings)
+	})
+
+	t.Run("prometheus path empty", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Prometheus.Port = ":9090"
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 1, result.TotalErrors)
+		assert.True(t, hasIssue(result.Results[0].Issues, LevelError, "prometheus is configured but path is empty"))
+	})
+
+	t.Run("prometheus path missing leading slash", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Prometheus.Path = "metrics"
+		config.Core.Prometheus.Port = ":9090"
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 1, result.TotalErrors)
+		assert.True(t, hasIssue(result.Results[0].Issues, LevelError, "prometheus path \"metrics\" must start with /"))
+	})
+
+	t.Run("prometheus port empty", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Prometheus.Path = "/metrics"
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 1, result.TotalErrors)
+		assert.True(t, hasIssue(result.Results[0].Issues, LevelError, "prometheus is configured but port is empty"))
+	})
+
+	t.Run("prometheus both empty", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Prometheus.Path = ""
+		config.Core.Prometheus.Port = ""
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 0, result.TotalErrors)
+	})
+
+	t.Run("prometheus path empty and port empty", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 0, result.TotalErrors)
+	})
+
+	t.Run("logs path parent dir does not exist", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Logging.LogsPath = "/nonexistent/dir/beelzebub.log"
+		result := ValidateCore(config, "beelzebub.yaml")
+		for _, issue := range result.Results[0].Issues {
+			t.Logf("issue: %+v", issue)
+		}
+		assert.Equal(t, 1, result.TotalWarnings)
+		assert.Equal(t, 0, result.TotalErrors)
+		assert.True(t, hasIssue(result.Results[0].Issues, LevelWarning, `logs path "/nonexistent/dir/beelzebub.log": parent directory "/nonexistent/dir" does not exist`))
+	})
+
+	t.Run("logs path empty", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Logging.LogsPath = ""
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 0, result.TotalErrors)
+		assert.Equal(t, 0, result.TotalWarnings)
+	})
+
+	t.Run("logs path valid parent dir", func(t *testing.T) {
+		config := &BeelzebubCoreConfigurations{}
+		config.Core.Logging.LogsPath = "/tmp/beelzebub.log"
+		result := ValidateCore(config, "beelzebub.yaml")
+		assert.Equal(t, 0, result.TotalErrors)
+		assert.Equal(t, 0, result.TotalWarnings)
+	})
+}
+
+func TestValidateAddressFormat(t *testing.T) {
+	tests := []struct {
+		name      string
+		address   string
+		wantWarn  bool
+		warnMsg   string
+	}{
+		{":8080", ":8080", false, ""},
+		{"0.0.0.0:80", "0.0.0.0:80", false, ""},
+		{"/tmp/socket", "/tmp/socket", false, ""},
+		{"abc no colon", "abc", true, `address "abc" has invalid port format or port out of range (1-65535)`},
+		{":99999 port out of range", ":99999", true, `address ":99999" has invalid port format or port out of range (1-65535)`},
+		{":0 port zero", ":0", true, `address ":0" has invalid port format or port out of range (1-65535)`},
+		{":abc port not a number", ":abc", true, `address ":abc" has invalid port format or port out of range (1-65535)`},
+		{"[::1]:8080 IPv6", "[::1]:8080", false, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", tt.address, nil)
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantWarn {
+				assert.True(t, hasIssue(issues, LevelWarning, tt.warnMsg))
+			} else {
+				for _, issue := range issues {
+					assert.NotContains(t, issue.Message, "invalid port format")
+				}
+			}
+		})
+	}
+}
+
+func TestValidateCommandEmptyHandlerAndPlugin(t *testing.T) {
+	tests := []struct {
+		name     string
+		commands []Command
+		wantWarn bool
+	}{
+		{"handler set", []Command{{RegexStr: "test", Handler: "some-handler"}}, false},
+		{"plugin set", []Command{{RegexStr: "test", Plugin: "LLMHoneypot"}}, false},
+		{"both empty", []Command{{RegexStr: "test"}}, true},
+		{"both set", []Command{{RegexStr: "test", Handler: "h", Plugin: "LLMHoneypot"}}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", ":8080", tt.commands)
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantWarn {
+				assert.True(t, hasIssue(issues, LevelWarning, "command[0] has empty handler and no plugin — matched requests will produce no output"))
+			} else {
+				assert.False(t, hasIssue(issues, LevelWarning, "command[0] has empty handler and no plugin"))
+			}
+		})
+	}
+}
+
+func TestValidateMalformedHeaders(t *testing.T) {
+	tests := []struct {
+		name     string
+		commands []Command
+		wantWarn bool
+	}{
+		{"no headers", []Command{{RegexStr: "test", Headers: nil}}, false},
+		{"valid header", []Command{{RegexStr: "test", Headers: []string{"Content-Type: application/json"}}}, false},
+		{"malformed header", []Command{{RegexStr: "test", Headers: []string{"NoColonValue"}}}, true},
+		{"multiple headers one malformed", []Command{{RegexStr: "test", Headers: []string{"Content-Type: application/json", "NoColonValue"}}}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := makeService("test.yaml", "http", ":8080", tt.commands)
+			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+			issues := findIssues(result, "test.yaml")
+
+			if tt.wantWarn {
+				assert.True(t, hasIssue(issues, LevelWarning, `command[0].headers has malformed entry (no colon): "NoColonValue"`))
+			} else {
+				for _, issue := range issues {
+					assert.NotContains(t, issue.Message, "malformed entry")
+				}
+			}
+		})
+	}
+}
+
+type mockValidator struct {
+	name   string
+	issues []ValidationIssue
+}
+
+func (m *mockValidator) Name() string { return m.name }
+
+func (m *mockValidator) Validate(config BeelzebubServiceConfiguration) []ValidationIssue {
+	return m.issues
+}
+
+func TestRegisterAndResetServiceValidators(t *testing.T) {
+	ResetServiceValidators()
+
+	mockV := &mockValidator{name: "mock", issues: []ValidationIssue{
+		{Level: LevelWarning, Message: "mock issue"},
+	}}
+	RegisterServiceValidator(mockV)
+
+	svc := makeService("test.yaml", "tcp", ":8080", nil)
+	result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+	issues := findIssues(result, "test.yaml")
+	assert.True(t, hasIssue(issues, LevelWarning, "mock issue"))
+
+	ResetServiceValidators()
+
+	result2 := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+	issues2 := findIssues(result2, "test.yaml")
+	assert.False(t, hasIssue(issues2, LevelWarning, "mock issue"))
+}

@@ -729,3 +729,127 @@ func TestHashCode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, hash, hash3)
 }
+
+func mockReadDirWithFilename(dirPath string) ([]string, error) {
+	return []string{"test-service.yaml"}, nil
+}
+
+func mockReadDirMultipleFiles(dirPath string) ([]string, error) {
+	return []string{"valid.yaml", "invalid-yaml.yaml", "invalid-regex.yaml"}, nil
+}
+
+func mockReadFileBytesForValidation(filePath string) ([]byte, error) {
+	switch filePath {
+	case "valid.yaml":
+		return mockReadfilebytesBeelzebubServiceConfiguration(filePath)
+	case "invalid-yaml.yaml":
+		return []byte(`{{}`), nil
+	case "invalid-regex.yaml":
+		return []byte(`
+apiVersion: "v1"
+protocol: "http"
+address: ":8080"
+commands:
+  - regex: "[invalid"
+    handler: "login"
+`), nil
+	}
+	return nil, os.ErrNotExist
+}
+
+func TestReadConfigurationsServicesFilenameIsSet(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirWithFilename
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, err)
+	assert.Len(t, services, 1)
+	assert.Equal(t, "test-service.yaml", services[0].Filename)
+}
+
+func TestReadConfigurationsServicesForValidationNoErrors(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesBeelzebubServiceConfiguration
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirWithFilename
+
+	services, issues, err := configurationsParser.ReadConfigurationsServicesForValidation()
+	assert.Nil(t, err)
+	assert.Len(t, services, 1)
+	assert.Empty(t, issues)
+	assert.Equal(t, "test-service.yaml", services[0].Filename)
+}
+
+func TestReadConfigurationsServicesForValidationWithErrors(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadFileBytesForValidation
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirMultipleFiles
+
+	services, issues, err := configurationsParser.ReadConfigurationsServicesForValidation()
+	assert.Nil(t, err)
+	assert.Len(t, services, 1)
+	assert.Len(t, issues, 2)
+	assert.Equal(t, "valid.yaml", services[0].Filename)
+	assert.Equal(t, "invalid-yaml.yaml", issues[0].Filename)
+	assert.Equal(t, LevelError, issues[0].Level)
+	assert.Equal(t, "invalid-regex.yaml", issues[1].Filename)
+	assert.Equal(t, "error", issues[1].Level)
+}
+
+func TestReadConfigurationsServicesForValidationFromEnv(t *testing.T) {
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `[{"apiVersion":"v1","protocol":"ssh","address":":2222"}]`)
+
+	configurationsParser := Init("", "")
+
+	services, issues, err := configurationsParser.ReadConfigurationsServicesForValidation()
+	assert.Nil(t, err)
+	assert.Len(t, services, 1)
+	assert.Empty(t, issues)
+	assert.Equal(t, "<env:BEELZEBUB_SERVICES_CONFIG>", services[0].Filename)
+	assert.Equal(t, "ssh", services[0].Protocol)
+}
+
+func TestReadConfigurationsServicesForValidationWithRateLimitError(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = func(filePath string) ([]byte, error) {
+		return []byte(`
+apiVersion: "v1"
+protocol: "http"
+address: ":8080"
+commands:
+  - regex: "^(.+)$"
+plugin:
+  rateLimitEnabled: true
+  rateLimitRequests: 0
+  rateLimitWindowSeconds: 0
+`), nil
+	}
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirWithFilename
+
+	services, issues, err := configurationsParser.ReadConfigurationsServicesForValidation()
+	assert.Nil(t, err)
+	assert.Empty(t, services)
+	assert.Len(t, issues, 1)
+	assert.Equal(t, LevelError, issues[0].Level)
+	assert.Contains(t, issues[0].Message, "invalid rate limiting config")
+}
+
+func TestReadConfigurationsServicesForValidationFromEnvInvalidJSON(t *testing.T) {
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `{invalid}`)
+
+	configurationsParser := Init("", "")
+
+	services, issues, err := configurationsParser.ReadConfigurationsServicesForValidation()
+	assert.Error(t, err)
+	assert.Nil(t, services)
+	assert.Nil(t, issues)
+	assert.Contains(t, err.Error(), "invalid BEELZEBUB_SERVICES_CONFIG")
+}
