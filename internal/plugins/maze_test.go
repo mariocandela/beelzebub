@@ -258,6 +258,223 @@ func TestMazeHoneypot_FileSizeMatchesContent(t *testing.T) {
 	}
 }
 
+func TestMazeHoneypot_FileResponse_GoMain(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/src/main.go"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "package main")
+	assert.Contains(t, resp.Body, "func main()")
+}
+
+func TestMazeHoneypot_FileResponse_SSHPubKey(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/ssh/id_rsa.pub"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "ssh-rsa")
+}
+
+func TestMazeHoneypot_FileResponse_RequirementsTxt(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/app/requirements.txt"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "Django")
+}
+
+func TestMazeHoneypot_FileResponse_TerraformState(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/infra/terraform.tfstate"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "terraform_version")
+	assert.Contains(t, resp.Body, "aws_instance")
+}
+
+func TestMazeHoneypot_FileResponse_MigrationSQL(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/db/migration.sql"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "Migration")
+	assert.Contains(t, resp.Body, "BEGIN;")
+}
+
+func TestMazeHoneypot_FileResponse_NotesMd(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/docs/notes.md"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "Meeting Notes")
+	assert.Contains(t, resp.Body, "## Attendees")
+}
+
+func TestMazeHoneypot_FileResponse_GenericFile(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	// .xml extension hits the default case and calls genGenericFile
+	resp := maze.HandleRequest(newRequest("/misc/config.xml"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "Auto-generated file")
+}
+
+func TestMazePlugin_HandleHTTP(t *testing.T) {
+	mp := &mazePlugin{}
+
+	req := newRequest("/")
+	resp := mp.HandleHTTP(req)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.NotEmpty(t, resp.Body)
+	assert.Contains(t, resp.ContentType, "text/html")
+}
+
+func TestMazePlugin_HandleHTTP_FileRequest(t *testing.T) {
+	mp := &mazePlugin{}
+
+	req := newRequest("/config/app.yaml")
+	resp := mp.HandleHTTP(req)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "database:")
+}
+
+func TestMazePlugin_Metadata(t *testing.T) {
+	mp := &mazePlugin{}
+	meta := mp.Metadata()
+
+	assert.Equal(t, MazePluginName, meta.Name)
+	assert.NotEmpty(t, meta.Version)
+}
+
+func TestMazeHoneypot_FormatSize(t *testing.T) {
+	assert.Equal(t, "0", formatSize(0))
+	assert.Equal(t, "512", formatSize(512))
+	assert.Equal(t, "1.0K", formatSize(1024))
+	assert.Equal(t, "1.0M", formatSize(1024*1024))
+}
+
+func TestIconForFile(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected string
+	}{
+		{"file.txt", "text.svg"},
+		{"readme.md", "text.svg"},
+		{"access.log", "text.svg"},
+		{"users.csv", "text.svg"},
+		{"archive.gz", "compressed.svg"},
+		{"backup.tar", "compressed.svg"},
+		{"data.zip", "compressed.svg"},
+		{"old.bak", "compressed.svg"},
+		{"deploy.sh", "script.svg"},
+		{"app.py", "script.svg"},
+		{"main.go", "script.svg"},
+		{"index.php", "script.svg"},
+		{"app.js", "script.svg"},
+		{"config.yaml", "layout.svg"},
+		{"config.yml", "layout.svg"},
+		{"data.json", "layout.svg"},
+		{"config.xml", "layout.svg"},
+		{"nginx.conf", "layout.svg"},
+		{"settings.toml", "layout.svg"},
+		{"dump.sql", "layout.svg"},
+		{"id_rsa.key", "key.svg"},
+		{"cert.pem", "key.svg"},
+		{"id_rsa.pub", "key.svg"},
+		{"binary", "unknown.svg"},
+		{"Dockerfile", "unknown.svg"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			assert.Equal(t, tt.expected, iconForFile(tt.filename))
+		})
+	}
+}
+
+func TestMazeHoneypot_FileResponse_HTML(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/web/index.html"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.ContentType, "text/html")
+}
+
+func TestMazeHoneypot_FileResponse_BinaryFile(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/backup/data.zip"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/zip", resp.ContentType)
+	assert.NotEmpty(t, resp.Body)
+}
+
+func TestMazeHoneypot_FileResponse_PEM(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/ssl/cert.pem"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/x-pem-file", resp.ContentType)
+}
+
+func TestMazeHoneypot_FileResponse_Conf(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/etc/nginx.conf"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Body, "server {")
+}
+
+func TestMazeHoneypot_FileResponse_JSON(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/config/settings.json"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.ContentType)
+}
+
+func TestMazeHoneypot_FileResponse_TarGz(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/backup/archive.tar.gz"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.NotEmpty(t, resp.Body)
+}
+
+func TestMazeHoneypot_FileResponse_Key(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	resp := maze.HandleRequest(newRequest("/keys/server.key"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/x-pem-file", resp.ContentType)
+}
+
+func TestMazeHoneypot_FileResponse_MarkdownGenerics(t *testing.T) {
+	maze := &MazeHoneypot{}
+
+	// README.md is handled by genReadme (not genNotesMd)
+	resp := maze.HandleRequest(newRequest("/project/README.md"))
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.NotEmpty(t, resp.Body)
+}
+
 func TestMazeHoneypot_TechProfileCoherence(t *testing.T) {
 	maze := &MazeHoneypot{}
 

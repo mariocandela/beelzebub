@@ -83,6 +83,25 @@ func TestList_Sorted(t *testing.T) {
 	}
 }
 
+func TestGetHTTP_WrongType(t *testing.T) {
+	// A CommandPlugin registered should not be returned as HTTPPlugin
+	cmd := &stubCommand{name: "TestGetHTTP_WrongType_" + t.Name()}
+	plugin.Register(cmd)
+
+	_, ok := plugin.GetHTTP(cmd.name)
+	assert.False(t, ok, "CommandPlugin should not be returned as HTTPPlugin")
+}
+
+func TestGetCommand_NotFound(t *testing.T) {
+	_, ok := plugin.GetCommand("definitely-does-not-exist-abc123")
+	assert.False(t, ok)
+}
+
+func TestGetHTTP_NotFound(t *testing.T) {
+	_, ok := plugin.GetHTTP("definitely-does-not-exist-abc123")
+	assert.False(t, ok)
+}
+
 func TestRegister_Duplicate_Panics(t *testing.T) {
 	name := "DupPlugin_" + t.Name()
 	plugin.Register(&stubCommand{name: name})

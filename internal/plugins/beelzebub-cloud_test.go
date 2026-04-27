@@ -289,6 +289,19 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 	}
 }
 
+func TestMapToEventDTO_WithHeaders(t *testing.T) {
+	event := tracer.Event{
+		DateTime: "2025-05-01T16:18:13Z",
+		Headers:  `[Key: Content-Type, values: application/json]`,
+	}
+	beelzebubCloud := InitBeelzebubCloud("localhost:8081", "sdjdnklfjndslkjanfk", false)
+	eventDTO, err := beelzebubCloud.mapToEventDTO(event)
+
+	assert.Nil(t, err)
+	assert.NotEmpty(t, eventDTO.Headers)
+	assert.Contains(t, eventDTO.Headers, "Content-Type")
+}
+
 func TestMapToEventDTO(t *testing.T) {
 	event := tracer.Event{
 		DateTime:        "2025-05-01T16:18:13Z",

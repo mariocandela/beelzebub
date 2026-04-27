@@ -679,3 +679,53 @@ func TestReadConfigurationsServicesFromEnvInvalidRegex(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid regex in BEELZEBUB_SERVICES_CONFIG")
 }
+
+func mockReadfilebytesWithRateLimitEnabled(filePath string) ([]byte, error) {
+	return []byte(`
+apiVersion: "v1"
+protocol: "ssh"
+address: ":22"
+plugin:
+  rateLimitEnabled: true
+  rateLimitRequests: 0
+  rateLimitWindowSeconds: 0
+`), nil
+}
+
+func TestReadConfigurationsServicesRateLimitValidation(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesWithRateLimitEnabled
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid rate limiting config")
+}
+
+func TestHashCode(t *testing.T) {
+	conf := BeelzebubServiceConfiguration{
+		Protocol: "http",
+		Address:  ":8080",
+	}
+
+	hash, err := conf.HashCode()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, hash)
+
+	// Same config produces same hash
+	hash2, err := conf.HashCode()
+	assert.NoError(t, err)
+	assert.Equal(t, hash, hash2)
+
+	// Different config produces different hash
+	conf2 := BeelzebubServiceConfiguration{
+		Protocol: "ssh",
+		Address:  ":22",
+	}
+	hash3, err := conf2.HashCode()
+	assert.NoError(t, err)
+	assert.NotEqual(t, hash, hash3)
+}

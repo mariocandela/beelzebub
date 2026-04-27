@@ -135,6 +135,41 @@ func TestGetStrategy(t *testing.T) {
 	assert.NotNil(t, retrievedStrategy)
 }
 
+func TestProtocolFromString(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected Protocol
+		ok       bool
+	}{
+		{"http", HTTP, true},
+		{"ssh", SSH, true},
+		{"tcp", TCP, true},
+		{"mcp", MCP, true},
+		{"telnet", TELNET, true},
+		{"HTTP", 0, false},
+		{"unknown", 0, false},
+		{"", 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, ok := ProtocolFromString(tt.input)
+			assert.Equal(t, tt.ok, ok)
+			if ok {
+				assert.Equal(t, tt.expected, got)
+			}
+		})
+	}
+}
+
+func TestStringProtocol(t *testing.T) {
+	assert.Equal(t, "HTTP", HTTP.String())
+	assert.Equal(t, "SSH", SSH.String())
+	assert.Equal(t, "TCP", TCP.String())
+	assert.Equal(t, "MCP", MCP.String())
+	assert.Equal(t, "TELNET", TELNET.String())
+}
+
 func TestSetGetStrategyConcurrency(t *testing.T) {
 	tracer := GetInstance(func(event Event) {})
 
