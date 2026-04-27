@@ -4,8 +4,17 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    ignore:
-      - dependency-name: "golang.org/x/*"
-        update-types: ["version-update:semver-minor", "version-update:semver-major"]
-      - dependency-name: "golang.org/x/time"
-        versions: [">=0.15.0"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
