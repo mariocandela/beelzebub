@@ -21,9 +21,6 @@ jobs:
     name: Initialize
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-
     steps:
       - name: Initialize Pipeline
         run: |
@@ -32,38 +29,29 @@ jobs:
   verify:
     name: Verify
     needs: initialize
-    uses: ./.github/workflows/verify.yml
     secrets: inherit
+    uses: ./.github/workflows/verify.yml
 
     permissions:
+      actions: read
       contents: read
+      security-events: write
 
   build:
     name: Build
     needs: verify
-    uses: ./.github/workflows/build.yml
-
-    permissions:
-      contents: read
-
     secrets: inherit
+    uses: ./.github/workflows/build.yml
 
   test:
     name: Test
     needs: build
-    uses: ./.github/workflows/test.yml
     secrets: inherit
-
-    permissions:
-      contents: read
+    uses: ./.github/workflows/test.yml
 
   deploy:
     name: Deploy
     needs: test
+    secrets: inherit
     uses: ./.github/workflows/deploy.yml
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    permissions:
-      contents: read
-
-    secrets: inherit
