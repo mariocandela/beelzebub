@@ -1,0 +1,57 @@
+name: Main
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches: [ "main" ]
+
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  initialize:
+    name: Initialize
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Initialize Pipeline
+        run: |
+          echo "Pipeline ID: ${{ github.run_id }}"
+
+  verify:
+    name: Verify
+    needs: initialize
+    secrets: inherit
+    uses: ./.github/workflows/verify.yml
+
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  build:
+    name: Build
+    needs: verify
+    secrets: inherit
+    uses: ./.github/workflows/build.yml
+
+  test:
+    name: Test
+    needs: build
+    secrets: inherit
+    uses: ./.github/workflows/test.yml
+
+  deploy:
+    name: Deploy
+    needs: test
+    secrets: inherit
+    uses: ./.github/workflows/deploy.yml
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'

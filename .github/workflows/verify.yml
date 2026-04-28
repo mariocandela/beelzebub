@@ -1,0 +1,69 @@
+name: Verify
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  vet:
+    name: Vet
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set Up Go
+        uses: actions/setup-go@v6
+
+        with:
+          cache: true
+          go-version-file: go.mod
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Run Vet
+        run: go vet ./...
+
+  analyze:
+    name: Analyze
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    env:
+      CODEQL_ACTION_FILE_COVERAGE_ON_PRS: true
+
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set Up Go
+        uses: actions/setup-go@v6
+
+        with:
+          cache: true
+          go-version-file: go.mod
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+
+        with:
+          languages: go
+
+      - name: Build Beelzebub
+        run: go build ./...
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+
+        with:
+          category: "/language:go"

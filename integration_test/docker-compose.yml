@@ -8,3 +8,9 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=integration
       - RABBITMQ_DEFAULT_PASS=integration
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 10s

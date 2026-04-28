@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+
+        with:
+          cache: true
+          go-version-file: go.mod
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Build Beelzebub
+        run: go build -v ./...
