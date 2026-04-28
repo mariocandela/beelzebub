@@ -3,7 +3,6 @@ package plugins
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -235,29 +234,18 @@ func TestGetHoneypotsConfigurationsWithErrorDeserializeYaml(t *testing.T) {
 	assert.Equal(t, "yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `error` into parser.BeelzebubServiceConfiguration", err.Error())
 }
 
-func TestVerifyConfigurationsChanged(t *testing.T) {
+func TestCheckConfigurationsChanged_FirstCall(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
 
 	uri := "localhost:8081"
-	callCount := 0
+	config := "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndeadlineTimeoutSeconds: 60\npasswordRegex: \"^root$\"\n"
 
 	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
 		func(req *http.Request) (*http.Response, error) {
-			callCount++
-
-			config := "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndescription: \"SSH interactive ChatGPT\"\ncommands:\n  - regex: \"^(.+)$\"\n    plugin: \"LLMHoneypot\"\nserverVersion: \"OpenSSH\"\nserverName: \"ubuntu\"\npasswordRegex: \"^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$\"\ndeadlineTimeoutSeconds: 60\nplugin:\n  llmModel: \"gpt-4o\"\n  openAISecretKey: \"1234\"\n"
-
-			if callCount > 1 {
-				config = "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndescription: \"SSH interactive ChatGPT MODIFIED\"\ncommands:\n  - regex: \"^(.+)$\"\n    plugin: \"LLMHoneypot\"\nserverVersion: \"OpenSSH\"\nserverName: \"ubuntu\"\npasswordRegex: \"^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$\"\ndeadlineTimeoutSeconds: 60\nplugin:\n  llmModel: \"gpt-3.5-turbo\"\n  openAISecretKey: \"1234\"\n"
-			}
-
 			resp, err := httpmock.NewJsonResponse(200, &[]HoneypotConfigResponseDTO{
-				{
-					ID:      "123456",
-					Config:  config,
-					TokenID: "1234567",
-				},
+				{ID: "123456", Config: config, TokenID: "1234567"},
 			})
 			if err != nil {
 				return httpmock.NewStringResponse(500, ""), nil
@@ -266,38 +254,119 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 		},
 	)
 
-	exitInvoked := false
-	exitCalled := make(chan bool, 1)
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
+	beelzebubCloud.client = client
 
-	exitFunction = func(c int) {
-		exitInvoked = true
-		exitCalled <- true
-	}
+	newHash, changed, err := beelzebubCloud.checkConfigurationsChanged("")
+	assert.Nil(t, err)
+	assert.False(t, changed)
+	assert.NotEmpty(t, newHash)
+}
+
+func TestCheckConfigurationsChanged_ConfigsChanged(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	uri := "localhost:8081"
+	callCount := 0
+
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			callCount++
+			config := "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndeadlineTimeoutSeconds: 60\npasswordRegex: \"^root$\"\n"
+			if callCount > 1 {
+				config = "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2223\"\ndeadlineTimeoutSeconds: 60\npasswordRegex: \"^root$\"\n"
+			}
+			resp, err := httpmock.NewJsonResponse(200, &[]HoneypotConfigResponseDTO{
+				{ID: "123456", Config: config, TokenID: "1234567"},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
+	beelzebubCloud.client = client
+
+	firstHash, changed, err := beelzebubCloud.checkConfigurationsChanged("")
+	assert.Nil(t, err)
+	assert.False(t, changed)
+	assert.NotEmpty(t, firstHash)
+
+	secondHash, changed, err := beelzebubCloud.checkConfigurationsChanged(firstHash)
+	assert.Nil(t, err)
+	assert.True(t, changed)
+	assert.NotEqual(t, firstHash, secondHash)
+}
+
+func TestCheckConfigurationsChanged_HTTPError(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	uri := "localhost:8081"
+
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			return httpmock.NewStringResponse(500, ""), nil
+		},
+	)
+
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
+	beelzebubCloud.client = client
+
+	newHash, changed, err := beelzebubCloud.checkConfigurationsChanged("")
+	assert.NotNil(t, err)
+	assert.Empty(t, newHash)
+	assert.False(t, changed)
+}
+
+func TestVerifyConfigurationsChanged_StopsOnDone(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+
+	uri := "localhost:8081"
+
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &[]HoneypotConfigResponseDTO{
+				{ID: "123456", Config: "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\n", TokenID: "1234567"},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	origExit := exitFunction
+	exitFunction = func(c int) {}
 
 	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
 	beelzebubCloud.PollingInterval = 50 * time.Millisecond
 
-	done := make(chan struct{})
+	done := make(chan error, 1)
 	go func() {
-		beelzebubCloud.verifyConfigurationsChanged()
-		close(done)
+		done <- beelzebubCloud.verifyConfigurationsChanged()
 	}()
 
-	select {
-	case <-exitCalled:
-		assert.True(t, exitInvoked)
-		assert.Greater(t, callCount, 1)
-	case <-time.After(2 * time.Second):
-		t.Fatal("timeout waiting for exitFunction")
-	}
+	time.Sleep(100 * time.Millisecond)
 
 	exitFunction = func(c int) {}
 	verifyConfigurationsChangedDone <- struct{}{}
 	httpmock.DeactivateAndReset()
+	exitFunction = origExit
 
-	<-done
-	exitFunction = os.Exit
+	select {
+	case err := <-done:
+		assert.Nil(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for goroutine to stop")
+	}
 }
 
 func TestMapToEventDTO_WithHeaders(t *testing.T) {
