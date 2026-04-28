@@ -693,3 +693,65 @@ func TestRegisterAndResetServiceValidators(t *testing.T) {
 	issues2 := findIssues(result2, "test.yaml")
 	assert.False(t, hasIssue(issues2, LevelWarning, "mock issue"))
 }
+
+func TestValidateTLSConfig(t *testing.T) {
+	t.Run("both empty", func(t *testing.T) {
+		issues := ValidateTLSConfig("", "")
+		assert.Empty(t, issues)
+	})
+
+	t.Run("both set and exist", func(t *testing.T) {
+		issues := ValidateTLSConfig("/proc/self/exe", "/proc/self/exe")
+		assert.Empty(t, issues)
+	})
+
+	t.Run("only cert set", func(t *testing.T) {
+		issues := ValidateTLSConfig("/tmp/cert.crt", "")
+		assert.Len(t, issues, 1)
+		assert.Equal(t, LevelError, issues[0].Level)
+		assert.Equal(t, "both tlsCertPath and tlsKeyPath must be set for TLS, or neither", issues[0].Message)
+	})
+
+	t.Run("only key set", func(t *testing.T) {
+		issues := ValidateTLSConfig("", "/tmp/cert.key")
+		assert.Len(t, issues, 1)
+		assert.Equal(t, LevelError, issues[0].Level)
+	})
+
+	t.Run("both set but files do not exist", func(t *testing.T) {
+		issues := ValidateTLSConfig("/nonexistent/cert.crt", "/nonexistent/cert.key")
+		assert.Len(t, issues, 2)
+		for _, issue := range issues {
+			assert.Equal(t, LevelWarning, issue.Level)
+			assert.Contains(t, issue.Message, "does not exist")
+		}
+	})
+
+	t.Run("one file does not exist", func(t *testing.T) {
+		issues := ValidateTLSConfig("/proc/self/exe", "/nonexistent/cert.key")
+		assert.Len(t, issues, 1)
+		assert.Equal(t, LevelWarning, issues[0].Level)
+		assert.Contains(t, issues[0].Message, "tlsKeyPath file does not exist")
+	})
+}
+
+func TestValidatePasswordRegex(t *testing.T) {
+	t.Run("empty regex", func(t *testing.T) {
+		issues := ValidatePasswordRegex("", "ssh")
+		assert.Len(t, issues, 1)
+		assert.Equal(t, LevelError, issues[0].Level)
+		assert.Equal(t, "passwordRegex is required for ssh protocol", issues[0].Message)
+	})
+
+	t.Run("invalid regex", func(t *testing.T) {
+		issues := ValidatePasswordRegex("[", "telnet")
+		assert.Len(t, issues, 1)
+		assert.Equal(t, LevelError, issues[0].Level)
+		assert.Contains(t, issues[0].Message, "passwordRegex is not a valid regex")
+	})
+
+	t.Run("valid regex", func(t *testing.T) {
+		issues := ValidatePasswordRegex("^root$", "ssh")
+		assert.Empty(t, issues)
+	})
+}
