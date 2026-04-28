@@ -43,11 +43,20 @@ func validateConfigurations(_ *cobra.Command, _ []string) error {
 
 	serviceResult := parser.Validate(services, parseIssues)
 
+	var coreResult parser.ValidateResult
 	coreConf, err := p.ReadConfigurationsCore()
 	if err != nil {
-		coreConf = &parser.BeelzebubCoreConfigurations{}
+		coreResult = parser.ValidateResult{
+			Results: []parser.ValidationResult{
+				{Filename: validateConfCore, Issues: []parser.ValidationIssue{
+					{Level: parser.LevelError, Message: fmt.Sprintf("failed to read core config: %v", err)},
+				}},
+			},
+			TotalErrors: 1,
+		}
+	} else {
+		coreResult = parser.ValidateCore(coreConf, validateConfCore)
 	}
-	coreResult := parser.ValidateCore(coreConf, validateConfCore)
 
 	combined := parser.ValidateResult{
 		Results:       append(serviceResult.Results, coreResult.Results...),
