@@ -16,6 +16,11 @@ func makeMazeService(protocol string) parser.BeelzebubServiceConfiguration {
 	}
 }
 
+func TestMazePluginValidator_Name(t *testing.T) {
+	validator := &MazePluginValidator{}
+	assert.Equal(t, MazePluginName, validator.Name())
+}
+
 func TestMazePluginValidator_NotUsed(t *testing.T) {
 	validator := &MazePluginValidator{}
 
