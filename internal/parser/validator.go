@@ -154,13 +154,6 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 			}
 		}
 
-		if services[i].Plugin.OpenAISecretKey != "" {
-			r.Issues = append(r.Issues, ValidationIssue{
-				Level:   LevelWarning,
-				Message: "openAISecretKey is set inline, consider using env var OPEN_AI_SECRET_KEY",
-			})
-		}
-
 		if services[i].DeadlineTimeoutSeconds == 0 && len(services[i].Commands) > 0 {
 			r.Issues = append(r.Issues, ValidationIssue{
 				Level:   LevelWarning,
