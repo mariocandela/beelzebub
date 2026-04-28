@@ -1,0 +1,90 @@
+name: Test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set Up Go
+        uses: actions/setup-go@v6
+
+        with:
+          cache: true
+          go-version-file: go.mod
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Unit Tests
+
+        run: |
+          go test ./... -v -race -coverprofile coverage.tmp.out -covermode atomic
+          go tool cover -func coverage.tmp.out
+
+      - name: Quality Gate
+
+        env:
+          TESTCOVERAGE_THRESHOLD: 80
+
+        run: |
+          grep -v "mcp.go" coverage.tmp.out \
+          | grep -v "ssh.go" \
+          | grep -v "http.go" \
+          | grep -v "telnet.go" \
+          | grep -v "tcp.go" \
+          | grep -v "builder.go" \
+          | grep -v "director.go" > coverage.out
+
+          tc=$(go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+')
+
+          awk -v total="$tc" -v threshold="$TESTCOVERAGE_THRESHOLD" \
+            'BEGIN { exit !(total > threshold) }'
+
+      - name: Upload Coverage Reports To Codecov
+        uses: codecov/codecov-action@v5
+
+        with:
+          files: ./coverage.out
+          fail_ci_if_error: false
+
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  integration:
+    name: Integration
+    needs: unit
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set Up Go
+        uses: actions/setup-go@v6
+
+        with:
+          cache: true
+          go-version-file: go.mod
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Start Test Environment
+        run: docker compose -f ./integration_test/docker-compose.yml up -d --wait
+
+      - name: Run Integration Tests
+        run: make test.integration.verbose
+
+      - name: Tear Down
+        if: always()
+        run: make test.dependencies.down
