@@ -3,6 +3,7 @@ package plugins
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -237,7 +238,6 @@ func TestGetHoneypotsConfigurationsWithErrorDeserializeYaml(t *testing.T) {
 func TestVerifyConfigurationsChanged(t *testing.T) {
 	client := resty.New()
 	httpmock.ActivateNonDefault(client.GetClient())
-	defer httpmock.DeactivateAndReset()
 
 	uri := "localhost:8081"
 	callCount := 0
@@ -278,7 +278,11 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 	beelzebubCloud.client = client
 	beelzebubCloud.PollingInterval = 50 * time.Millisecond
 
-	go beelzebubCloud.verifyConfigurationsChanged()
+	done := make(chan struct{})
+	go func() {
+		beelzebubCloud.verifyConfigurationsChanged()
+		close(done)
+	}()
 
 	select {
 	case <-exitCalled:
@@ -287,6 +291,13 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("timeout waiting for exitFunction")
 	}
+
+	exitFunction = func(c int) {}
+	verifyConfigurationsChangedDone <- struct{}{}
+	httpmock.DeactivateAndReset()
+
+	<-done
+	exitFunction = os.Exit
 }
 
 func TestMapToEventDTO_WithHeaders(t *testing.T) {
