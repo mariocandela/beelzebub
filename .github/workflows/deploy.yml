@@ -7,7 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  CD:
+  images:
+    name: Images
     runs-on: ubuntu-latest
     timeout-minutes: 45
 

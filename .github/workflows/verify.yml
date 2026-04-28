@@ -34,6 +34,9 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
 
+    env:
+      CODEQL_ACTION_FILE_COVERAGE_ON_PRS: true
+
     permissions:
       actions: read
       contents: read
