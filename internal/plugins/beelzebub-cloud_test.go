@@ -329,11 +329,17 @@ func TestVerifyConfigurationsChanged_StopsOnDone(t *testing.T) {
 	httpmock.ActivateNonDefault(client.GetClient())
 
 	uri := "localhost:8081"
+	callCount := 0
 
 	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
 		func(req *http.Request) (*http.Response, error) {
+			callCount++
+			config := "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\n"
+			if callCount > 1 {
+				config = "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2223\"\n"
+			}
 			resp, err := httpmock.NewJsonResponse(200, &[]HoneypotConfigResponseDTO{
-				{ID: "123456", Config: "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\n", TokenID: "1234567"},
+				{ID: "123456", Config: config, TokenID: "1234567"},
 			})
 			if err != nil {
 				return httpmock.NewStringResponse(500, ""), nil
@@ -342,8 +348,11 @@ func TestVerifyConfigurationsChanged_StopsOnDone(t *testing.T) {
 		},
 	)
 
+	exitCalled := make(chan struct{}, 1)
 	origExit := exitFunction
-	exitFunction = func(c int) {}
+	exitFunction = func(c int) {
+		exitCalled <- struct{}{}
+	}
 
 	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
 	beelzebubCloud.client = client
@@ -354,7 +363,12 @@ func TestVerifyConfigurationsChanged_StopsOnDone(t *testing.T) {
 		done <- beelzebubCloud.verifyConfigurationsChanged()
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	select {
+	case <-exitCalled:
+		assert.Greater(t, callCount, 1)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for exitFunction")
+	}
 
 	exitFunction = func(c int) {}
 	verifyConfigurationsChangedDone <- struct{}{}

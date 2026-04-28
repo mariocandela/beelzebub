@@ -1056,6 +1056,20 @@ func TestReadConfigurationsServicesForValidationDirError(t *testing.T) {
 	assert.Contains(t, err.Error(), "mockErrorReadFileBytes")
 }
 
+func TestReadConfigurationsServicesForValidationDirNotFound(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.gelAllFilesNameByDirNameDependency = func(dirPath string) ([]string, error) {
+		return nil, os.ErrNotExist
+	}
+
+	services, issues, err := configurationsParser.ReadConfigurationsServicesForValidation()
+	assert.Nil(t, err)
+	assert.Empty(t, services)
+	assert.Empty(t, issues)
+}
+
 func TestReadConfigurationsServicesForValidationFileReadError(t *testing.T) {
 	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
 
