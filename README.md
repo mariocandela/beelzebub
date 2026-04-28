@@ -1,6 +1,6 @@
 # Beelzebub
 
-[![CI](https://github.com/beelzebub-labs/beelzebub/actions/workflows/ci.yml/badge.svg)](https://github.com/beelzebub-labs/beelzebub/actions/workflows/ci.yml) [![Docker](https://github.com/beelzebub-labs/beelzebub/actions/workflows/docker-image.yml/badge.svg)](https://github.com/beelzebub-labs/beelzebub/actions/workflows/docker-image.yml) [![codeql](https://github.com/beelzebub-labs/beelzebub/actions/workflows/codeql.yml/badge.svg)](https://github.com/beelzebub-labs/beelzebub/actions/workflows/codeql.yml)
+[![CI](https://github.com/beelzebub-labs/beelzebub/actions/workflows/main.yml/badge.svg)](https://github.com/beelzebub-labs/beelzebub/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/beelzebub-labs/beelzebub/v3)](https://goreportcard.com/report/github.com/beelzebub-labs/beelzebub/v3)
 [![codecov](https://codecov.io/gh/beelzebub-labs/beelzebub/graph/badge.svg?token=8XTK7D4WHE)](https://codecov.io/gh/beelzebub-labs/beelzebub)
 [![Go Reference](https://pkg.go.dev/badge/github.com/beelzebub-labs/beelzebub/v3.svg)](https://pkg.go.dev/github.com/beelzebub-labs/beelzebub/v3)
@@ -226,10 +226,6 @@ beelzebub validate
 - **Coverage**: Monitored via [Codecov](https://codecov.io/gh/beelzebub-labs/beelzebub)
 - **Code review**: All contributions undergo peer review
 
-## Contributing
-
-The Beelzebub team welcomes contributions. Whether you want to report a bug, implement a new protocol emulator, or publish a plugin, please refer to our [Contributor Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
-
 ## License
 
 Beelzebub is licensed under the [GNU GPL v3 License](LICENSE).
@@ -239,10 +235,6 @@ Beelzebub is licensed under the [GNU GPL v3 License](LICENSE).
 The Beelzebub team welcomes contributions and project participation. Whether you want to report bugs, contribute new features, or have any questions, please refer to our [Contributor Guide](CONTRIBUTING.md) for detailed information. We encourage all participants and maintainers to adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) and foster a supportive and respectful community.
 
 Happy hacking!
-
-## License
-
-Beelzebub is licensed under the [GNU GPL v3 License](LICENSE).
 
 ## Configuration Reference
 
