@@ -20,6 +20,11 @@ func makeLLMService(provider, model, secretKey string) parser.BeelzebubServiceCo
 	}
 }
 
+func TestLLMPluginValidator_Name(t *testing.T) {
+	validator := &LLMPluginValidator{}
+	assert.Equal(t, LLMPluginName, validator.Name())
+}
+
 func TestLLMPluginValidator_NotUsed(t *testing.T) {
 	validator := &LLMPluginValidator{}
 
@@ -121,6 +126,6 @@ func TestLLMPluginValidator_FallbackCommand(t *testing.T) {
 	assert.Len(t, issues, 2)
 	assert.Equal(t, parser.LevelError, issues[0].Level)
 	assert.Contains(t, issues[0].Message, "requires llmProvider")
-	assert.Equal(t, "error", issues[1].Level)
+	assert.Equal(t, parser.LevelError, issues[1].Level)
 	assert.Contains(t, issues[1].Message, "requires llmModel")
 }
