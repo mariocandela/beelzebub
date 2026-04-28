@@ -156,22 +156,33 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 
 var exitFunction func(code int) = os.Exit
 
+var verifyConfigurationsChangedDone = make(chan struct{})
+
+func (beelzebubCloud *beelzebubCloud) checkConfigurationsChanged(lastHash string) (newHash string, changed bool, err error) {
+	_, configurationsHash, err := beelzebubCloud.GetHoneypotsConfigurations()
+	if err != nil {
+		return "", false, err
+	}
+	return configurationsHash, lastHash != "" && lastHash != configurationsHash, nil
+}
+
 func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
-	var lastConfigurationsHash = ""
+	var lastHash = ""
 	for {
-		log.Debug("Checking configurations...")
-		_, configurationsHash, err := beelzebubCloud.GetHoneypotsConfigurations()
+		newHash, changed, err := beelzebubCloud.checkConfigurationsChanged(lastHash)
 		if err != nil {
 			return err
 		}
-		if len(lastConfigurationsHash) == 0 {
-			lastConfigurationsHash = configurationsHash
-		}
-		if lastConfigurationsHash != configurationsHash {
+		if changed {
 			log.Debug("Configurations changed.")
 			exitFunction(0)
 		}
-		time.Sleep(beelzebubCloud.PollingInterval)
+		lastHash = newHash
+		select {
+		case <-time.After(beelzebubCloud.PollingInterval):
+		case <-verifyConfigurationsChangedDone:
+			return nil
+		}
 	}
 }
 
