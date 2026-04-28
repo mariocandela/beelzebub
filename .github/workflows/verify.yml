@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout Repository
+        uses: actions/checkout@v6
 
       - name: Set Up Go
         uses: actions/setup-go@v6
@@ -38,12 +39,6 @@ jobs:
       contents: read
       security-events: write
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        language: [ 'go' ]
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
@@ -56,16 +51,16 @@ jobs:
           go-version-file: go.mod
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
 
         with:
-          languages: ${{ matrix.language }}
+          languages: go
 
       - name: Build Beelzebub
         run: go build ./...
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
         with:
-          category: "/language:${{matrix.language}}"
+          category: "/language:go"

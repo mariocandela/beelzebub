@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout Repository
+        uses: actions/checkout@v6
 
       - name: Set Up Go
         uses: actions/setup-go@v6
@@ -51,7 +52,7 @@ jobs:
             'BEGIN { exit !(total > threshold) }'
 
       - name: Upload Coverage Reports To Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
 
         with:
           files: ./coverage.out
@@ -62,12 +63,12 @@ jobs:
 
   integration:
     name: Integration
-    needs: unit
     timeout-minutes: 20
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout Repository
+        uses: actions/checkout@v6
 
       - name: Set Up Go
         uses: actions/setup-go@v6
