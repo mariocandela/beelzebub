@@ -963,7 +963,7 @@ func TestReadConfigurationsServicesForValidationWithErrors(t *testing.T) {
 	assert.Equal(t, "invalid-yaml.yaml", issues[0].Filename)
 	assert.Equal(t, LevelError, issues[0].Level)
 	assert.Equal(t, "invalid-regex.yaml", issues[1].Filename)
-	assert.Equal(t, "error", issues[1].Level)
+	assert.Equal(t, LevelError, issues[1].Level)
 }
 
 func TestReadConfigurationsServicesForValidationFromEnv(t *testing.T) {
