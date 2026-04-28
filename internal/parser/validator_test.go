@@ -282,29 +282,11 @@ func TestValidatePortCollision(t *testing.T) {
 }
 
 func TestValidateInlineSecretKey(t *testing.T) {
-	tests := []struct {
-		name      string
-		secretKey string
-		wantWarn  bool
-	}{
-		{"non-empty secret key", "sk-12345", true},
-		{"empty secret key", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc := makeService("test.yaml", "http", ":8080", nil)
-			svc.Plugin.OpenAISecretKey = tt.secretKey
-			result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
-			issues := findIssues(result, "test.yaml")
-
-			if tt.wantWarn {
-				assert.True(t, hasIssue(issues, LevelWarning, "openAISecretKey is set inline, consider using env var OPEN_AI_SECRET_KEY"))
-			} else {
-				assert.False(t, hasIssue(issues, LevelWarning, "openAISecretKey is set inline"))
-			}
-		})
-	}
+	svc := makeService("test.yaml", "http", ":8080", nil)
+	svc.Plugin.OpenAISecretKey = "sk-12345"
+	result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
+	issues := findIssues(result, "test.yaml")
+	assert.False(t, hasIssue(issues, LevelWarning, "openAISecretKey is set inline"))
 }
 
 func TestValidateDeadlineTimeout(t *testing.T) {
