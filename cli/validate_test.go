@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestValidateConfigurations_ValidConfigs(t *testing.T) {
@@ -21,7 +20,7 @@ core:
     debug: false
 `
 	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	svcYAML := `
 apiVersion: v1
@@ -35,7 +34,7 @@ fallbackCommand:
   handler: "fallback"
 `
 	err = os.WriteFile(servicesDir+"/http-8080.yaml", []byte(svcYAML), 0644)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	validateConfCore = tmpDir + "/beelzebub.yaml"
 	validateConfServices = servicesDir
@@ -66,7 +65,7 @@ core:
     debug: false
 `
 	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	svcYAML := `
 apiVersion: v1
@@ -74,7 +73,7 @@ protocol: ftp
 address: ":8080"
 `
 	err = os.WriteFile(servicesDir+"/bad.yaml", []byte(svcYAML), 0644)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	validateConfCore = tmpDir + "/beelzebub.yaml"
 	validateConfServices = servicesDir
@@ -106,7 +105,7 @@ core:
     debug: [this is not valid yaml
 `
 	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(malformedYAML), 0644)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	validateConfCore = tmpDir + "/beelzebub.yaml"
 	validateConfServices = servicesDir
@@ -160,7 +159,7 @@ core:
     debug: false
 `
 	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	badSvcYAML := `
 apiVersion: v1
@@ -169,7 +168,7 @@ address: ":22"
   this is broken indentation
 `
 	err = os.WriteFile(servicesDir+"/broken.yaml", []byte(badSvcYAML), 0644)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	validateConfCore = tmpDir + "/beelzebub.yaml"
 	validateConfServices = servicesDir
@@ -201,7 +200,7 @@ core:
     debug: false
 `
 	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	validateConfCore = tmpDir + "/beelzebub.yaml"
 	validateConfServices = servicesDir

@@ -6,6 +6,8 @@ import (
 	"regexp"
 )
 
+// ValidateTLSConfig checks that TLS cert and key paths are both set or both empty,
+// and warns if the referenced files do not exist
 func ValidateTLSConfig(certPath, keyPath string) []ValidationIssue {
 	var issues []ValidationIssue
 
@@ -34,6 +36,7 @@ func ValidateTLSConfig(certPath, keyPath string) []ValidationIssue {
 	return issues
 }
 
+// ValidatePasswordRegex checks that the password regex is non-empty and valid
 func ValidatePasswordRegex(passwordRegex, protocolName string) []ValidationIssue {
 	var issues []ValidationIssue
 

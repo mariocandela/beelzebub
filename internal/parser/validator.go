@@ -16,23 +16,27 @@ const (
 	LevelWarning = "warning"
 )
 
+// ValidationIssue is a single validation finding, either an error or a warning
 type ValidationIssue struct {
 	Level    string
 	Message  string
 	Filename string
 }
 
+// ValidationResult holds all validation issues for a single configuration file
 type ValidationResult struct {
 	Filename string
 	Issues   []ValidationIssue
 }
 
+// ValidateResult aggregates validation results across all configuration files
 type ValidateResult struct {
 	Results       []ValidationResult
 	TotalErrors   int
 	TotalWarnings int
 }
 
+// ServiceValidator is the interface that protocol and plugin validators implement
 type ServiceValidator interface {
 	Name() string
 	Validate(config BeelzebubServiceConfiguration) []ValidationIssue
@@ -40,10 +44,12 @@ type ServiceValidator interface {
 
 var serviceValidators []ServiceValidator
 
+// RegisterServiceValidator adds a ServiceValidator to the global registry
 func RegisterServiceValidator(v ServiceValidator) {
 	serviceValidators = append(serviceValidators, v)
 }
 
+// ResetServiceValidators clears the global validator registry (for test isolation)
 func ResetServiceValidators() {
 	serviceValidators = nil
 }
@@ -54,6 +60,7 @@ var validCommandPlugins = []string{"", "LLMHoneypot", "MazeHoneypot"}
 
 var validCommandPluginsDisplay = []string{"(none)", "LLMHoneypot", "MazeHoneypot"}
 
+// Validate checks service configurations and returns all errors and warnings
 func Validate(services []BeelzebubServiceConfiguration, parseIssues []ValidationIssue) ValidateResult {
 	resultMap := make(map[string]*ValidationResult)
 
@@ -169,7 +176,7 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 
 	collisionMap := make(map[string][]int)
 	for i, svc := range services {
-		key := svc.Protocol + ":" + svc.Address
+				key := svc.Protocol + " " + svc.Address
 		collisionMap[key] = append(collisionMap[key], i)
 	}
 
@@ -210,6 +217,7 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 	}
 }
 
+// Print writes validation results to stdout, sorted by filename
 func (r ValidateResult) Print() {
 	sort.Slice(r.Results, func(i, j int) bool {
 		return r.Results[i].Filename < r.Results[j].Filename
@@ -242,6 +250,7 @@ func (r ValidateResult) Print() {
 	fmt.Printf("\n%d errors, %d warnings\n", r.TotalErrors, r.TotalWarnings)
 }
 
+// ExitCode returns 1 if there are errors, 0 otherwise
 func (r ValidateResult) ExitCode() int {
 	if r.TotalErrors > 0 {
 		return 1
@@ -249,6 +258,7 @@ func (r ValidateResult) ExitCode() int {
 	return 0
 }
 
+// ValidateCore checks the core configuration and returns all errors and warnings
 func ValidateCore(config *BeelzebubCoreConfigurations, filename string) ValidateResult {
 	var issues []ValidationIssue
 
