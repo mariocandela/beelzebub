@@ -1,9 +1,6 @@
 package TELNET
 
 import (
-	"fmt"
-	"regexp"
-
 	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
 )
 
@@ -18,21 +15,7 @@ func (v *TELNETValidator) Validate(config parser.BeelzebubServiceConfiguration) 
 		return nil
 	}
 
-	var issues []parser.ValidationIssue
-
-	if config.PasswordRegex == "" {
-		issues = append(issues, parser.ValidationIssue{
-			Level:   parser.LevelError,
-			Message: "passwordRegex is required for telnet protocol",
-		})
-	} else if _, err := regexp.Compile(config.PasswordRegex); err != nil {
-		issues = append(issues, parser.ValidationIssue{
-			Level:   parser.LevelError,
-			Message: fmt.Sprintf("passwordRegex is not a valid regex: %v", err),
-		})
-	}
-
-	return issues
+	return parser.ValidatePasswordRegex(config.PasswordRegex, "telnet")
 }
 
 func init() {

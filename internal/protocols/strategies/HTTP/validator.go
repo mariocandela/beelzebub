@@ -1,8 +1,6 @@
 package HTTP
 
 import (
-	"os"
-
 	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
 )
 
@@ -19,27 +17,7 @@ func (v *HTTPValidator) Validate(config parser.BeelzebubServiceConfiguration) []
 
 	var issues []parser.ValidationIssue
 
-	if (config.TLSCertPath != "" && config.TLSKeyPath == "") || (config.TLSCertPath == "" && config.TLSKeyPath != "") {
-		issues = append(issues, parser.ValidationIssue{
-			Level:   parser.LevelError,
-			Message: "both tlsCertPath and tlsKeyPath must be set for TLS, or neither",
-		})
-	}
-
-	if config.TLSCertPath != "" && config.TLSKeyPath != "" {
-		if _, err := os.Stat(config.TLSCertPath); os.IsNotExist(err) {
-			issues = append(issues, parser.ValidationIssue{
-				Level:   parser.LevelWarning,
-				Message: "tlsCertPath file does not exist",
-			})
-		}
-		if _, err := os.Stat(config.TLSKeyPath); os.IsNotExist(err) {
-			issues = append(issues, parser.ValidationIssue{
-				Level:   parser.LevelWarning,
-				Message: "tlsKeyPath file does not exist",
-			})
-		}
-	}
+	issues = append(issues, parser.ValidateTLSConfig(config.TLSCertPath, config.TLSKeyPath)...)
 
 	if len(config.Commands) > 0 && config.FallbackCommand.Handler == "" && config.FallbackCommand.Plugin == "" {
 		issues = append(issues, parser.ValidationIssue{
