@@ -47,6 +47,7 @@ type beelzebubCloud struct {
 	AuthToken       string
 	client          *resty.Client
 	PollingInterval time.Duration
+	done            chan struct{}
 }
 
 type HoneypotConfigResponseDTO struct {
@@ -62,6 +63,7 @@ func InitBeelzebubCloud(uri, authToken string, enableVerifyConfigurationsChanged
 		AuthToken:       authToken,
 		client:          resty.New(),
 		PollingInterval: 15 * time.Second,
+		done:            make(chan struct{}),
 	}
 	if enableVerifyConfigurationsChanged {
 		go func() {
@@ -156,8 +158,6 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 
 var exitFunction func(code int) = os.Exit
 
-var verifyConfigurationsChangedDone = make(chan struct{})
-
 func (beelzebubCloud *beelzebubCloud) checkConfigurationsChanged(lastHash string) (newHash string, changed bool, err error) {
 	_, configurationsHash, err := beelzebubCloud.GetHoneypotsConfigurations()
 	if err != nil {
@@ -180,7 +180,7 @@ func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
 		lastHash = newHash
 		select {
 		case <-time.After(beelzebubCloud.PollingInterval):
-		case <-verifyConfigurationsChangedDone:
+		case <-beelzebubCloud.done:
 			return nil
 		}
 	}

@@ -350,6 +350,7 @@ func TestVerifyConfigurationsChanged_StopsOnDone(t *testing.T) {
 
 	exitCalled := make(chan struct{}, 1)
 	origExit := exitFunction
+	defer func() { exitFunction = origExit }()
 	exitFunction = func(c int) {
 		exitCalled <- struct{}{}
 	}
@@ -371,9 +372,8 @@ func TestVerifyConfigurationsChanged_StopsOnDone(t *testing.T) {
 	}
 
 	exitFunction = func(c int) {}
-	verifyConfigurationsChangedDone <- struct{}{}
+	beelzebubCloud.done <- struct{}{}
 	httpmock.DeactivateAndReset()
-	exitFunction = origExit
 
 	select {
 	case err := <-done:
