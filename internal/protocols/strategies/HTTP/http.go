@@ -190,7 +190,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Comman
 //   - If trustedProxies is empty OR the immediate peer is not in trustedProxies,
 //     headers are ignored entirely and the peer address is returned. This
 //     protects deployments where beelzebub is exposed directly: an attacker
-//     setting "X-Forwarded-For: 198.51.100.99" cannot make us log 198.51.100.99.
+//     setting "X-Forwarded-For: 8.8.8.8" cannot make us log 8.8.8.8.
 //   - If the peer is a trusted proxy, X-Forwarded-For is parsed right-to-left
 //     and the first entry that is NOT itself a trusted hop is treated as the
 //     real client. This neutralizes XFF poisoning, where a client sends a
