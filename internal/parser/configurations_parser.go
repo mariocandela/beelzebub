@@ -320,6 +320,7 @@ func (bp configurationsParser) readConfigurationsServices(strict bool) ([]Beelze
 			issues = append(issues, ValidationIssue{Level: LevelError, Message: fmt.Sprintf("%v", err), Filename: servicesName})
 			continue
 		}
+		}
 
 		log.Debug(beelzebubServiceConfiguration)
 
@@ -368,6 +369,7 @@ func parseServicesFromEnv(jsonStr string, strict bool) ([]BeelzebubServiceConfig
 			}
 			issues = append(issues, ValidationIssue{Level: LevelError, Message: fmt.Sprintf("%v", err), Filename: svc.Filename})
 			continue
+		}
 		}
 
 		validServices = append(validServices, *svc)
