@@ -1112,3 +1112,167 @@ func TestReadConfigurationsServicesForValidationFromEnvInvalidRegex(t *testing.T
 	assert.Contains(t, issues[0].Message, "invalid regex")
 	assert.Equal(t, "<env:BEELZEBUB_SERVICES_CONFIG>", issues[0].Filename)
 }
+
+func TestCompileTrustedProxies(t *testing.T) {
+	tests := []struct {
+		name           string
+		entries        []string
+		expectErr      bool
+		expectedCount  int
+		shouldContain  []string
+		shouldNotMatch []string
+	}{
+		{
+			name:          "Empty list",
+			entries:       nil,
+			expectedCount: 0,
+		},
+		{
+			name:          "Whitespace and empty entries are skipped",
+			entries:       []string{"  ", "", "10.0.0.0/8"},
+			expectedCount: 1,
+			shouldContain: []string{"10.5.5.5"},
+		},
+		{
+			name:          "Bare IPv4 becomes /32",
+			entries:       []string{"127.0.0.1"},
+			expectedCount: 1,
+			shouldContain: []string{"127.0.0.1"},
+			shouldNotMatch: []string{
+				"127.0.0.2",
+			},
+		},
+		{
+			name:          "Bare IPv6 becomes /128",
+			entries:       []string{"fd00::1"},
+			expectedCount: 1,
+			shouldContain: []string{"fd00::1"},
+			shouldNotMatch: []string{
+				"fd00::2",
+			},
+		},
+		{
+			name:          "Valid CIDRs",
+			entries:       []string{"172.16.0.0/12", "10.0.0.0/8"},
+			expectedCount: 2,
+			shouldContain: []string{"172.20.0.5", "10.255.0.1"},
+			shouldNotMatch: []string{
+				"192.168.0.1",
+			},
+		},
+		{
+			name:          "Trims whitespace around entries",
+			entries:       []string{"  192.168.1.0/24  "},
+			expectedCount: 1,
+			shouldContain: []string{"192.168.1.42"},
+		},
+		{
+			name:      "Invalid CIDR returns error",
+			entries:   []string{"not-a-cidr"},
+			expectErr: true,
+		},
+		{
+			name:      "Invalid mask returns error",
+			entries:   []string{"10.0.0.0/99"},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := BeelzebubServiceConfiguration{TrustedProxies: tt.entries}
+			err := c.CompileTrustedProxies()
+			if tt.expectErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Len(t, c.TrustedProxiesNets, tt.expectedCount)
+			for _, ipStr := range tt.shouldContain {
+				ip := net.ParseIP(ipStr)
+				matched := false
+				for _, n := range c.TrustedProxiesNets {
+					if n.Contains(ip) {
+						matched = true
+						break
+					}
+				}
+				assert.True(t, matched, "expected %s to match a compiled CIDR", ipStr)
+			}
+			for _, ipStr := range tt.shouldNotMatch {
+				ip := net.ParseIP(ipStr)
+				for _, n := range c.TrustedProxiesNets {
+					assert.False(t, n.Contains(ip), "did not expect %s to match %s", ipStr, n.String())
+				}
+			}
+		})
+	}
+}
+
+func mockReadfilebytesWithTrustedProxies(filePath string) ([]byte, error) {
+	return []byte(`
+apiVersion: "v1"
+protocol: "http"
+address: ":80"
+trustedProxies:
+  - "172.16.0.0/12"
+  - "10.0.0.5"
+`), nil
+}
+
+func TestReadConfigurationsServicesParsesTrustedProxies(t *testing.T) {
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesWithTrustedProxies
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.NoError(t, err)
+	assert.Len(t, services, 1)
+	assert.Equal(t, []string{"172.16.0.0/12", "10.0.0.5"}, services[0].TrustedProxies)
+	assert.Len(t, services[0].TrustedProxiesNets, 2)
+}
+
+func mockReadfilebytesWithInvalidTrustedProxies(filePath string) ([]byte, error) {
+	return []byte(`
+apiVersion: "v1"
+protocol: "http"
+address: ":80"
+trustedProxies:
+  - "not-a-cidr"
+`), nil
+}
+
+func TestReadConfigurationsServicesRejectsInvalidTrustedProxies(t *testing.T) {
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesWithInvalidTrustedProxies
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirValid
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid trustedProxies entry")
+}
+
+func TestReadConfigurationsServicesFromEnvParsesTrustedProxies(t *testing.T) {
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `[{"apiVersion":"v1","protocol":"http","address":":80","TrustedProxies":["172.16.0.0/12"]}]`)
+
+	configurationsParser := Init("", "")
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.NoError(t, err)
+	assert.Len(t, services, 1)
+	assert.Equal(t, []string{"172.16.0.0/12"}, services[0].TrustedProxies)
+	assert.Len(t, services[0].TrustedProxiesNets, 1)
+}
+
+func TestReadConfigurationsServicesFromEnvRejectsInvalidTrustedProxies(t *testing.T) {
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `[{"apiVersion":"v1","protocol":"http","address":":80","TrustedProxies":["bogus"]}]`)
+
+	configurationsParser := Init("", "")
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid trustedProxies entry")
+}
+}
