@@ -282,11 +282,13 @@ func TestValidatePortCollision(t *testing.T) {
 }
 
 func TestValidateInlineSecretKey(t *testing.T) {
-	svc := makeService("test.yaml", "http", ":8080", nil)
+	svc := makeService("test.yaml", "http", ":8080", []Command{
+		{RegexStr: "test", Plugin: "LLMHoneypot"},
+	})
 	svc.Plugin.OpenAISecretKey = "sk-12345"
 	result := Validate([]BeelzebubServiceConfiguration{svc}, nil)
 	issues := findIssues(result, "test.yaml")
-	assert.False(t, hasIssue(issues, LevelWarning, "openAISecretKey is set inline"))
+	assert.True(t, hasIssue(issues, LevelWarning, "openAISecretKey is set inline in config — prefer using the OPEN_AI_SECRET_KEY environment variable to avoid exposing secrets in version control"))
 }
 
 func TestValidateDeadlineTimeout(t *testing.T) {
