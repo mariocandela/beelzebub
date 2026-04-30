@@ -238,12 +238,9 @@ func isNotFound(err error) bool {
 // If the BEELZEBUB_SERVICES_CONFIG environment variable is set (JSON array), it is used directly.
 // Otherwise, service YAML files are loaded from the configured directory (existing behaviour).
 func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceConfiguration, error) {
-	services, issues, err := bp.readConfigurationsServices(true)
+	services, _, err := bp.readConfigurationsServices(true)
 	if err != nil {
 		return nil, err
-	}
-	if len(issues) > 0 {
-		return nil, fmt.Errorf("%s", issues[0].Message)
 	}
 	return services, nil
 }
