@@ -51,6 +51,7 @@ func TestAppendNilSessions(t *testing.T) {
 
 func TestHistoryCleaner(t *testing.T) {
 	hs := NewHistoryStore()
+	defer hs.Close()
 	hs.Append("stale", plugins.Message{Role: "user", Content: "Hello"})
 	hs.Append("fresh", plugins.Message{Role: "user", Content: "Hello"})
 
@@ -67,6 +68,20 @@ func TestHistoryCleaner(t *testing.T) {
 
 	assert.False(t, hs.HasKey("stale"))
 	assert.True(t, hs.HasKey("fresh"))
+}
+
+func TestClose(t *testing.T) {
+	hs := NewHistoryStore()
+	CleanerInterval = 50 * time.Millisecond
+	hs.HistoryCleaner()
+
+	// Close should be safe to call multiple times
+	hs.Close()
+	hs.Close()
+
+	// After Close, the store is still usable for reads/writes
+	hs.Append("key", plugins.Message{Role: "user", Content: "test"})
+	assert.True(t, hs.HasKey("key"))
 }
 
 func TestAppend_Concurrent(t *testing.T) {

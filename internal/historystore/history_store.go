@@ -16,6 +16,7 @@ var (
 type HistoryStore struct {
 	sync.RWMutex
 	sessions map[string]HistoryEvent
+	done     chan struct{}
 }
 
 // HistoryEvent is a container for storing messages
@@ -28,6 +29,7 @@ type HistoryEvent struct {
 func NewHistoryStore() *HistoryStore {
 	return &HistoryStore{
 		sessions: make(map[string]HistoryEvent),
+		done:     make(chan struct{}),
 	}
 }
 
@@ -64,19 +66,34 @@ func (hs *HistoryStore) Append(key string, message ...plugins.Message) {
 	hs.sessions[key] = e
 }
 
-// HistoryCleaner is a function that will periodically remove records from the HistoryStore
-// that are older than MaxHistoryAge.
+// HistoryCleaner starts a background goroutine that periodically removes records
+// from the HistoryStore that are older than MaxHistoryAge. Call Close to stop it.
 func (hs *HistoryStore) HistoryCleaner() {
 	cleanerTicker := time.NewTicker(CleanerInterval)
 	go func() {
-		for range cleanerTicker.C {
-			hs.Lock()
-			for k, v := range hs.sessions {
-				if time.Since(v.LastSeen) > MaxHistoryAge {
-					delete(hs.sessions, k)
+		defer cleanerTicker.Stop()
+		for {
+			select {
+			case <-hs.done:
+				return
+			case <-cleanerTicker.C:
+				hs.Lock()
+				for k, v := range hs.sessions {
+					if time.Since(v.LastSeen) > MaxHistoryAge {
+						delete(hs.sessions, k)
+					}
 				}
+				hs.Unlock()
 			}
-			hs.Unlock()
 		}
 	}()
+}
+
+// Close stops the HistoryCleaner goroutine. It is safe to call multiple times.
+func (hs *HistoryStore) Close() {
+	select {
+	case <-hs.done:
+	default:
+		close(hs.done)
+	}
 }
