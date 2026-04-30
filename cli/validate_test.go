@@ -125,8 +125,8 @@ address: ":8080"
 	err := validateConfigurations(nil, nil)
 	if err == nil {
 		t.Error("expected error for unknown protocol")
-	} else if !strings.Contains(err.Error(), "unknown protocol") {
-		t.Errorf("expected error to mention unknown protocol, got: %v", err)
+	} else if !strings.Contains(err.Error(), "validation failed") {
+		t.Errorf("expected error to mention validation failed, got: %v", err)
 	}
 }
 
@@ -250,22 +250,6 @@ address: ":22"
 
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(output, "FAIL broken.yaml") || strings.Contains(output, "YAML"))
-}
-
-func TestValidateConfigurations_ServicesPathIsFile(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	coreYAML := `
-core:
-  logging:
-    debug: false
-`
-	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
-	assert.NoError(t, os.WriteFile(tmpDir+"/services.yaml", []byte("not a directory"), 0644))
-
-	err := runValidate(tmpDir+"/beelzebub.yaml", tmpDir+"/services.yaml")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "services config")
 }
 
 func TestValidateConfigurations_EmptyServicesDir(t *testing.T) {

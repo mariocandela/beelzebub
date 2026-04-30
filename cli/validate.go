@@ -73,3 +73,25 @@ func runValidate(corePath, servicesPath string) error {
 
 	return nil
 }
+
+func printSection(title, detail string) {
+	fmt.Printf("%s: %s\n", title, detail)
+}
+
+func printField(name, value string) {
+	fmt.Printf("  %-18s %s\n", name+":", value)
+}
+
+func formatBool(v bool) string {
+	if v {
+		return "enabled"
+	}
+	return "disabled"
+}
+
+func formatOptional(s string) string {
+	if s == "" {
+		return "(not set)"
+	}
+	return s
+}
