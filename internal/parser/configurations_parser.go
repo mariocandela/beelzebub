@@ -313,6 +313,10 @@ func (bp configurationsParser) readConfigurationsServices(strict bool) ([]Beelze
 			continue
 		}
 
+		// TODO: CompileTrustedProxies error is returned directly without respecting the strict flag.
+		// Unlike other per-service validation checks (yaml unmarshal, regex, rate limiting),
+		// this causes ReadConfigurationsServicesForValidation (strict=false) to hard-fail
+		// instead of collecting the error as a ValidationIssue.
 		if err := beelzebubServiceConfiguration.CompileTrustedProxies(); err != nil {
 			if strict {
 				return nil, nil, fmt.Errorf("in file %s: %v", filePath, err)
@@ -363,6 +367,9 @@ func parseServicesFromEnv(jsonStr string, strict bool) ([]BeelzebubServiceConfig
 			continue
 		}
 
+		// TODO: CompileTrustedProxies error is returned directly without respecting the strict flag.
+		// Unlike other per-service validation checks, this causes parseServicesFromEnv (strict=false)
+		// to hard-fail instead of collecting the error as a ValidationIssue.
 		if err := svc.CompileTrustedProxies(); err != nil {
 			if strict {
 				return nil, nil, fmt.Errorf("in BEELZEBUB_SERVICES_CONFIG[%d]: %v", i, err)

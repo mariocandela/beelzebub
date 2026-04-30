@@ -252,6 +252,22 @@ address: ":22"
 	assert.True(t, strings.Contains(output, "FAIL broken.yaml") || strings.Contains(output, "YAML"))
 }
 
+func TestValidateConfigurations_ServicesPathIsFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	coreYAML := `
+core:
+  logging:
+    debug: false
+`
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
+	assert.NoError(t, os.WriteFile(tmpDir+"/services.yaml", []byte("not a directory"), 0644))
+
+	err := runValidate(tmpDir+"/beelzebub.yaml", tmpDir+"/services.yaml")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "services config")
+}
+
 func TestValidateConfigurations_EmptyServicesDir(t *testing.T) {
 	tmpDir := t.TempDir()
 	servicesDir := t.TempDir()
