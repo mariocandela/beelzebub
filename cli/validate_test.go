@@ -11,6 +11,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func captureOutput(t *testing.T, fn func()) string {
+	t.Helper()
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	fn()
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	return buf.String()
+}
+
 func TestFormatBool(t *testing.T) {
 	if got := formatBool(true); got != "enabled" {
 		t.Errorf("formatBool(true) = %q, want %q", got, "enabled")
@@ -126,8 +139,7 @@ core:
   logging:
     debug: false
 `
-	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
 
 	svcYAML := `
 apiVersion: v1
@@ -140,26 +152,15 @@ commands:
 fallbackCommand:
   handler: "fallback"
 `
-	err = os.WriteFile(servicesDir+"/http-8080.yaml", []byte(svcYAML), 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(servicesDir+"/http-8080.yaml", []byte(svcYAML), 0644))
 
-	rootConfCore = tmpDir + "/beelzebub.yaml"
-	rootConfServices = servicesDir
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	err = validateConfigurations(nil, nil)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
 
 	assert.NoError(t, err)
-	assert.Contains(t, buf.String(), "0 errors, 0 warnings")
+	assert.Contains(t, output, "0 errors, 0 warnings")
 }
 
 func TestValidateConfigurations_InvalidServiceConfig(t *testing.T) {
@@ -171,35 +172,23 @@ core:
   logging:
     debug: false
 `
-	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
 
 	svcYAML := `
 apiVersion: v1
 protocol: ftp
 address: ":8080"
 `
-	err = os.WriteFile(servicesDir+"/bad.yaml", []byte(svcYAML), 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(servicesDir+"/bad.yaml", []byte(svcYAML), 0644))
 
-	rootConfCore = tmpDir + "/beelzebub.yaml"
-	rootConfServices = servicesDir
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	err = validateConfigurations(nil, nil)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "validation failed with 1 error(s)")
-	assert.Contains(t, buf.String(), "invalid protocol")
+	assert.Contains(t, output, "invalid protocol")
 }
 
 func TestValidateConfigurations_CoreConfigParseError(t *testing.T) {
@@ -211,49 +200,28 @@ core:
   logging:
     debug: [this is not valid yaml
 `
-	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(malformedYAML), 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(malformedYAML), 0644))
 
-	rootConfCore = tmpDir + "/beelzebub.yaml"
-	rootConfServices = servicesDir
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	err = validateConfigurations(nil, nil)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "validation failed")
-	assert.Contains(t, buf.String(), "failed to read core config")
+	assert.Contains(t, output, "failed to read core config")
 }
 
 func TestValidateConfigurations_MissingCoreConfig(t *testing.T) {
 	servicesDir := t.TempDir()
 
-	rootConfCore = "/nonexistent/path/beelzebub.yaml"
-	rootConfServices = servicesDir
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	err := validateConfigurations(nil, nil)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate("/nonexistent/path/beelzebub.yaml", servicesDir)
+	})
 
 	assert.NoError(t, err)
-	assert.Contains(t, buf.String(), "0 errors, 0 warnings")
+	assert.Contains(t, output, "0 errors, 0 warnings")
 }
 
 func TestValidateConfigurations_MalformedServiceConfig(t *testing.T) {
@@ -265,8 +233,7 @@ core:
   logging:
     debug: false
 `
-	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
 
 	badSvcYAML := `
 apiVersion: v1
@@ -274,26 +241,14 @@ protocol: ssh
 address: ":22"
   this is broken indentation
 `
-	err = os.WriteFile(servicesDir+"/broken.yaml", []byte(badSvcYAML), 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(servicesDir+"/broken.yaml", []byte(badSvcYAML), 0644))
 
-	rootConfCore = tmpDir + "/beelzebub.yaml"
-	rootConfServices = servicesDir
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	err = validateConfigurations(nil, nil)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
 
 	assert.Error(t, err)
-	output := buf.String()
 	assert.True(t, strings.Contains(output, "FAIL broken.yaml") || strings.Contains(output, "YAML"))
 }
 
@@ -306,26 +261,15 @@ core:
   logging:
     debug: false
 `
-	err := os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
 
-	rootConfCore = tmpDir + "/beelzebub.yaml"
-	rootConfServices = servicesDir
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	err = validateConfigurations(nil, nil)
-
-	w.Close()
-	os.Stdout = old
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
 
 	assert.NoError(t, err)
-	assert.Contains(t, buf.String(), "0 errors, 0 warnings")
+	assert.Contains(t, output, "0 errors, 0 warnings")
 }
 
 func TestValidateConfigurations_ServicesPathIsFile(t *testing.T) {

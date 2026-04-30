@@ -10,6 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMain(m *testing.M) {
+	ResetServiceValidators()
+	os.Exit(m.Run())
+}
+
 func makeService(filename, protocol, address string, commands []Command) BeelzebubServiceConfiguration {
 	return BeelzebubServiceConfiguration{
 		Filename: filename,
