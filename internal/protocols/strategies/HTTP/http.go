@@ -152,6 +152,10 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Command, HoneypotDescription, body string, trustedProxies []*net.IPNet) {
 	host, port := realClientAddr(request, trustedProxies)
 
+	remoteAddr := host
+	if port != "" {
+		remoteAddr = net.JoinHostPort(host, port)
+	}
 	event := tracer.Event{
 		Msg:             "HTTP New request",
 		RequestURI:      request.RequestURI,
@@ -164,7 +168,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Comman
 		Headers:         mapHeaderToString(request.Header),
 		HeadersMap:      request.Header,
 		Status:          tracer.Stateless.String(),
-		RemoteAddr:      request.RemoteAddr,
+		RemoteAddr:      remoteAddr,
 		SourceIp:        host,
 		SourcePort:      port,
 		ID:              uuid.New().String(),

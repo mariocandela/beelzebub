@@ -438,8 +438,8 @@ func TestTraceRequest_TrustedProxy_ResolvesRealClient(t *testing.T) {
 	ev := mt.events[0]
 	assert.Equal(t, "8.8.8.8", ev.SourceIp)
 	assert.Equal(t, "", ev.SourcePort)
-	// Raw RemoteAddr is preserved for forensic fidelity.
-	assert.Equal(t, "172.20.0.5:54321", ev.RemoteAddr)
+	// RemoteAddr reflects the resolved real client IP when peer is a trusted proxy.
+	assert.Equal(t, "8.8.8.8", ev.RemoteAddr)
 }
 
 func TestTraceRequest_UntrustedPeer_DoesNotTrustHeaders(t *testing.T) {
@@ -452,6 +452,76 @@ func TestTraceRequest_UntrustedPeer_DoesNotTrustHeaders(t *testing.T) {
 
 	require.Len(t, mt.events, 1)
 	assert.Equal(t, "203.0.113.7", mt.events[0].SourceIp)
+}
+
+// TestTraceRequest_RemoteAddr_WithPort verifies that when the peer address
+// carries a port (direct connection, no trusted proxy), RemoteAddr is formatted
+// as "host:port" via net.JoinHostPort.
+func TestTraceRequest_RemoteAddr_WithPort(t *testing.T) {
+	mt := &mockTracer{}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "203.0.113.5:9000"
+
+	traceRequest(req, mt, parser.Command{}, "test", "", nil)
+
+	require.Len(t, mt.events, 1)
+	ev := mt.events[0]
+	assert.Equal(t, "203.0.113.5", ev.SourceIp)
+	assert.Equal(t, "9000", ev.SourcePort)
+	assert.Equal(t, "203.0.113.5:9000", ev.RemoteAddr)
+}
+
+// TestTraceRequest_RemoteAddr_WithoutPort verifies that when the resolved
+// address has no port (e.g. IP came from XFF header via a trusted proxy),
+// RemoteAddr equals just the host IP without any colon.
+func TestTraceRequest_RemoteAddr_WithoutPort(t *testing.T) {
+	mt := &mockTracer{}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.20.0.5:54321"
+	req.Header.Set("X-Forwarded-For", "203.0.113.99")
+
+	traceRequest(req, mt, parser.Command{}, "test", "", mustCIDRs(t, "172.16.0.0/12"))
+
+	require.Len(t, mt.events, 1)
+	ev := mt.events[0]
+	assert.Equal(t, "203.0.113.99", ev.SourceIp)
+	assert.Equal(t, "", ev.SourcePort)
+	// No port → remoteAddr must be just the host, no trailing colon.
+	assert.Equal(t, "203.0.113.99", ev.RemoteAddr)
+	assert.NotContains(t, ev.RemoteAddr, ":")
+}
+
+// TestTraceRequest_RemoteAddr_IPv6WithPort verifies JoinHostPort wraps an IPv6
+// address in brackets: "[::1]:8080".
+func TestTraceRequest_RemoteAddr_IPv6WithPort(t *testing.T) {
+	mt := &mockTracer{}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "[::1]:8080"
+
+	traceRequest(req, mt, parser.Command{}, "test", "", nil)
+
+	require.Len(t, mt.events, 1)
+	ev := mt.events[0]
+	assert.Equal(t, "::1", ev.SourceIp)
+	assert.Equal(t, "8080", ev.SourcePort)
+	assert.Equal(t, "[::1]:8080", ev.RemoteAddr)
+}
+
+// TestTraceRequest_RemoteAddr_IPv6WithoutPort verifies that an IPv6 address
+// resolved from a header (no port) is stored as-is without brackets.
+func TestTraceRequest_RemoteAddr_IPv6WithoutPort(t *testing.T) {
+	mt := &mockTracer{}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "[fd00::1]:54321"
+	req.Header.Set("X-Forwarded-For", "2001:db8::42")
+
+	traceRequest(req, mt, parser.Command{}, "test", "", mustCIDRs(t, "fd00::/8"))
+
+	require.Len(t, mt.events, 1)
+	ev := mt.events[0]
+	assert.Equal(t, "2001:db8::42", ev.SourceIp)
+	assert.Equal(t, "", ev.SourcePort)
+	assert.Equal(t, "2001:db8::42", ev.RemoteAddr)
 }
 
 func TestInit_Basic(t *testing.T) {

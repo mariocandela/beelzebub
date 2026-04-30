@@ -17,28 +17,22 @@ func (m *mockTracer) TraceEvent(event tracer.Event) {
 }
 
 func TestBuildPrompt(t *testing.T) {
-	result := buildPrompt("root", "ubuntu")
-	assert.Equal(t, "root@ubuntu:~$ ", result)
-}
-
-func TestBuildPrompt_EmptyFields(t *testing.T) {
-	result := buildPrompt("", "")
-	assert.Equal(t, "@:~$ ", result)
-}
-
-func TestSSHStrategy_Init_InvalidAddress(t *testing.T) {
-	strategy := &SSHStrategy{}
-	mt := &mockTracer{}
-
-	servConf := parser.BeelzebubServiceConfiguration{
-		Address:       "invalid-address-no-port",
-		PasswordRegex: ".*",
+	tests := []struct {
+		user       string
+		serverName string
+		expected   string
+	}{
+		{"root", "ubuntu", "root@ubuntu:~$ "},
+		{"admin", "debian", "admin@debian:~$ "},
+		{"", "", "@:~$ "},
+		{"user", "", "user@:~$ "},
+		{"", "server", "@server:~$ "},
 	}
-
-	err := strategy.Init(servConf, mt)
-	// SSH should not return an error for invalid address at init time (it runs asynchronously)
-	// but at least exercise the Init code path
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.user+"@"+tt.serverName, func(t *testing.T) {
+			assert.Equal(t, tt.expected, buildPrompt(tt.user, tt.serverName))
+		})
+	}
 }
 
 func TestSSHStrategy_Init_ValidAddress(t *testing.T) {
@@ -55,4 +49,37 @@ func TestSSHStrategy_Init_ValidAddress(t *testing.T) {
 	err := strategy.Init(servConf, mt)
 	assert.NoError(t, err)
 	assert.NotNil(t, strategy.Sessions)
+}
+
+func TestSSHStrategy_Init_ReusesExistingSessions(t *testing.T) {
+	strategy := &SSHStrategy{}
+	mt := &mockTracer{}
+
+	servConf := parser.BeelzebubServiceConfiguration{
+		Address:                "127.0.0.1:0",
+		DeadlineTimeoutSeconds: 1,
+		PasswordRegex:          ".*",
+	}
+
+	assert.NoError(t, strategy.Init(servConf, mt))
+	assert.NotNil(t, strategy.Sessions)
+
+	original := strategy.Sessions
+
+	// A second Init must reuse the same Sessions store, not replace it.
+	assert.NoError(t, strategy.Init(servConf, mt))
+	assert.Same(t, original, strategy.Sessions)
+}
+
+func TestSSHStrategy_Init_InvalidAddress(t *testing.T) {
+	strategy := &SSHStrategy{}
+	mt := &mockTracer{}
+
+	servConf := parser.BeelzebubServiceConfiguration{
+		Address:       "invalid-address-no-port",
+		PasswordRegex: ".*",
+	}
+
+	// SSH runs the listener asynchronously; Init itself should not return an error.
+	assert.NoError(t, strategy.Init(servConf, mt))
 }

@@ -82,48 +82,80 @@ func TestStringStatus(t *testing.T) {
 type mockCounter struct {
 	prometheus.Metric
 	prometheus.Collector
-	inc func()
-	add func(float64)
+	count int
 }
 
-var counter = 0
-
-func (m mockCounter) Inc() {
-	counter += 1
+func (m *mockCounter) Inc() {
+	m.count++
 }
 
-func (m mockCounter) Add(f float64) {
-	counter = int(f)
+func (m *mockCounter) Add(f float64) {
+	m.count += int(f)
+}
+
+func newTracerWithMockCounters(strategy Strategy) (*tracer, map[string]*mockCounter) {
+	counters := map[string]*mockCounter{
+		"total":  {},
+		"ssh":    {},
+		"tcp":    {},
+		"http":   {},
+		"mcp":    {},
+		"telnet": {},
+	}
+	tr := &tracer{
+		strategy:          strategy,
+		eventsChan:        make(chan Event, Workers),
+		eventsTotal:       counters["total"],
+		eventsSSHTotal:    counters["ssh"],
+		eventsTCPTotal:    counters["tcp"],
+		eventsHTTPTotal:   counters["http"],
+		eventsMCPTotal:    counters["mcp"],
+		eventsTelnetTotal: counters["telnet"],
+	}
+	return tr, counters
 }
 
 func TestUpdatePrometheusCounters(t *testing.T) {
-	mockStrategy := func(event Event) {}
-
-	tracer := &tracer{
-		strategy:          mockStrategy,
-		eventsChan:        make(chan Event, Workers),
-		eventsTotal:       mockCounter{},
-		eventsSSHTotal:    mockCounter{},
-		eventsTCPTotal:    mockCounter{},
-		eventsHTTPTotal:   mockCounter{},
-		eventsMCPTotal:    mockCounter{},
-		eventsTelnetTotal: mockCounter{},
+	tests := []struct {
+		protocol   string
+		counterKey string
+	}{
+		{SSH.String(), "ssh"},
+		{HTTP.String(), "http"},
+		{TCP.String(), "tcp"},
+		{MCP.String(), "mcp"},
+		{TELNET.String(), "telnet"},
 	}
 
-	tracer.updatePrometheusCounters(SSH.String())
-	assert.Equal(t, 2, counter)
+	for _, tt := range tests {
+		t.Run(tt.protocol, func(t *testing.T) {
+			tr, counters := newTracerWithMockCounters(func(event Event) {})
 
-	tracer.updatePrometheusCounters(HTTP.String())
-	assert.Equal(t, 4, counter)
+			tr.updatePrometheusCounters(tt.protocol)
 
-	tracer.updatePrometheusCounters(TCP.String())
-	assert.Equal(t, 6, counter)
+			assert.Equal(t, 1, counters["total"].count, "total counter should be incremented")
+			assert.Equal(t, 1, counters[tt.counterKey].count, "%s counter should be incremented", tt.protocol)
 
-	tracer.updatePrometheusCounters(MCP.String())
-	assert.Equal(t, 8, counter)
+			for key, c := range counters {
+				if key != "total" && key != tt.counterKey {
+					assert.Equal(t, 0, c.count, "%s counter should not be incremented", key)
+				}
+			}
+		})
+	}
+}
 
-	tracer.updatePrometheusCounters(TELNET.String())
-	assert.Equal(t, 10, counter)
+func TestUpdatePrometheusCounters_UnknownProtocol(t *testing.T) {
+	tr, counters := newTracerWithMockCounters(func(event Event) {})
+
+	tr.updatePrometheusCounters("ftp")
+
+	assert.Equal(t, 1, counters["total"].count, "total should still be incremented for unknown protocol")
+	assert.Equal(t, 0, counters["ssh"].count)
+	assert.Equal(t, 0, counters["http"].count)
+	assert.Equal(t, 0, counters["tcp"].count)
+	assert.Equal(t, 0, counters["mcp"].count)
+	assert.Equal(t, 0, counters["telnet"].count)
 }
 
 func TestGetStrategy(t *testing.T) {

@@ -5,36 +5,40 @@ import (
 
 	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
 	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewDirector(t *testing.T) {
 	b := NewBuilder()
 	d := NewDirector(b)
 
-	if d.builder != b {
-		t.Errorf("expected builder to be set")
-	}
+	assert.Same(t, b, d.builder)
 }
 
 func TestBuildBeelzebub_Standard(t *testing.T) {
 	b := NewBuilder()
 	d := NewDirector(b)
 
-	coreConfig := &parser.BeelzebubCoreConfigurations{}
-	servicesConfig := []parser.BeelzebubServiceConfiguration{}
+	result, err := d.BuildBeelzebub(&parser.BeelzebubCoreConfigurations{}, nil)
 
-	result, err := d.BuildBeelzebub(coreConfig, servicesConfig)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.NotNil(t, result.traceStrategy)
+}
+
+func TestBuildBeelzebub_StoresServicesConfig(t *testing.T) {
+	b := NewBuilder()
+	d := NewDirector(b)
+
+	services := []parser.BeelzebubServiceConfiguration{
+		{Address: "0.0.0.0:2222", Protocol: "ssh"},
+		{Address: "0.0.0.0:8080", Protocol: "http"},
 	}
 
-	if result == nil {
-		t.Fatalf("expected builder result, got nil")
-	}
-
-	if result.traceStrategy == nil {
-		t.Errorf("expected traceStrategy to be set")
-	}
+	result, err := d.BuildBeelzebub(&parser.BeelzebubCoreConfigurations{}, services)
+	require.NoError(t, err)
+	assert.Equal(t, services, result.beelzebubServicesConfiguration)
 }
 
 func TestBuildBeelzebub_BeelzebubCloud(t *testing.T) {
@@ -46,24 +50,26 @@ func TestBuildBeelzebub_BeelzebubCloud(t *testing.T) {
 	coreConfig.Core.BeelzebubCloud.URI = "http://localhost:8080"
 	coreConfig.Core.BeelzebubCloud.AuthToken = "token"
 
-	servicesConfig := []parser.BeelzebubServiceConfiguration{}
+	result, err := d.BuildBeelzebub(coreConfig, nil)
 
-	result, err := d.BuildBeelzebub(coreConfig, servicesConfig)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	require.NoError(t, err)
+	assert.NotNil(t, result.traceStrategy)
 
-	if result.traceStrategy == nil {
-		t.Errorf("expected traceStrategy to be set")
-	}
-
-	// Call strategy for coverage
+	// Verify the strategy is callable without panicking.
 	d.beelzebubCloudStrategy(tracer.Event{})
 }
 
 func TestStandardOutStrategy(t *testing.T) {
 	d := NewDirector(NewBuilder())
-	d.standardOutStrategy(tracer.Event{Protocol: "test"})
+
+	// Verify the strategy handles a complete event without panicking.
+	d.standardOutStrategy(tracer.Event{
+		Protocol: "SSH",
+		Status:   "Stateless",
+		ID:       "test-id",
+		User:     "root",
+		Password: "secret",
+	})
 }
 
 // Cannot easily test RabbitMQ connection in unit tests without a mock
