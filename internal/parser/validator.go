@@ -89,114 +89,144 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 	}
 
 	for i := range services {
-		filename := services[i].Filename
-		r, ok := resultMap[filename]
-		if !ok {
-			r = &ValidationResult{Filename: filename}
-			resultMap[filename] = r
-		}
+		r := getResult(resultMap, services[i].Filename)
+		services[i].Address = strings.TrimSpace(services[i].Address)
 
-		protocol := services[i].Protocol
-		if !slices.Contains(validProtocols, protocol) {
-			r.Issues = append(r.Issues, ValidationIssue{
-				Level:   LevelError,
-				Message: fmt.Sprintf("invalid protocol %q, valid: %s", protocol, strings.Join(validProtocols, ", ")),
-			})
-		}
-
-		address := strings.TrimSpace(services[i].Address)
-		if address == "" {
-			r.Issues = append(r.Issues, ValidationIssue{
-				Level:   LevelError,
-				Message: "address is empty",
-			})
-		} else if !strings.Contains(address, "/") {
-			lastColon := strings.LastIndex(address, ":")
-			if lastColon == -1 {
-				r.Issues = append(r.Issues, ValidationIssue{
-					Level:   LevelWarning,
-					Message: fmt.Sprintf("address %q has invalid port format or port out of range (1-65535)", address),
-				})
-			} else {
-				portStr := address[lastColon+1:]
-				port, err := strconv.Atoi(portStr)
-				if err != nil || port < 1 || port > 65535 {
-					r.Issues = append(r.Issues, ValidationIssue{
-						Level:   LevelWarning,
-						Message: fmt.Sprintf("address %q has invalid port format or port out of range (1-65535)", address),
-					})
-				}
-			}
-		}
-		services[i].Address = address
-
-		for j, cmd := range services[i].Commands {
-			if cmd.RegexStr == "" {
-				r.Issues = append(r.Issues, ValidationIssue{
-					Level:   LevelError,
-					Message: fmt.Sprintf("command[%d] has empty regex", j),
-				})
-			}
-			if !slices.Contains(validCommandPlugins, cmd.Plugin) {
-				r.Issues = append(r.Issues, ValidationIssue{
-					Level:   LevelError,
-					Message: fmt.Sprintf("command[%d] has invalid plugin %q, valid: %s", j, cmd.Plugin, strings.Join(validCommandPluginsDisplay, ", ")),
-				})
-			}
-			if cmd.Handler == "" && cmd.Plugin == "" {
-				r.Issues = append(r.Issues, ValidationIssue{
-					Level:   LevelWarning,
-					Message: fmt.Sprintf("command[%d] has empty handler and no plugin — matched requests will produce no output", j),
-				})
-			}
-			for _, header := range cmd.Headers {
-				if !strings.Contains(header, ":") {
-					r.Issues = append(r.Issues, ValidationIssue{
-						Level:   LevelWarning,
-						Message: fmt.Sprintf("command[%d].headers has malformed entry (no colon): %q", j, header),
-					})
-				}
-			}
-		}
-
-		fb := services[i].FallbackCommand
-		if fb.Handler != "" || fb.Plugin != "" {
-			if fb.RegexStr != "" {
-				if _, err := regexp.Compile(fb.RegexStr); err != nil {
-					r.Issues = append(r.Issues, ValidationIssue{
-						Level:   LevelError,
-						Message: fmt.Sprintf("fallbackCommand has invalid regex: %v", err),
-					})
-				}
-			}
-			if !slices.Contains(validCommandPlugins, fb.Plugin) {
-				r.Issues = append(r.Issues, ValidationIssue{
-					Level:   LevelError,
-					Message: fmt.Sprintf("fallbackCommand has invalid plugin %q, valid: %s", fb.Plugin, strings.Join(validCommandPluginsDisplay, ", ")),
-				})
-			}
-		}
-
-		if services[i].DeadlineTimeoutSeconds == 0 && len(services[i].Commands) > 0 {
-			r.Issues = append(r.Issues, ValidationIssue{
-				Level:   LevelWarning,
-				Message: "deadlineTimeoutSeconds is not set, connections may be closed immediately",
-			})
-		}
-
-		if services[i].Plugin.OpenAISecretKey != "" {
-			r.Issues = append(r.Issues, ValidationIssue{
-				Level:   LevelWarning,
-				Message: "openAISecretKey is set inline in config — prefer using the OPEN_AI_SECRET_KEY environment variable to avoid exposing secrets in version control",
-			})
-		}
+		r.Issues = append(r.Issues, validateProtocol(services[i])...)
+		r.Issues = append(r.Issues, validateAddress(services[i])...)
+		r.Issues = append(r.Issues, validateCommands(services[i])...)
+		r.Issues = append(r.Issues, validateFallbackCommand(services[i])...)
+		r.Issues = append(r.Issues, validatePluginConfig(services[i])...)
 
 		for _, v := range GetServiceValidators() {
-			issues := v.Validate(services[i])
-			r.Issues = append(r.Issues, issues...)
+			r.Issues = append(r.Issues, v.Validate(services[i])...)
 		}
 	}
 
+	detectCollisions(services, resultMap)
+
+	return buildResult(resultMap)
+}
+
+func getResult(resultMap map[string]*ValidationResult, filename string) *ValidationResult {
+	r, ok := resultMap[filename]
+	if !ok {
+		r = &ValidationResult{Filename: filename}
+		resultMap[filename] = r
+	}
+	return r
+}
+
+func validateProtocol(svc BeelzebubServiceConfiguration) []ValidationIssue {
+	if slices.Contains(validProtocols, svc.Protocol) {
+		return nil
+	}
+	return []ValidationIssue{{
+		Level:   LevelError,
+		Message: fmt.Sprintf("invalid protocol %q, valid: %s", svc.Protocol, strings.Join(validProtocols, ", ")),
+	}}
+}
+
+func validateAddress(svc BeelzebubServiceConfiguration) []ValidationIssue {
+	address := svc.Address
+	if address == "" {
+		return []ValidationIssue{{Level: LevelError, Message: "address is empty"}}
+	}
+	if strings.Contains(address, "/") {
+		return nil
+	}
+	lastColon := strings.LastIndex(address, ":")
+	if lastColon == -1 {
+		return []ValidationIssue{{
+			Level:   LevelWarning,
+			Message: fmt.Sprintf("address %q has invalid port format or port out of range (1-65535)", address),
+		}}
+	}
+	portStr := address[lastColon+1:]
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port < 1 || port > 65535 {
+		return []ValidationIssue{{
+			Level:   LevelWarning,
+			Message: fmt.Sprintf("address %q has invalid port format or port out of range (1-65535)", address),
+		}}
+	}
+	return nil
+}
+
+func validateCommands(svc BeelzebubServiceConfiguration) []ValidationIssue {
+	var issues []ValidationIssue
+	for j, cmd := range svc.Commands {
+		if cmd.RegexStr == "" {
+			issues = append(issues, ValidationIssue{
+				Level:   LevelError,
+				Message: fmt.Sprintf("command[%d] has empty regex", j),
+			})
+		}
+		if !slices.Contains(validCommandPlugins, cmd.Plugin) {
+			issues = append(issues, ValidationIssue{
+				Level:   LevelError,
+				Message: fmt.Sprintf("command[%d] has invalid plugin %q, valid: %s", j, cmd.Plugin, strings.Join(validCommandPluginsDisplay, ", ")),
+			})
+		}
+		if cmd.Handler == "" && cmd.Plugin == "" {
+			issues = append(issues, ValidationIssue{
+				Level:   LevelWarning,
+				Message: fmt.Sprintf("command[%d] has empty handler and no plugin — matched requests will produce no output", j),
+			})
+		}
+		for _, header := range cmd.Headers {
+			if !strings.Contains(header, ":") {
+				issues = append(issues, ValidationIssue{
+					Level:   LevelWarning,
+					Message: fmt.Sprintf("command[%d].headers has malformed entry (no colon): %q", j, header),
+				})
+			}
+		}
+	}
+	return issues
+}
+
+func validateFallbackCommand(svc BeelzebubServiceConfiguration) []ValidationIssue {
+	var issues []ValidationIssue
+	fb := svc.FallbackCommand
+	if fb.Handler == "" && fb.Plugin == "" {
+		return nil
+	}
+	if fb.RegexStr != "" {
+		if _, err := regexp.Compile(fb.RegexStr); err != nil {
+			issues = append(issues, ValidationIssue{
+				Level:   LevelError,
+				Message: fmt.Sprintf("fallbackCommand has invalid regex: %v", err),
+			})
+		}
+	}
+	if !slices.Contains(validCommandPlugins, fb.Plugin) {
+		issues = append(issues, ValidationIssue{
+			Level:   LevelError,
+			Message: fmt.Sprintf("fallbackCommand has invalid plugin %q, valid: %s", fb.Plugin, strings.Join(validCommandPluginsDisplay, ", ")),
+		})
+	}
+	return issues
+}
+
+func validatePluginConfig(svc BeelzebubServiceConfiguration) []ValidationIssue {
+	var issues []ValidationIssue
+	if svc.DeadlineTimeoutSeconds == 0 && len(svc.Commands) > 0 {
+		issues = append(issues, ValidationIssue{
+			Level:   LevelWarning,
+			Message: "deadlineTimeoutSeconds is not set, connections may be closed immediately",
+		})
+	}
+	if svc.Plugin.OpenAISecretKey != "" {
+		issues = append(issues, ValidationIssue{
+			Level:   LevelWarning,
+			Message: "openAISecretKey is set inline in config — prefer using the OPEN_AI_SECRET_KEY environment variable to avoid exposing secrets in version control",
+		})
+	}
+	return issues
+}
+
+func detectCollisions(services []BeelzebubServiceConfiguration, resultMap map[string]*ValidationResult) {
 	collisionMap := make(map[string][]int)
 	for i, svc := range services {
 		key := svc.Protocol + " " + svc.Address
@@ -215,14 +245,13 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 			}
 		}
 	}
+}
 
+func buildResult(resultMap map[string]*ValidationResult) ValidateResult {
 	var results []ValidationResult
+	var totalErrors, totalWarnings int
 	for _, r := range resultMap {
 		results = append(results, *r)
-	}
-
-	var totalErrors, totalWarnings int
-	for _, r := range results {
 		for _, issue := range r.Issues {
 			switch issue.Level {
 			case LevelError:
@@ -232,7 +261,6 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 			}
 		}
 	}
-
 	return ValidateResult{
 		Results:       results,
 		TotalErrors:   totalErrors,
