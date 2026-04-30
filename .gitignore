@@ -8,3 +8,4 @@ integration_test/certs/tls.crt
 integration_test/certs/tls.key
 .env
 .codex
+.local
