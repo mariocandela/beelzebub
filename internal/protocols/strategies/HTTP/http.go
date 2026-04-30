@@ -98,13 +98,10 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 	if err == nil {
 		body = string(bodyBytes)
 	}
-	traceRequest(request, tr, command, servConf.Description, body)
+	traceRequest(request, tr, command, servConf.Description, body, servConf.TrustedProxiesNets)
 
 	if command.Plugin != "" {
-		host, _, err := net.SplitHostPort(request.RemoteAddr)
-		if err != nil {
-			host = request.RemoteAddr
-		}
+		host, _ := realClientAddr(request, servConf.TrustedProxiesNets)
 
 		if cp, ok := plugin.GetCommand(command.Plugin); ok {
 			cmd := fmt.Sprintf("Method: %s, RequestURI: %s, Body: %s", request.Method, request.RequestURI, body)
@@ -152,8 +149,8 @@ func buildHTTPResponse(servConf parser.BeelzebubServiceConfiguration, tr tracer.
 	return resp, nil
 }
 
-func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Command, HoneypotDescription, body string) {
-	host, port, _ := net.SplitHostPort(request.RemoteAddr)
+func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Command, HoneypotDescription, body string, trustedProxies []*net.IPNet) {
+	host, port := realClientAddr(request, trustedProxies)
 
 	event := tracer.Event{
 		Msg:             "HTTP New request",
@@ -180,6 +177,76 @@ func traceRequest(request *http.Request, tr tracer.Tracer, command parser.Comman
 		event.TLSServerName = request.TLS.ServerName
 	}
 	tr.TraceEvent(event)
+}
+
+// realClientAddr returns the host and port of the real client.
+//
+// The immediate TCP peer (request.RemoteAddr) is the only non-spoofable source
+// of identity: it is set by Go's net/http server from the socket peer address.
+// X-Forwarded-For and X-Real-IP are application-level headers and trivially
+// forgeable when the honeypot is reachable directly from the Internet.
+//
+// Algorithm:
+//   - If trustedProxies is empty OR the immediate peer is not in trustedProxies,
+//     headers are ignored entirely and the peer address is returned. This
+//     protects deployments where beelzebub is exposed directly: an attacker
+//     setting "X-Forwarded-For: 8.8.8.8" cannot make us log 8.8.8.8.
+//   - If the peer is a trusted proxy, X-Forwarded-For is parsed right-to-left
+//     and the first entry that is NOT itself a trusted hop is treated as the
+//     real client. This neutralizes XFF poisoning, where a client sends a
+//     pre-filled XFF and the trusted proxy appends the real peer to it
+//     ("spoofed, real-peer"): walking from the right skips the trusted hops
+//     until the legitimate client IP appears.
+//   - If XFF is empty or contains only trusted hops, X-Real-IP is consulted as
+//     a single-hop fallback. If it too is missing or trusted, the peer
+//     address is returned.
+//
+// The returned port mirrors the peer's port; XFF/X-Real-IP do not carry port
+// information, so when the address comes from a header the port is empty.
+func realClientAddr(r *http.Request, trustedProxies []*net.IPNet) (host, port string) {
+	host, port, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+		port = ""
+	}
+	if len(trustedProxies) == 0 {
+		return host, port
+	}
+	peerIP := net.ParseIP(host)
+	if peerIP == nil || !ipInNets(peerIP, trustedProxies) {
+		return host, port
+	}
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		for i := len(parts) - 1; i >= 0; i-- {
+			candidate := strings.TrimSpace(parts[i])
+			if candidate == "" {
+				continue
+			}
+			ip := net.ParseIP(candidate)
+			if ip == nil {
+				continue
+			}
+			if !ipInNets(ip, trustedProxies) {
+				return candidate, ""
+			}
+		}
+	}
+	if xri := strings.TrimSpace(r.Header.Get("X-Real-Ip")); xri != "" {
+		if ip := net.ParseIP(xri); ip != nil && !ipInNets(ip, trustedProxies) {
+			return xri, ""
+		}
+	}
+	return host, port
+}
+
+func ipInNets(ip net.IP, nets []*net.IPNet) bool {
+	for _, n := range nets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func mapHeaderToString(headers http.Header) string {

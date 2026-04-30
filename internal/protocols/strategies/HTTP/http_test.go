@@ -1,6 +1,7 @@
 package HTTP
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,7 +10,19 @@ import (
 	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
 	"github.com/beelzebub-labs/beelzebub/v3/internal/tracer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func mustCIDRs(t *testing.T, cidrs ...string) []*net.IPNet {
+	t.Helper()
+	nets := make([]*net.IPNet, 0, len(cidrs))
+	for _, c := range cidrs {
+		_, n, err := net.ParseCIDR(c)
+		require.NoError(t, err)
+		nets = append(nets, n)
+	}
+	return nets
+}
 
 type mockTracer struct {
 	events []tracer.Event
@@ -111,7 +124,7 @@ func TestTraceRequest_HTTP(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:12345"
 
 	cmd := parser.Command{Name: "test-handler"}
-	traceRequest(req, mt, cmd, "test-honeypot", "body")
+	traceRequest(req, mt, cmd, "test-honeypot", "body", nil)
 
 	assert.Len(t, mt.events, 1)
 	event := mt.events[0]
@@ -130,7 +143,7 @@ func TestTraceRequest_WithCookiesAndHeaders(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "session", Value: "xyz"})
 	req.RemoteAddr = "192.168.1.1:54321"
 
-	traceRequest(req, mt, parser.Command{}, "login-honeypot", `{"user":"admin"}`)
+	traceRequest(req, mt, parser.Command{}, "login-honeypot", `{"user":"admin"}`, nil)
 
 	assert.Len(t, mt.events, 1)
 	event := mt.events[0]
@@ -173,4 +186,144 @@ func TestBuildHTTPResponse_UnknownPlugin(t *testing.T) {
 	assert.NoError(t, err)
 	// Falls through to unknown plugin branch; body stays empty
 	assert.Equal(t, "", resp.Body)
+}
+
+func TestRealClientAddr_NoTrustedProxies_IgnoresHeaders(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.0.0.5:4242"
+	req.Header.Set("X-Forwarded-For", "8.8.8.8")
+	req.Header.Set("X-Real-Ip", "8.8.8.8")
+
+	host, port := realClientAddr(req, nil)
+
+	assert.Equal(t, "10.0.0.5", host)
+	assert.Equal(t, "4242", port)
+}
+
+func TestRealClientAddr_UntrustedPeer_IgnoresHeaders(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "203.0.113.7:80"
+	req.Header.Set("X-Forwarded-For", "8.8.8.8")
+	req.Header.Set("X-Real-Ip", "8.8.8.8")
+
+	host, port := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
+
+	assert.Equal(t, "203.0.113.7", host)
+	assert.Equal(t, "80", port)
+}
+
+func TestRealClientAddr_TrustedPeer_UsesXForwardedFor(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.20.0.5:54321"
+	req.Header.Set("X-Forwarded-For", "2.39.23.127")
+
+	host, port := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
+
+	assert.Equal(t, "2.39.23.127", host)
+	assert.Equal(t, "", port)
+}
+
+// XFF poisoning: the attacker prefixes a fake IP, the trusted proxy appends the
+// real peer. Walking right-to-left and skipping trusted hops must surface the
+// real client (the first non-trusted entry from the right), not the spoof.
+func TestRealClientAddr_TrustedPeer_WalksRightToLeftSkippingTrusted(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.20.0.5:54321"
+	// 1.1.1.1 spoofed by attacker, 2.39.23.127 = real client, 172.20.0.6 = inner trusted hop
+	req.Header.Set("X-Forwarded-For", "1.1.1.1, 2.39.23.127, 172.20.0.6")
+
+	host, _ := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
+
+	assert.Equal(t, "2.39.23.127", host)
+}
+
+func TestRealClientAddr_TrustedPeer_AllXFFTrusted_FallsBack(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.20.0.5:54321"
+	req.Header.Set("X-Forwarded-For", "172.20.0.6, 172.20.0.7")
+
+	host, port := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
+
+	assert.Equal(t, "172.20.0.5", host)
+	assert.Equal(t, "54321", port)
+}
+
+func TestRealClientAddr_TrustedPeer_FallsBackToXRealIp(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.20.0.5:54321"
+	req.Header.Set("X-Real-Ip", "2.39.23.127")
+
+	host, port := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
+
+	assert.Equal(t, "2.39.23.127", host)
+	assert.Equal(t, "", port)
+}
+
+func TestRealClientAddr_TrustedPeer_XRealIpIgnoredIfTrusted(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.20.0.5:54321"
+	req.Header.Set("X-Real-Ip", "172.20.0.9")
+
+	host, port := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
+
+	assert.Equal(t, "172.20.0.5", host)
+	assert.Equal(t, "54321", port)
+}
+
+func TestRealClientAddr_MalformedXFFEntries_Skipped(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "172.20.0.5:54321"
+	req.Header.Set("X-Forwarded-For", "not-an-ip,   ,2.39.23.127, 172.20.0.6")
+
+	host, _ := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
+
+	assert.Equal(t, "2.39.23.127", host)
+}
+
+func TestRealClientAddr_IPv6_TrustedPeer(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "[fd00::1]:54321"
+	req.Header.Set("X-Forwarded-For", "2001:db8::1234")
+
+	host, _ := realClientAddr(req, mustCIDRs(t, "fd00::/8"))
+
+	assert.Equal(t, "2001:db8::1234", host)
+}
+
+func TestRealClientAddr_RemoteAddrWithoutPort(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.0.0.5"
+
+	host, port := realClientAddr(req, nil)
+
+	assert.Equal(t, "10.0.0.5", host)
+	assert.Equal(t, "", port)
+}
+
+func TestTraceRequest_TrustedProxy_ResolvesRealClient(t *testing.T) {
+	mt := &mockTracer{}
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req.RemoteAddr = "172.20.0.5:54321"
+	req.Header.Set("X-Forwarded-For", "2.39.23.127")
+
+	traceRequest(req, mt, parser.Command{Name: "admin"}, "test", "", mustCIDRs(t, "172.16.0.0/12"))
+
+	require.Len(t, mt.events, 1)
+	ev := mt.events[0]
+	assert.Equal(t, "2.39.23.127", ev.SourceIp)
+	assert.Equal(t, "", ev.SourcePort)
+	// Raw RemoteAddr is preserved for forensic fidelity.
+	assert.Equal(t, "172.20.0.5:54321", ev.RemoteAddr)
+}
+
+func TestTraceRequest_UntrustedPeer_DoesNotTrustHeaders(t *testing.T) {
+	mt := &mockTracer{}
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	req.RemoteAddr = "203.0.113.7:8080"
+	req.Header.Set("X-Forwarded-For", "8.8.8.8")
+
+	traceRequest(req, mt, parser.Command{}, "test", "", mustCIDRs(t, "172.16.0.0/12"))
+
+	require.Len(t, mt.events, 1)
+	assert.Equal(t, "203.0.113.7", mt.events[0].SourceIp)
 }

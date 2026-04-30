@@ -267,6 +267,59 @@ func (suite *IntegrationTestSuite) TestInvokeTLSHoneypot() {
 	suite.True(found, "Expected to find event with TLSServerName 'localhost'")
 }
 
+// TestHTTPTrustedProxyResolvesRealClient verifies that when the immediate TCP peer
+// is in the configured trustedProxies list, X-Forwarded-For is honored end-to-end
+// and the captured tracer event's SourceIp matches the leftmost untrusted XFF entry.
+// XFF poisoning is also tested: a spoofed prefix followed by the legitimate client
+// must surface the legitimate client, not the spoof.
+func (suite *IntegrationTestSuite) TestHTTPTrustedProxyResolvesRealClient() {
+	type eventCollector struct {
+		mu     sync.Mutex
+		events []tracer.Event
+	}
+	var collector eventCollector
+
+	tr := tracer.GetInstance(nil)
+	originalStrategy := tr.GetStrategy()
+	wrapperStrategy := func(event tracer.Event) {
+		if originalStrategy != nil {
+			originalStrategy(event)
+		}
+		collector.mu.Lock()
+		collector.events = append(collector.events, event)
+		collector.mu.Unlock()
+	}
+	tr.SetStrategy(wrapperStrategy)
+	defer tr.SetStrategy(originalStrategy)
+
+	uri := suite.httpHoneypotHost + "/index.php?trusted-proxy-test=1"
+
+	// Trusted peer (127.0.0.1) + spoofed prefix + legitimate client + inner trusted hop.
+	// Walk-right-to-left should pick 2.39.23.127 (the first non-trusted entry from the right).
+	_, err := resty.New().R().
+		SetHeader("X-Forwarded-For", "1.1.1.1, 2.39.23.127, 127.0.0.1").
+		Get(uri)
+	suite.Require().NoError(err)
+
+	// Throttle CPU to allow asynchronous event processing.
+	time.Sleep(100 * time.Millisecond)
+
+	collector.mu.Lock()
+	defer collector.mu.Unlock()
+
+	var matched *tracer.Event
+	for i, ev := range collector.events {
+		if strings.Contains(ev.RequestURI, "trusted-proxy-test=1") {
+			matched = &collector.events[i]
+			break
+		}
+	}
+	suite.Require().NotNil(matched, "expected to capture a tracer event for the test request")
+	suite.Equal("2.39.23.127", matched.SourceIp, "real client must be picked from XFF when peer is trusted")
+	// The raw RemoteAddr field must still reflect the actual TCP peer for forensics.
+	suite.True(strings.HasPrefix(matched.RemoteAddr, "127.0.0.1:"), "RemoteAddr should preserve the literal peer, got %q", matched.RemoteAddr)
+}
+
 func (suite *IntegrationTestSuite) TestInvokeTCPHoneypot() {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", suite.tcpHoneypotHost)
 	suite.Require().NoError(err)
