@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -240,15 +241,15 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	uri := "localhost:8081"
-	callCount := 0
+	var callCount atomic.Int64
 
 	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
 		func(req *http.Request) (*http.Response, error) {
-			callCount++
+			callCount.Add(1)
 
 			config := "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndescription: \"SSH interactive ChatGPT\"\ncommands:\n  - regex: \"^(.+)$\"\n    plugin: \"LLMHoneypot\"\nserverVersion: \"OpenSSH\"\nserverName: \"ubuntu\"\npasswordRegex: \"^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$\"\ndeadlineTimeoutSeconds: 60\nplugin:\n  llmModel: \"gpt-4o\"\n  openAISecretKey: \"1234\"\n"
 
-			if callCount > 1 {
+			if callCount.Load() > 1 {
 				config = "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\ndescription: \"SSH interactive ChatGPT MODIFIED\"\ncommands:\n  - regex: \"^(.+)$\"\n    plugin: \"LLMHoneypot\"\nserverVersion: \"OpenSSH\"\nserverName: \"ubuntu\"\npasswordRegex: \"^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$\"\ndeadlineTimeoutSeconds: 60\nplugin:\n  llmModel: \"gpt-3.5-turbo\"\n  openAISecretKey: \"1234\"\n"
 			}
 
@@ -283,10 +284,12 @@ func TestVerifyConfigurationsChanged(t *testing.T) {
 	select {
 	case <-exitCalled:
 		assert.True(t, exitInvoked)
-		assert.Greater(t, callCount, 1)
+		assert.Greater(t, callCount.Load(), int64(1))
 	case <-time.After(2 * time.Second):
 		t.Fatal("timeout waiting for exitFunction")
 	}
+
+	beelzebubCloud.Stop()
 }
 
 func TestMapToEventDTO_WithHeaders(t *testing.T) {
