@@ -17,7 +17,7 @@ func (v *HTTPValidator) Validate(config parser.BeelzebubServiceConfiguration) []
 
 	var issues []parser.ValidationIssue
 
-	issues = append(issues, parser.ValidateTLSConfig(config.TLSCertPath, config.TLSKeyPath)...)
+	issues = append(issues, parser.ValidateTLSConfig(config.TLSCertPath, config.TLSKeyPath, config.Filename)...)
 
 	if len(config.Commands) > 0 && config.FallbackCommand.Handler == "" && config.FallbackCommand.Plugin == "" {
 		issues = append(issues, parser.ValidationIssue{

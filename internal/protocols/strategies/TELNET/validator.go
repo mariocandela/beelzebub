@@ -15,7 +15,7 @@ func (v *TELNETValidator) Validate(config parser.BeelzebubServiceConfiguration) 
 		return nil
 	}
 
-	return parser.ValidatePasswordRegex(config.PasswordRegex, "telnet")
+	return parser.ValidatePasswordRegex(config.PasswordRegex, "telnet", config.Filename)
 }
 
 func init() {

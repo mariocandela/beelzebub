@@ -698,39 +698,41 @@ func TestRegisterAndResetServiceValidators(t *testing.T) {
 
 func TestValidateTLSConfig(t *testing.T) {
 	t.Run("both empty", func(t *testing.T) {
-		issues := ValidateTLSConfig("", "")
+		issues := ValidateTLSConfig("", "", "test.yaml")
 		assert.Empty(t, issues)
 	})
 
 	t.Run("both set and exist", func(t *testing.T) {
-		issues := ValidateTLSConfig("/proc/self/exe", "/proc/self/exe")
+		issues := ValidateTLSConfig("/proc/self/exe", "/proc/self/exe", "test.yaml")
 		assert.Empty(t, issues)
 	})
 
 	t.Run("only cert set", func(t *testing.T) {
-		issues := ValidateTLSConfig("/tmp/cert.crt", "")
+		issues := ValidateTLSConfig("/tmp/cert.crt", "", "test.yaml")
 		assert.Len(t, issues, 1)
 		assert.Equal(t, LevelError, issues[0].Level)
 		assert.Equal(t, "both tlsCertPath and tlsKeyPath must be set for TLS, or neither", issues[0].Message)
+		assert.Equal(t, "test.yaml", issues[0].Filename)
 	})
 
 	t.Run("only key set", func(t *testing.T) {
-		issues := ValidateTLSConfig("", "/tmp/cert.key")
+		issues := ValidateTLSConfig("", "/tmp/cert.key", "test.yaml")
 		assert.Len(t, issues, 1)
 		assert.Equal(t, LevelError, issues[0].Level)
 	})
 
 	t.Run("both set but files do not exist", func(t *testing.T) {
-		issues := ValidateTLSConfig("/nonexistent/cert.crt", "/nonexistent/cert.key")
+		issues := ValidateTLSConfig("/nonexistent/cert.crt", "/nonexistent/cert.key", "test.yaml")
 		assert.Len(t, issues, 2)
 		for _, issue := range issues {
 			assert.Equal(t, LevelWarning, issue.Level)
 			assert.Contains(t, issue.Message, "does not exist")
+			assert.Equal(t, "test.yaml", issue.Filename)
 		}
 	})
 
 	t.Run("one file does not exist", func(t *testing.T) {
-		issues := ValidateTLSConfig("/proc/self/exe", "/nonexistent/cert.key")
+		issues := ValidateTLSConfig("/proc/self/exe", "/nonexistent/cert.key", "test.yaml")
 		assert.Len(t, issues, 1)
 		assert.Equal(t, LevelWarning, issues[0].Level)
 		assert.Contains(t, issues[0].Message, "tlsKeyPath file does not exist")
@@ -739,21 +741,22 @@ func TestValidateTLSConfig(t *testing.T) {
 
 func TestValidatePasswordRegex(t *testing.T) {
 	t.Run("empty regex", func(t *testing.T) {
-		issues := ValidatePasswordRegex("", "ssh")
+		issues := ValidatePasswordRegex("", "ssh", "test.yaml")
 		assert.Len(t, issues, 1)
 		assert.Equal(t, LevelError, issues[0].Level)
 		assert.Equal(t, "passwordRegex is required for ssh protocol", issues[0].Message)
+		assert.Equal(t, "test.yaml", issues[0].Filename)
 	})
 
 	t.Run("invalid regex", func(t *testing.T) {
-		issues := ValidatePasswordRegex("[", "telnet")
+		issues := ValidatePasswordRegex("[", "telnet", "test.yaml")
 		assert.Len(t, issues, 1)
 		assert.Equal(t, LevelError, issues[0].Level)
 		assert.Contains(t, issues[0].Message, "passwordRegex is not a valid regex")
 	})
 
 	t.Run("valid regex", func(t *testing.T) {
-		issues := ValidatePasswordRegex("^root$", "ssh")
+		issues := ValidatePasswordRegex("^root$", "ssh", "test.yaml")
 		assert.Empty(t, issues)
 	})
 }

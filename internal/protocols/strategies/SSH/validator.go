@@ -15,7 +15,7 @@ func (v *SSHValidator) Validate(config parser.BeelzebubServiceConfiguration) []p
 		return nil
 	}
 
-	return parser.ValidatePasswordRegex(config.PasswordRegex, "ssh")
+	return parser.ValidatePasswordRegex(config.PasswordRegex, "ssh", config.Filename)
 }
 
 func init() {

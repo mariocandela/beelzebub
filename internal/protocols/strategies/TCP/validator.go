@@ -15,7 +15,7 @@ func (v *TCPValidator) Validate(config parser.BeelzebubServiceConfiguration) []p
 		return nil
 	}
 
-	return parser.ValidateTLSConfig(config.TLSCertPath, config.TLSKeyPath)
+	return parser.ValidateTLSConfig(config.TLSCertPath, config.TLSKeyPath, config.Filename)
 }
 
 func init() {
