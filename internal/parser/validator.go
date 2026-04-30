@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const (
@@ -42,16 +43,30 @@ type ServiceValidator interface {
 	Validate(config BeelzebubServiceConfiguration) []ValidationIssue
 }
 
-var serviceValidators []ServiceValidator
+var (
+	serviceValidators []ServiceValidator
+	serviceValidatorsMu sync.Mutex
+)
 
 // RegisterServiceValidator adds a ServiceValidator to the global registry
 func RegisterServiceValidator(v ServiceValidator) {
+	serviceValidatorsMu.Lock()
+	defer serviceValidatorsMu.Unlock()
 	serviceValidators = append(serviceValidators, v)
 }
 
 // ResetServiceValidators clears the global validator registry (for test isolation)
 func ResetServiceValidators() {
+	serviceValidatorsMu.Lock()
+	defer serviceValidatorsMu.Unlock()
 	serviceValidators = nil
+}
+
+// GetServiceValidators returns a copy of the current validator registry
+func GetServiceValidators() []ServiceValidator {
+	serviceValidatorsMu.Lock()
+	defer serviceValidatorsMu.Unlock()
+	return append([]ServiceValidator(nil), serviceValidators...)
 }
 
 var validProtocols = []string{"http", "ssh", "tcp", "mcp", "telnet"}
@@ -113,6 +128,7 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 				}
 			}
 		}
+		services[i].Address = address
 
 		for j, cmd := range services[i].Commands {
 			if cmd.RegexStr == "" {
@@ -168,7 +184,14 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 			})
 		}
 
-		for _, v := range serviceValidators {
+		if services[i].Plugin.OpenAISecretKey != "" {
+			r.Issues = append(r.Issues, ValidationIssue{
+				Level:   LevelWarning,
+				Message: "openAISecretKey is set inline in config — prefer using the OPEN_AI_SECRET_KEY environment variable to avoid exposing secrets in version control",
+			})
+		}
+
+		for _, v := range GetServiceValidators() {
 			issues := v.Validate(services[i])
 			r.Issues = append(r.Issues, issues...)
 		}
@@ -176,7 +199,7 @@ func Validate(services []BeelzebubServiceConfiguration, parseIssues []Validation
 
 	collisionMap := make(map[string][]int)
 	for i, svc := range services {
-				key := svc.Protocol + " " + svc.Address
+		key := svc.Protocol + " " + svc.Address
 		collisionMap[key] = append(collisionMap[key], i)
 	}
 
