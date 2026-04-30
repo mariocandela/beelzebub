@@ -1,6 +1,8 @@
 package historystore
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -49,18 +51,40 @@ func TestAppendNilSessions(t *testing.T) {
 
 func TestHistoryCleaner(t *testing.T) {
 	hs := NewHistoryStore()
-	hs.Append("testKey", plugins.Message{Role: "user", Content: "Hello"})
-	hs.Append("testKey2", plugins.Message{Role: "user", Content: "Hello"})
+	hs.Append("stale", plugins.Message{Role: "user", Content: "Hello"})
+	hs.Append("fresh", plugins.Message{Role: "user", Content: "Hello"})
 
-	// Make key older than MaxHistoryAge
-	e := hs.sessions["testKey"]
+	// Back-date the stale entry beyond MaxHistoryAge.
+	hs.Lock()
+	e := hs.sessions["stale"]
 	e.LastSeen = time.Now().Add(-MaxHistoryAge * 2)
-	hs.sessions["testKey"] = e
+	hs.sessions["stale"] = e
+	hs.Unlock()
 
-	CleanerInterval = 5 * time.Second // Override for the test.
+	CleanerInterval = 50 * time.Millisecond
 	hs.HistoryCleaner()
-	time.Sleep(CleanerInterval + (1 * time.Second))
+	time.Sleep(200 * time.Millisecond)
 
-	assert.False(t, hs.HasKey("testKey"))
-	assert.True(t, hs.HasKey("testKey2"))
+	assert.False(t, hs.HasKey("stale"))
+	assert.True(t, hs.HasKey("fresh"))
+}
+
+func TestAppend_Concurrent(t *testing.T) {
+	hs := NewHistoryStore()
+	const goroutines = 50
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func(i int) {
+			defer wg.Done()
+			hs.Append("key", plugins.Message{Role: "user", Content: fmt.Sprintf("msg%d", i)})
+		}(i)
+	}
+	wg.Wait()
+	assert.Len(t, hs.Query("key"), goroutines)
+}
+
+func TestQuery_MissingKey(t *testing.T) {
+	hs := NewHistoryStore()
+	assert.Nil(t, hs.Query("nonexistent"))
 }
