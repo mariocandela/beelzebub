@@ -238,99 +238,34 @@ func isNotFound(err error) bool {
 // If the BEELZEBUB_SERVICES_CONFIG environment variable is set (JSON array), it is used directly.
 // Otherwise, service YAML files are loaded from the configured directory (existing behaviour).
 func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceConfiguration, error) {
-	if envConfig := os.Getenv("BEELZEBUB_SERVICES_CONFIG"); envConfig != "" {
-		return parseServicesFromEnv(envConfig)
-	}
-
-	services, err := bp.gelAllFilesNameByDirNameDependency(bp.configurationsServicesDirectory)
-
+	services, issues, err := bp.readConfigurationsServices(true)
 	if err != nil {
-		if isNotFound(err) {
-			log.Warnf("Services config directory %q not found, falling back to empty configuration", bp.configurationsServicesDirectory)
-			return []BeelzebubServiceConfiguration{}, nil
-		}
-		return nil, fmt.Errorf("in directory %s: %v", bp.configurationsServicesDirectory, err)
+		return nil, err
 	}
-
-	var servicesConfiguration []BeelzebubServiceConfiguration
-
-	for _, servicesName := range services {
-		filePath := filepath.Join(bp.configurationsServicesDirectory, servicesName)
-		buf, err := bp.readFileBytesByFilePathDependency(filePath)
-
-		if err != nil {
-			return nil, fmt.Errorf("in file %s: %v", filePath, err)
-		}
-
-		beelzebubServiceConfiguration := &BeelzebubServiceConfiguration{}
-		err = yaml.Unmarshal(buf, beelzebubServiceConfiguration)
-
-		if err != nil {
-			return nil, fmt.Errorf("in file %s: %v", filePath, err)
-		}
-
-		if beelzebubServiceConfiguration.Plugin.RateLimitEnabled {
-			if beelzebubServiceConfiguration.Plugin.RateLimitRequests <= 0 ||
-				beelzebubServiceConfiguration.Plugin.RateLimitWindowSeconds <= 0 {
-				return nil, fmt.Errorf("in file %s: invalid rate limiting config: rateLimitRequests and rateLimitWindowSeconds must be > 0", filePath)
-			}
-		}
-
-		log.Debug(beelzebubServiceConfiguration)
-
-		if err := beelzebubServiceConfiguration.CompileCommandRegex(); err != nil {
-			return nil, fmt.Errorf("in file %s: invalid regex: %v", filePath, err)
-		}
-
-		if err := beelzebubServiceConfiguration.CompileTrustedProxies(); err != nil {
-			return nil, fmt.Errorf("in file %s: %v", filePath, err)
-		}
-
-		beelzebubServiceConfiguration.Filename = servicesName
-		servicesConfiguration = append(servicesConfiguration, *beelzebubServiceConfiguration)
+	if len(issues) > 0 {
+		return nil, fmt.Errorf("%s", issues[0].Message)
 	}
-
-	return servicesConfiguration, nil
+	return services, nil
 }
 
-// parseServicesFromEnv parses a JSON array of BeelzebubServiceConfiguration from
-// the BEELZEBUB_SERVICES_CONFIG environment variable.
-func parseServicesFromEnv(jsonStr string) ([]BeelzebubServiceConfiguration, error) {
-	var servicesConfiguration []BeelzebubServiceConfiguration
-	if err := json.Unmarshal([]byte(jsonStr), &servicesConfiguration); err != nil {
-		return nil, fmt.Errorf("invalid BEELZEBUB_SERVICES_CONFIG: %v", err)
-	}
-
-	for i := range servicesConfiguration {
-		svc := &servicesConfiguration[i]
-		servicesConfiguration[i].Filename = "<env:BEELZEBUB_SERVICES_CONFIG>"
-
-		if svc.Plugin.RateLimitEnabled {
-			if svc.Plugin.RateLimitRequests <= 0 || svc.Plugin.RateLimitWindowSeconds <= 0 {
-				return nil, fmt.Errorf("invalid rate limiting config in BEELZEBUB_SERVICES_CONFIG[%d]: rateLimitRequests and rateLimitWindowSeconds must be > 0", i)
-			}
-		}
-
-		if err := svc.CompileCommandRegex(); err != nil {
-			return nil, fmt.Errorf("invalid regex in BEELZEBUB_SERVICES_CONFIG[%d]: %v", i, err)
-		}
-
-		if err := svc.CompileTrustedProxies(); err != nil {
-			return nil, fmt.Errorf("in BEELZEBUB_SERVICES_CONFIG[%d]: %v", i, err)
-		}
-	}
-
-	return servicesConfiguration, nil
-}
-
+// ReadConfigurationsServicesForValidation reads service configurations in lenient mode:
+// parse errors are collected as ValidationIssue instead of aborting.
 func (bp configurationsParser) ReadConfigurationsServicesForValidation() ([]BeelzebubServiceConfiguration, []ValidationIssue, error) {
+	return bp.readConfigurationsServices(false)
+}
+
+func (bp configurationsParser) readConfigurationsServices(strict bool) ([]BeelzebubServiceConfiguration, []ValidationIssue, error) {
 	if envConfig := os.Getenv("BEELZEBUB_SERVICES_CONFIG"); envConfig != "" {
-		return parseServicesFromEnvForValidation(envConfig)
+		return parseServicesFromEnv(envConfig, strict)
 	}
 
 	services, err := bp.gelAllFilesNameByDirNameDependency(bp.configurationsServicesDirectory)
 	if err != nil {
 		if isNotFound(err) {
+			if strict {
+				log.Warnf("Services config directory %q not found, falling back to empty configuration", bp.configurationsServicesDirectory)
+				return []BeelzebubServiceConfiguration{}, nil, nil
+			}
 			return []BeelzebubServiceConfiguration{}, nil, nil
 		}
 		return nil, nil, fmt.Errorf("in directory %s: %v", bp.configurationsServicesDirectory, err)
@@ -343,6 +278,9 @@ func (bp configurationsParser) ReadConfigurationsServicesForValidation() ([]Beel
 		filePath := filepath.Join(bp.configurationsServicesDirectory, servicesName)
 		buf, err := bp.readFileBytesByFilePathDependency(filePath)
 		if err != nil {
+			if strict {
+				return nil, nil, fmt.Errorf("in file %s: %v", filePath, err)
+			}
 			issues = append(issues, ValidationIssue{Level: LevelError, Message: err.Error(), Filename: servicesName})
 			continue
 		}
@@ -350,6 +288,9 @@ func (bp configurationsParser) ReadConfigurationsServicesForValidation() ([]Beel
 		beelzebubServiceConfiguration := &BeelzebubServiceConfiguration{}
 		err = yaml.Unmarshal(buf, beelzebubServiceConfiguration)
 		if err != nil {
+			if strict {
+				return nil, nil, fmt.Errorf("in file %s: %v", filePath, err)
+			}
 			issues = append(issues, ValidationIssue{Level: LevelError, Message: err.Error(), Filename: servicesName})
 			continue
 		}
@@ -359,15 +300,31 @@ func (bp configurationsParser) ReadConfigurationsServicesForValidation() ([]Beel
 		if beelzebubServiceConfiguration.Plugin.RateLimitEnabled {
 			if beelzebubServiceConfiguration.Plugin.RateLimitRequests <= 0 ||
 				beelzebubServiceConfiguration.Plugin.RateLimitWindowSeconds <= 0 {
+				if strict {
+					return nil, nil, fmt.Errorf("in file %s: invalid rate limiting config: rateLimitRequests and rateLimitWindowSeconds must be > 0", filePath)
+				}
 				issues = append(issues, ValidationIssue{Level: LevelError, Message: "invalid rate limiting config: rateLimitRequests and rateLimitWindowSeconds must be > 0", Filename: servicesName})
 				continue
 			}
 		}
 
 		if err := beelzebubServiceConfiguration.CompileCommandRegex(); err != nil {
+			if strict {
+				return nil, nil, fmt.Errorf("in file %s: invalid regex: %v", filePath, err)
+			}
 			issues = append(issues, ValidationIssue{Level: LevelError, Message: fmt.Sprintf("invalid regex: %v", err), Filename: servicesName})
 			continue
 		}
+
+		if err := beelzebubServiceConfiguration.CompileTrustedProxies(); err != nil {
+			if strict {
+				return nil, nil, fmt.Errorf("in file %s: %v", filePath, err)
+			}
+			issues = append(issues, ValidationIssue{Level: LevelError, Message: fmt.Sprintf("%v", err), Filename: servicesName})
+			continue
+		}
+
+		log.Debug(beelzebubServiceConfiguration)
 
 		servicesConfiguration = append(servicesConfiguration, *beelzebubServiceConfiguration)
 	}
@@ -375,7 +332,9 @@ func (bp configurationsParser) ReadConfigurationsServicesForValidation() ([]Beel
 	return servicesConfiguration, issues, nil
 }
 
-func parseServicesFromEnvForValidation(jsonStr string) ([]BeelzebubServiceConfiguration, []ValidationIssue, error) {
+// parseServicesFromEnv parses a JSON array of BeelzebubServiceConfiguration from
+// the BEELZEBUB_SERVICES_CONFIG environment variable.
+func parseServicesFromEnv(jsonStr string, strict bool) ([]BeelzebubServiceConfiguration, []ValidationIssue, error) {
 	var servicesConfiguration []BeelzebubServiceConfiguration
 	if err := json.Unmarshal([]byte(jsonStr), &servicesConfiguration); err != nil {
 		return nil, nil, fmt.Errorf("invalid BEELZEBUB_SERVICES_CONFIG: %v", err)
@@ -386,17 +345,31 @@ func parseServicesFromEnvForValidation(jsonStr string) ([]BeelzebubServiceConfig
 
 	for i := range servicesConfiguration {
 		svc := &servicesConfiguration[i]
-		servicesConfiguration[i].Filename = "<env:BEELZEBUB_SERVICES_CONFIG>"
+		svc.Filename = "<env:BEELZEBUB_SERVICES_CONFIG>"
 
 		if svc.Plugin.RateLimitEnabled {
 			if svc.Plugin.RateLimitRequests <= 0 || svc.Plugin.RateLimitWindowSeconds <= 0 {
+				if strict {
+					return nil, nil, fmt.Errorf("invalid rate limiting config in BEELZEBUB_SERVICES_CONFIG[%d]: rateLimitRequests and rateLimitWindowSeconds must be > 0", i)
+				}
 				issues = append(issues, ValidationIssue{Level: LevelError, Message: "invalid rate limiting config: rateLimitRequests and rateLimitWindowSeconds must be > 0", Filename: svc.Filename})
 				continue
 			}
 		}
 
 		if err := svc.CompileCommandRegex(); err != nil {
+			if strict {
+				return nil, nil, fmt.Errorf("invalid regex in BEELZEBUB_SERVICES_CONFIG[%d]: %v", i, err)
+			}
 			issues = append(issues, ValidationIssue{Level: LevelError, Message: fmt.Sprintf("invalid regex: %v", err), Filename: svc.Filename})
+			continue
+		}
+
+		if err := svc.CompileTrustedProxies(); err != nil {
+			if strict {
+				return nil, nil, fmt.Errorf("in BEELZEBUB_SERVICES_CONFIG[%d]: %v", i, err)
+			}
+			issues = append(issues, ValidationIssue{Level: LevelError, Message: fmt.Sprintf("%v", err), Filename: svc.Filename})
 			continue
 		}
 
