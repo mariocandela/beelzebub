@@ -215,11 +215,11 @@ func TestRealClientAddr_UntrustedPeer_IgnoresHeaders(t *testing.T) {
 func TestRealClientAddr_TrustedPeer_UsesXForwardedFor(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "172.20.0.5:54321"
-	req.Header.Set("X-Forwarded-For", "2.39.23.127")
+	req.Header.Set("X-Forwarded-For", "8.8.8.8")
 
 	host, port := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
 
-	assert.Equal(t, "2.39.23.127", host)
+	assert.Equal(t, "8.8.8.8", host)
 	assert.Equal(t, "", port)
 }
 
@@ -229,12 +229,12 @@ func TestRealClientAddr_TrustedPeer_UsesXForwardedFor(t *testing.T) {
 func TestRealClientAddr_TrustedPeer_WalksRightToLeftSkippingTrusted(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "172.20.0.5:54321"
-	// 1.1.1.1 spoofed by attacker, 2.39.23.127 = real client, 172.20.0.6 = inner trusted hop
-	req.Header.Set("X-Forwarded-For", "1.1.1.1, 2.39.23.127, 172.20.0.6")
+	// 1.1.1.1 spoofed by attacker, 8.8.8.8 = real client, 172.20.0.6 = inner trusted hop
+	req.Header.Set("X-Forwarded-For", "1.1.1.1, 8.8.8.8, 172.20.0.6")
 
 	host, _ := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
 
-	assert.Equal(t, "2.39.23.127", host)
+	assert.Equal(t, "8.8.8.8", host)
 }
 
 func TestRealClientAddr_TrustedPeer_AllXFFTrusted_FallsBack(t *testing.T) {
@@ -251,11 +251,11 @@ func TestRealClientAddr_TrustedPeer_AllXFFTrusted_FallsBack(t *testing.T) {
 func TestRealClientAddr_TrustedPeer_FallsBackToXRealIp(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "172.20.0.5:54321"
-	req.Header.Set("X-Real-Ip", "2.39.23.127")
+	req.Header.Set("X-Real-Ip", "8.8.8.8")
 
 	host, port := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
 
-	assert.Equal(t, "2.39.23.127", host)
+	assert.Equal(t, "8.8.8.8", host)
 	assert.Equal(t, "", port)
 }
 
@@ -273,11 +273,11 @@ func TestRealClientAddr_TrustedPeer_XRealIpIgnoredIfTrusted(t *testing.T) {
 func TestRealClientAddr_MalformedXFFEntries_Skipped(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "172.20.0.5:54321"
-	req.Header.Set("X-Forwarded-For", "not-an-ip,   ,2.39.23.127, 172.20.0.6")
+	req.Header.Set("X-Forwarded-For", "not-an-ip,   ,8.8.8.8, 172.20.0.6")
 
 	host, _ := realClientAddr(req, mustCIDRs(t, "172.16.0.0/12"))
 
-	assert.Equal(t, "2.39.23.127", host)
+	assert.Equal(t, "8.8.8.8", host)
 }
 
 func TestRealClientAddr_IPv6_TrustedPeer(t *testing.T) {
@@ -304,13 +304,13 @@ func TestTraceRequest_TrustedProxy_ResolvesRealClient(t *testing.T) {
 	mt := &mockTracer{}
 	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
 	req.RemoteAddr = "172.20.0.5:54321"
-	req.Header.Set("X-Forwarded-For", "2.39.23.127")
+	req.Header.Set("X-Forwarded-For", "8.8.8.8")
 
 	traceRequest(req, mt, parser.Command{Name: "admin"}, "test", "", mustCIDRs(t, "172.16.0.0/12"))
 
 	require.Len(t, mt.events, 1)
 	ev := mt.events[0]
-	assert.Equal(t, "2.39.23.127", ev.SourceIp)
+	assert.Equal(t, "8.8.8.8", ev.SourceIp)
 	assert.Equal(t, "", ev.SourcePort)
 	// Raw RemoteAddr is preserved for forensic fidelity.
 	assert.Equal(t, "172.20.0.5:54321", ev.RemoteAddr)

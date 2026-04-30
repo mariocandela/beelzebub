@@ -295,9 +295,9 @@ func (suite *IntegrationTestSuite) TestHTTPTrustedProxyResolvesRealClient() {
 	uri := suite.httpHoneypotHost + "/index.php?trusted-proxy-test=1"
 
 	// Trusted peer (127.0.0.1) + spoofed prefix + legitimate client + inner trusted hop.
-	// Walk-right-to-left should pick 2.39.23.127 (the first non-trusted entry from the right).
+	// Walk-right-to-left should pick 8.8.8.8 (the first non-trusted entry from the right).
 	_, err := resty.New().R().
-		SetHeader("X-Forwarded-For", "1.1.1.1, 2.39.23.127, 127.0.0.1").
+		SetHeader("X-Forwarded-For", "1.1.1.1, 8.8.8.8, 127.0.0.1").
 		Get(uri)
 	suite.Require().NoError(err)
 
@@ -315,7 +315,7 @@ func (suite *IntegrationTestSuite) TestHTTPTrustedProxyResolvesRealClient() {
 		}
 	}
 	suite.Require().NotNil(matched, "expected to capture a tracer event for the test request")
-	suite.Equal("2.39.23.127", matched.SourceIp, "real client must be picked from XFF when peer is trusted")
+	suite.Equal("8.8.8.8", matched.SourceIp, "real client must be picked from XFF when peer is trusted")
 	// The raw RemoteAddr field must still reflect the actual TCP peer for forensics.
 	suite.True(strings.HasPrefix(matched.RemoteAddr, "127.0.0.1:"), "RemoteAddr should preserve the literal peer, got %q", matched.RemoteAddr)
 }
