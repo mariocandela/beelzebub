@@ -14,9 +14,7 @@ import (
 )
 
 var (
-	runConfCore     string
-	runConfServices string
-	runMemLimitMiB  int
+	runMemLimitMiB int
 )
 
 var runCmd = &cobra.Command{
@@ -27,8 +25,6 @@ var runCmd = &cobra.Command{
 }
 
 func init() {
-	runCmd.Flags().StringVarP(&runConfCore, "conf-core", "c", "./configurations/beelzebub.yaml", "Path to core configuration file")
-	runCmd.Flags().StringVarP(&runConfServices, "conf-services", "s", "./configurations/services/", "Path to services configuration directory")
 	runCmd.Flags().IntVarP(&runMemLimitMiB, "mem-limit-mib", "m", 100, "Memory limit in MiB (-1 to disable)")
 }
 
@@ -37,7 +33,7 @@ func runBeelzebub(cmd *cobra.Command, _ []string) error {
 		debug.SetMemoryLimit(int64(runMemLimitMiB) * 1024 * 1024)
 	}
 
-	p := parser.Init(runConfCore, runConfServices)
+	p := parser.Init(rootConfCore, rootConfServices)
 
 	coreConfigurations, err := p.ReadConfigurationsCore()
 	if err != nil {
