@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -85,6 +86,11 @@ type BeelzebubServiceConfiguration struct {
 	Plugin                 Plugin    `yaml:"plugin"`
 	TLSCertPath            string    `yaml:"tlsCertPath"`
 	TLSKeyPath             string    `yaml:"tlsKeyPath"`
+	// TrustedProxies is a list of CIDRs (or bare IPs) of upstream proxies whose
+	// X-Forwarded-For / X-Real-IP headers can be trusted. When empty, those
+	// headers are ignored and the immediate TCP peer is used as source IP.
+	TrustedProxies     []string     `yaml:"trustedProxies,omitempty" json:",omitempty"`
+	TrustedProxiesNets []*net.IPNet `yaml:"-" json:"-"`
 }
 
 func (bsc BeelzebubServiceConfiguration) HashCode() (string, error) {
@@ -275,6 +281,10 @@ func (bp configurationsParser) ReadConfigurationsServices() ([]BeelzebubServiceC
 			return nil, fmt.Errorf("in file %s: invalid regex: %v", filePath, err)
 		}
 
+		if err := beelzebubServiceConfiguration.CompileTrustedProxies(); err != nil {
+			return nil, fmt.Errorf("in file %s: %v", filePath, err)
+		}
+
 		servicesConfiguration = append(servicesConfiguration, *beelzebubServiceConfiguration)
 	}
 
@@ -301,6 +311,10 @@ func parseServicesFromEnv(jsonStr string) ([]BeelzebubServiceConfiguration, erro
 		if err := svc.CompileCommandRegex(); err != nil {
 			return nil, fmt.Errorf("invalid regex in BEELZEBUB_SERVICES_CONFIG[%d]: %v", i, err)
 		}
+
+		if err := svc.CompileTrustedProxies(); err != nil {
+			return nil, fmt.Errorf("in BEELZEBUB_SERVICES_CONFIG[%d]: %v", i, err)
+		}
 	}
 
 	return servicesConfiguration, nil
@@ -317,6 +331,37 @@ func (c *BeelzebubServiceConfiguration) CompileCommandRegex() error {
 			c.Commands[i].Regex = rex
 		}
 	}
+	return nil
+}
+
+// CompileTrustedProxies parses the TrustedProxies entries (CIDRs or bare IPs)
+// into net.IPNet values stored in TrustedProxiesNets. Bare IPs are treated as
+// /32 (IPv4) or /128 (IPv6).
+func (c *BeelzebubServiceConfiguration) CompileTrustedProxies() error {
+	nets := make([]*net.IPNet, 0, len(c.TrustedProxies))
+	for _, entry := range c.TrustedProxies {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if !strings.Contains(entry, "/") {
+			ip := net.ParseIP(entry)
+			if ip == nil {
+				return fmt.Errorf("invalid trustedProxies entry %q", entry)
+			}
+			if ip.To4() != nil {
+				entry += "/32"
+			} else {
+				entry += "/128"
+			}
+		}
+		_, n, err := net.ParseCIDR(entry)
+		if err != nil {
+			return fmt.Errorf("invalid trustedProxies entry %q: %v", entry, err)
+		}
+		nets = append(nets, n)
+	}
+	c.TrustedProxiesNets = nets
 	return nil
 }
 
