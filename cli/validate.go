@@ -5,13 +5,7 @@ import (
 	"strings"
 
 	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-)
-
-var (
-	validateConfCore     string
-	validateConfServices string
 )
 
 var validateCmd = &cobra.Command{
@@ -22,8 +16,6 @@ var validateCmd = &cobra.Command{
 }
 
 func init() {
-	validateCmd.Flags().StringVarP(&validateConfCore, "conf-core", "c", "./configurations/beelzebub.yaml", "Path to core configuration file")
-	validateCmd.Flags().StringVarP(&validateConfServices, "conf-services", "s", "./configurations/services/", "Path to services configuration directory")
 }
 
 var knownProtocols = map[string]bool{
@@ -31,17 +23,17 @@ var knownProtocols = map[string]bool{
 }
 
 func validateConfigurations(_ *cobra.Command, _ []string) error {
-	// suppress logrus noise during validation
-	log.SetLevel(log.ErrorLevel)
+	// Let log level be controlled by rootLogLevel, don't force ErrorLevel here
+	// unless user didn't specify, but root command handles setting default.
 
-	p := parser.Init(validateConfCore, validateConfServices)
+	p := parser.Init(rootConfCore, rootConfServices)
 
 	coreConf, err := p.ReadConfigurationsCore()
 	if err != nil {
 		return fmt.Errorf("core config: %w", err)
 	}
 
-	printSection("Core configuration", validateConfCore)
+	printSection("Core configuration", rootConfCore)
 	printField("Prometheus", formatOptional(coreConf.Core.Prometheus.Port+coreConf.Core.Prometheus.Path))
 	printField("RabbitMQ", formatBool(coreConf.Core.Tracings.RabbitMQ.Enabled))
 	printField("Beelzebub Cloud", formatBool(coreConf.Core.BeelzebubCloud.Enabled))
@@ -52,7 +44,7 @@ func validateConfigurations(_ *cobra.Command, _ []string) error {
 	}
 
 	fmt.Println()
-	printSection("Services", fmt.Sprintf("%s (%d found)", validateConfServices, len(services)))
+	printSection("Services", fmt.Sprintf("%s (%d found)", rootConfServices, len(services)))
 
 	for i, svc := range services {
 		if !knownProtocols[svc.Protocol] {
