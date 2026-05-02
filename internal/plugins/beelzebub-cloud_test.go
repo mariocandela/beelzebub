@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"testing"
@@ -127,6 +128,7 @@ func TestGetHoneypotsConfigurationsWithResults(t *testing.T) {
 				LLMModel:        "gpt-4o",
 				OpenAISecretKey: "1234",
 			},
+			TrustedProxiesNets: []*net.IPNet{},
 		},
 	}, &result)
 	assert.Equal(t, "1212319b58fef59aaddd18537d2d65c62f6fb6e9874ac92d426f5cd8859e2d9e", configurationsHash)

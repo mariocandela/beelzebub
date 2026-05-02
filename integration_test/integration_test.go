@@ -316,12 +316,7 @@ func (suite *IntegrationTestSuite) TestHTTPTrustedProxyResolvesRealClient() {
 	}
 	suite.Require().NotNil(matched, "expected to capture a tracer event for the test request")
 	suite.Equal("8.8.8.8", matched.SourceIp, "real client must be picked from XFF when peer is trusted")
-	// The raw RemoteAddr field must still reflect the actual TCP peer for forensics.
-	suite.True(
-		strings.HasPrefix(matched.RemoteAddr, "127.0.0.1:") || strings.HasPrefix(matched.RemoteAddr, "[::1]:"),
-		"RemoteAddr should preserve the literal peer (IPv4 or IPv6), got %q",
-		matched.RemoteAddr,
-	)
+	suite.Equal("8.8.8.8", matched.RemoteAddr, "RemoteAddr must reflect the resolved XFF client IP when peer is trusted")
 }
 
 func (suite *IntegrationTestSuite) TestInvokeTCPHoneypot() {

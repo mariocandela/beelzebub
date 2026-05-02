@@ -143,6 +143,9 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 		if err := honeypotsConfig.CompileCommandRegex(); err != nil {
 			return nil, "", fmt.Errorf("unable to load service config from cloud: invalid regex: %v", err)
 		}
+		if err := honeypotsConfig.CompileTrustedProxies(); err != nil {
+			return nil, "", fmt.Errorf("unable to load service config from cloud: TrustedProxies %v", err)
+		}
 		servicesConfiguration = append(servicesConfiguration, honeypotsConfig)
 
 		if hashCode, err := honeypotsConfig.HashCode(); err != nil {
