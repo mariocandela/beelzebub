@@ -374,7 +374,7 @@ func TestVerifyConfigurationsChanged_StopsOnDone(t *testing.T) {
 	}
 
 	exitFunction = func(c int) {}
-	beelzebubCloud.done <- struct{}{}
+	beelzebubCloud.Stop()
 	httpmock.DeactivateAndReset()
 
 	select {
@@ -382,6 +382,76 @@ func TestVerifyConfigurationsChanged_StopsOnDone(t *testing.T) {
 		assert.Nil(t, err)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timeout waiting for goroutine to stop")
+	}
+}
+
+func TestVerifyConfigurationsChanged_ReturnsHTTPError(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	uri := "localhost:8081"
+
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			return httpmock.NewStringResponse(500, ""), nil
+		},
+	)
+
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
+	beelzebubCloud.client = client
+	beelzebubCloud.PollingInterval = 50 * time.Millisecond
+
+	done := make(chan error, 1)
+	go func() {
+		done <- beelzebubCloud.verifyConfigurationsChanged()
+	}()
+
+	select {
+	case err := <-done:
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "Response code: 500")
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for goroutine to return error")
+	}
+}
+
+func TestVerifyConfigurationsChanged_StopsOnContextAtTopOfLoop(t *testing.T) {
+	client := resty.New()
+	httpmock.ActivateNonDefault(client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	uri := "localhost:8081"
+
+	httpmock.RegisterResponder("GET", fmt.Sprintf("%s/honeypots", uri),
+		func(req *http.Request) (*http.Response, error) {
+			resp, err := httpmock.NewJsonResponse(200, &[]HoneypotConfigResponseDTO{
+				{ID: "123456", Config: "apiVersion: \"v1\"\nprotocol: \"ssh\"\naddress: \":2222\"\n", TokenID: "1234567"},
+			})
+			if err != nil {
+				return httpmock.NewStringResponse(500, ""), nil
+			}
+			return resp, nil
+		},
+	)
+
+	beelzebubCloud := InitBeelzebubCloud(uri, "sdjdnklfjndslkjanfk", false)
+	beelzebubCloud.client = client
+
+	// Stop before verifyConfigurationsChanged starts.
+	// The goroutine hits the ctx.Done() check at the top of the first loop iteration.
+	beelzebubCloud.Stop()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- beelzebubCloud.verifyConfigurationsChanged()
+	}()
+
+	select {
+	case err := <-done:
+		assert.Nil(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for goroutine to stop at top of loop")
 	}
 }
 

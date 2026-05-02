@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,7 +48,8 @@ type beelzebubCloud struct {
 	AuthToken       string
 	client          *resty.Client
 	PollingInterval time.Duration
-	done            chan struct{}
+	ctx             context.Context
+	cancel          context.CancelFunc
 }
 
 type HoneypotConfigResponseDTO struct {
@@ -58,12 +60,14 @@ type HoneypotConfigResponseDTO struct {
 }
 
 func InitBeelzebubCloud(uri, authToken string, enableVerifyConfigurationsChanged bool) *beelzebubCloud {
+	ctx, cancel := context.WithCancel(context.Background())
 	beelzebubCloud := &beelzebubCloud{
 		URI:             uri,
 		AuthToken:       authToken,
 		client:          resty.New(),
 		PollingInterval: 15 * time.Second,
-		done:            make(chan struct{}),
+		ctx:             ctx,
+		cancel:          cancel,
 	}
 	if enableVerifyConfigurationsChanged {
 		go func() {
@@ -161,6 +165,10 @@ func (beelzebubCloud *beelzebubCloud) GetHoneypotsConfigurations() ([]parser.Bee
 
 var exitFunction func(code int) = os.Exit
 
+func (beelzebubCloud *beelzebubCloud) Stop() {
+	beelzebubCloud.cancel()
+}
+
 func (beelzebubCloud *beelzebubCloud) checkConfigurationsChanged(lastHash string) (newHash string, changed bool, err error) {
 	_, configurationsHash, err := beelzebubCloud.GetHoneypotsConfigurations()
 	if err != nil {
@@ -172,6 +180,12 @@ func (beelzebubCloud *beelzebubCloud) checkConfigurationsChanged(lastHash string
 func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
 	var lastHash = ""
 	for {
+		select {
+		case <-beelzebubCloud.ctx.Done():
+			return nil
+		default:
+		}
+
 		newHash, changed, err := beelzebubCloud.checkConfigurationsChanged(lastHash)
 		if err != nil {
 			return err
@@ -183,7 +197,7 @@ func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
 		lastHash = newHash
 		select {
 		case <-time.After(beelzebubCloud.PollingInterval):
-		case <-beelzebubCloud.done:
+		case <-beelzebubCloud.ctx.Done():
 			return nil
 		}
 	}
