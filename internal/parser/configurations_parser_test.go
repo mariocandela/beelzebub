@@ -1111,3 +1111,58 @@ func TestReadConfigurationsServicesForValidationFromEnvInvalidRegex(t *testing.T
 	assert.Contains(t, issues[0].Message, "invalid regex")
 	assert.Equal(t, "<env:BEELZEBUB_SERVICES_CONFIG>", issues[0].Filename)
 }
+
+func TestReadConfigurationsServicesStrictFileReadError(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesError
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirWithFilename
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "mockErrorReadFileBytes")
+}
+
+func TestReadConfigurationsServicesStrictYamlError(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesFormatError
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirWithFilename
+
+	services, err := configurationsParser.ReadConfigurationsServices()
+	assert.Nil(t, services)
+	assert.Error(t, err)
+}
+
+func TestReadConfigurationsServicesForValidationInvalidTrustedProxies(t *testing.T) {
+	os.Unsetenv("BEELZEBUB_SERVICES_CONFIG")
+
+	configurationsParser := Init("", "")
+	configurationsParser.readFileBytesByFilePathDependency = mockReadfilebytesWithInvalidTrustedProxies
+	configurationsParser.gelAllFilesNameByDirNameDependency = mockReadDirWithFilename
+
+	services, issues, err := configurationsParser.ReadConfigurationsServicesForValidation()
+	assert.Nil(t, err)
+	assert.Empty(t, services)
+	assert.Len(t, issues, 1)
+	assert.Equal(t, LevelError, issues[0].Level)
+	assert.Contains(t, issues[0].Message, "invalid trustedProxies entry")
+	assert.Equal(t, "test-service.yaml", issues[0].Filename)
+}
+
+func TestReadConfigurationsServicesForValidationFromEnvInvalidTrustedProxies(t *testing.T) {
+	t.Setenv("BEELZEBUB_SERVICES_CONFIG", `[{"apiVersion":"v1","protocol":"http","address":":80","TrustedProxies":["bogus"]}]`)
+
+	configurationsParser := Init("", "")
+
+	services, issues, err := configurationsParser.ReadConfigurationsServicesForValidation()
+	assert.Nil(t, err)
+	assert.Empty(t, services)
+	assert.Len(t, issues, 1)
+	assert.Equal(t, LevelError, issues[0].Level)
+	assert.Contains(t, issues[0].Message, "invalid trustedProxies entry")
+	assert.Equal(t, "<env:BEELZEBUB_SERVICES_CONFIG>", issues[0].Filename)
+}
