@@ -7,7 +7,22 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func captureOutput(t *testing.T, fn func()) string {
+	t.Helper()
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	fn()
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	return buf.String()
+}
 
 func TestFormatBool(t *testing.T) {
 	if got := formatBool(true); got != "enabled" {
@@ -110,7 +125,165 @@ address: ":8080"
 	err := validateConfigurations(nil, nil)
 	if err == nil {
 		t.Error("expected error for unknown protocol")
-	} else if !strings.Contains(err.Error(), "unknown protocol") {
-		t.Errorf("expected error to mention unknown protocol, got: %v", err)
+	} else if !strings.Contains(err.Error(), "validation failed") {
+		t.Errorf("expected error to mention validation failed, got: %v", err)
 	}
+}
+
+func TestValidateConfigurations_ValidConfigs(t *testing.T) {
+	tmpDir := t.TempDir()
+	servicesDir := t.TempDir()
+
+	coreYAML := `
+core:
+  logging:
+    debug: false
+`
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
+
+	svcYAML := `
+apiVersion: v1
+protocol: http
+address: ":8080"
+deadlineTimeoutSeconds: 60
+commands:
+  - regex: "^GET /"
+    handler: "handler"
+fallbackCommand:
+  handler: "fallback"
+`
+	assert.NoError(t, os.WriteFile(servicesDir+"/http-8080.yaml", []byte(svcYAML), 0644))
+
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "0 errors, 0 warnings")
+}
+
+func TestValidateConfigurations_InvalidServiceConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	servicesDir := t.TempDir()
+
+	coreYAML := `
+core:
+  logging:
+    debug: false
+`
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
+
+	svcYAML := `
+apiVersion: v1
+protocol: ftp
+address: ":8080"
+`
+	assert.NoError(t, os.WriteFile(servicesDir+"/bad.yaml", []byte(svcYAML), 0644))
+
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "validation failed with 1 error(s)")
+	assert.Contains(t, output, "invalid protocol")
+}
+
+func TestValidateConfigurations_CoreConfigParseError(t *testing.T) {
+	servicesDir := t.TempDir()
+	tmpDir := t.TempDir()
+
+	malformedYAML := `
+core:
+  logging:
+    debug: [this is not valid yaml
+`
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(malformedYAML), 0644))
+
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "validation failed")
+	assert.Contains(t, output, "failed to read core config")
+}
+
+func TestValidateConfigurations_MissingCoreConfig(t *testing.T) {
+	servicesDir := t.TempDir()
+
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate("/nonexistent/path/beelzebub.yaml", servicesDir)
+	})
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "0 errors, 0 warnings")
+}
+
+func TestValidateConfigurations_MalformedServiceConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	servicesDir := t.TempDir()
+
+	coreYAML := `
+core:
+  logging:
+    debug: false
+`
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
+
+	badSvcYAML := `
+apiVersion: v1
+protocol: ssh
+address: ":22"
+  this is broken indentation
+`
+	assert.NoError(t, os.WriteFile(servicesDir+"/broken.yaml", []byte(badSvcYAML), 0644))
+
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
+
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(output, "FAIL broken.yaml") || strings.Contains(output, "YAML"))
+}
+
+func TestValidateConfigurations_EmptyServicesDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	servicesDir := t.TempDir()
+
+	coreYAML := `
+core:
+  logging:
+    debug: false
+`
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
+
+	var err error
+	output := captureOutput(t, func() {
+		err = runValidate(tmpDir+"/beelzebub.yaml", servicesDir)
+	})
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "0 errors, 0 warnings")
+}
+
+func TestValidateConfigurations_ServicesPathIsFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	coreYAML := `
+core:
+  logging:
+    debug: false
+`
+	assert.NoError(t, os.WriteFile(tmpDir+"/beelzebub.yaml", []byte(coreYAML), 0644))
+	assert.NoError(t, os.WriteFile(tmpDir+"/services.yaml", []byte("not a directory"), 0644))
+
+	err := runValidate(tmpDir+"/beelzebub.yaml", tmpDir+"/services.yaml")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "services config")
 }

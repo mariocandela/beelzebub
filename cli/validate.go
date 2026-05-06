@@ -2,74 +2,75 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/beelzebub-labs/beelzebub/v3/internal/parser"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	_ "github.com/beelzebub-labs/beelzebub/v3/internal/plugins"
+	_ "github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/HTTP"
+	_ "github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/MCP"
+	_ "github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/SSH"
+	_ "github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/TCP"
+	_ "github.com/beelzebub-labs/beelzebub/v3/internal/protocols/strategies/TELNET"
 )
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate configuration files without starting services",
-	Long:  "Parse and validate core and service YAML configurations, reporting any errors.",
+	Long:  "Parse and validate core and service YAML configurations, reporting any errors and warnings.",
 	RunE:  validateConfigurations,
 }
 
 func init() {
 }
 
-var knownProtocols = map[string]bool{
-	"http": true, "ssh": true, "tcp": true, "telnet": true, "mcp": true,
+func validateConfigurations(_ *cobra.Command, _ []string) error {
+	return runValidate(rootConfCore, rootConfServices)
 }
 
-func validateConfigurations(_ *cobra.Command, _ []string) error {
-	// Let log level be controlled by rootLogLevel, don't force ErrorLevel here
-	// unless user didn't specify, but root command handles setting default.
+func runValidate(corePath, servicesPath string) error {
+	log.SetLevel(log.ErrorLevel)
 
-	p := parser.Init(rootConfCore, rootConfServices)
+	fmt.Printf("Validating services from %s\n", servicesPath)
+	fmt.Printf("Validating core from %s\n\n", corePath)
 
-	coreConf, err := p.ReadConfigurationsCore()
-	if err != nil {
-		return fmt.Errorf("core config: %w", err)
-	}
+	p := parser.Init(corePath, servicesPath)
 
-	printSection("Core configuration", rootConfCore)
-	printField("Prometheus", formatOptional(coreConf.Core.Prometheus.Port+coreConf.Core.Prometheus.Path))
-	printField("RabbitMQ", formatBool(coreConf.Core.Tracings.RabbitMQ.Enabled))
-	printField("Beelzebub Cloud", formatBool(coreConf.Core.BeelzebubCloud.Enabled))
-
-	services, err := p.ReadConfigurationsServices()
+	services, parseIssues, err := p.ReadConfigurationsServicesForValidation()
 	if err != nil {
 		return fmt.Errorf("services config: %w", err)
 	}
 
-	fmt.Println()
-	printSection("Services", fmt.Sprintf("%s (%d found)", rootConfServices, len(services)))
+	serviceResult := parser.Validate(services, parseIssues)
 
-	for i, svc := range services {
-		if !knownProtocols[svc.Protocol] {
-			return fmt.Errorf("service[%d] %q: unknown protocol %q", i+1, svc.Address, svc.Protocol)
+	var coreResult parser.ValidateResult
+	coreConf, err := p.ReadConfigurationsCore()
+	if err != nil {
+		coreResult = parser.ValidateResult{
+			Results: []parser.ValidationResult{
+			{Filename: corePath, Issues: []parser.ValidationIssue{
+					{Level: parser.LevelError, Message: fmt.Sprintf("failed to read core config: %v", err)},
+				}},
+			},
+			TotalErrors: 1,
 		}
-
-		extras := []string{}
-		if svc.Plugin.LLMProvider != "" {
-			extras = append(extras, fmt.Sprintf("plugin:%s/%s", svc.Plugin.LLMProvider, svc.Plugin.LLMModel))
-		}
-		if svc.Plugin.RateLimitEnabled {
-			extras = append(extras, "rate-limited")
-		}
-		suffix := ""
-		if len(extras) > 0 {
-			suffix = "  [" + strings.Join(extras, ", ") + "]"
-		}
-		desc := svc.Description
-		if desc == "" {
-			desc = svc.ServerName
-		}
-		fmt.Printf("  [%d] %-7s %-22s %s%s\n", i+1, svc.Protocol, svc.Address, desc, suffix)
+	} else {
+		coreResult = parser.ValidateCore(coreConf, corePath)
 	}
 
-	fmt.Println("\nAll configurations are valid.")
+	combined := parser.ValidateResult{
+		Results:       append(serviceResult.Results, coreResult.Results...),
+		TotalErrors:   serviceResult.TotalErrors + coreResult.TotalErrors,
+		TotalWarnings: serviceResult.TotalWarnings + coreResult.TotalWarnings,
+	}
+
+	combined.Print()
+
+	if combined.ExitCode() != 0 {
+		return fmt.Errorf("validation failed with %d error(s)", combined.TotalErrors)
+	}
+
 	return nil
 }
 
