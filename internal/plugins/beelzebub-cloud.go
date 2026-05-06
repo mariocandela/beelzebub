@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,6 +48,8 @@ type beelzebubCloud struct {
 	AuthToken       string
 	client          *resty.Client
 	PollingInterval time.Duration
+	ctx             context.Context
+	cancel          context.CancelFunc
 }
 
 type HoneypotConfigResponseDTO struct {
@@ -57,11 +60,14 @@ type HoneypotConfigResponseDTO struct {
 }
 
 func InitBeelzebubCloud(uri, authToken string, enableVerifyConfigurationsChanged bool) *beelzebubCloud {
+	ctx, cancel := context.WithCancel(context.Background())
 	beelzebubCloud := &beelzebubCloud{
 		URI:             uri,
 		AuthToken:       authToken,
 		client:          resty.New(),
 		PollingInterval: 15 * time.Second,
+		ctx:             ctx,
+		cancel:          cancel,
 	}
 	if enableVerifyConfigurationsChanged {
 		go func() {
@@ -71,6 +77,10 @@ func InitBeelzebubCloud(uri, authToken string, enableVerifyConfigurationsChanged
 		}()
 	}
 	return beelzebubCloud
+}
+
+func (beelzebubCloud *beelzebubCloud) Stop() {
+	beelzebubCloud.cancel()
 }
 
 func (beelzebubCloud *beelzebubCloud) SendEvent(event tracer.Event) (bool, error) {
@@ -162,6 +172,11 @@ var exitFunction func(code int) = os.Exit
 func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
 	var lastConfigurationsHash = ""
 	for {
+		select {
+		case <-beelzebubCloud.ctx.Done():
+			return nil
+		default:
+		}
 		log.Debug("Checking configurations...")
 		_, configurationsHash, err := beelzebubCloud.GetHoneypotsConfigurations()
 		if err != nil {
@@ -174,7 +189,12 @@ func (beelzebubCloud *beelzebubCloud) verifyConfigurationsChanged() error {
 			log.Debug("Configurations changed.")
 			exitFunction(0)
 		}
-		time.Sleep(beelzebubCloud.PollingInterval)
+
+		select {
+		case <-beelzebubCloud.ctx.Done():
+			return nil
+		case <-time.After(beelzebubCloud.PollingInterval):
+		}
 	}
 }
 
